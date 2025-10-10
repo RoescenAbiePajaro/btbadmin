@@ -1,16 +1,23 @@
 import React, { useEffect, useState } from "react";
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ onLogout, userData }) {
   const [clicks, setClicks] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 10;
 
   const fetchData = async () => {
-    const res = await fetch(`http://localhost:5000/api/clicks?page=${page}&limit=${limit}`);
-    const data = await res.json();
-    setClicks(data.clicks);
-    setTotal(data.total);
+    try {
+      const res = await fetch(`http://localhost:5000/api/clicks?page=${page}&limit=${limit}`);
+      if (!res.ok) throw new Error('Failed to fetch data');
+      const data = await res.json();
+      setClicks(data.clicks || []);
+      setTotal(data.total || 0);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setClicks([]);
+      setTotal(0);
+    }
   };
 
   useEffect(() => {
@@ -30,9 +37,12 @@ export default function AdminDashboard() {
             <li className="mb-2">Guest Navigation</li>
           </ul>
         </div>
+        <div className="mb-4">
+          <p className="text-sm text-gray-400">Logged in as: <span className="text-white">{userData?.username || 'Admin'}</span></p>
+        </div>
         <button
-          onClick={() => (window.location.href = "/")}
-          className="bg-red-600 py-2 px-4 rounded-lg hover:bg-red-500"
+          onClick={onLogout}
+          className="w-full bg-red-600 py-2 px-4 rounded-lg hover:bg-red-500"
         >
           Logout
         </button>
