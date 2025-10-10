@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2 } from 'react-icons/fi';
+import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX } from 'react-icons/fi';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
@@ -246,7 +246,7 @@ export default function AdminDashboard({ onLogout, userData }) {
       <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
         {isLoading ? (
           <div className="p-8 flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         ) : (
           <>
@@ -266,7 +266,7 @@ export default function AdminDashboard({ onLogout, userData }) {
                     clicks.map((click, idx) => (
                       <tr key={click._id || idx} className="hover:bg-gray-750 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-900 text-indigo-200">
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-200">
                             {click.button}
                           </span>
                         </td>
@@ -368,15 +368,15 @@ export default function AdminDashboard({ onLogout, userData }) {
       {/* Sidebar */}
       <aside className="w-64 bg-gray-900 shadow-lg flex flex-col border-r border-gray-800">
         <div className="p-6 border-b border-gray-800">
-          <h1 className="text-2xl font-bold text-indigo-400">Admin Panel</h1>
+          <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 pt-6 md:pt-4">
           <button 
             onClick={() => setActiveNav('analytics')}
             className={`flex items-center w-full p-3 rounded-lg transition-colors ${
               activeNav === 'analytics' 
-                ? 'bg-indigo-900 bg-opacity-50 text-indigo-300 border border-indigo-700' 
+                ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
                 : 'hover:bg-gray-800 text-gray-400 hover:text-gray-300'
             }`}
           >
@@ -387,7 +387,7 @@ export default function AdminDashboard({ onLogout, userData }) {
             onClick={() => setActiveNav('guests')}
             className={`flex items-center w-full p-3 rounded-lg transition-colors ${
               activeNav === 'guests' 
-                ? 'bg-indigo-900 bg-opacity-50 text-indigo-300 border border-indigo-700' 
+                ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
                 : 'hover:bg-gray-800 text-gray-400 hover:text-gray-300'
             }`}
           >
@@ -398,7 +398,7 @@ export default function AdminDashboard({ onLogout, userData }) {
         
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center p-3 bg-gray-800 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-indigo-900 bg-opacity-50 flex items-center justify-center text-indigo-300 font-semibold border border-indigo-700">
+            <div className="w-10 h-10 rounded-full bg-blue-900 bg-opacity-50 flex items-center justify-center text-blue-300 font-semibold border border-blue-700">
               {userData?.username?.charAt(0).toUpperCase() || 'A'}
             </div>
             <div className="ml-3">
@@ -440,7 +440,7 @@ export default function AdminDashboard({ onLogout, userData }) {
                     setClickToDelete(null);
                     setDeleteMode(null);
                   }}
-                  className="px-4 py-2 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-colors"
+                  className="px-4 py-2 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-900 transition-colors"
                   disabled={isDeleting}
                 >
                   Cancel
