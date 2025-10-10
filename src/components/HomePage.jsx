@@ -56,21 +56,21 @@ export default function HomePage() {
             <div className="flex flex-col space-y-4">
               <a 
                 href="https://your-get-started-url.com" 
-                className="bg-white text-black py-3 px-6 rounded-lg font-semibold text-lg hover:bg-gray-200 transition duration-200 text-center no-underline"
+                className="bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline"
                 onClick={() => trackClick('visit_link', 'home_page')}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Visit Link
+                Visit Link (Beyond The Brush Lite)
               </a>
               <a 
-                href="https://your-learn-more-url.com" 
-                className="border-2 border-white text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-white hover:text-black transition duration-200 text-center no-underline"
+                href="https://your-learn-more-url.com"
+                className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
                 onClick={() => trackClick('download', 'home_page')}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Download Now
+                Download PC
               </a>
             </div>
           </div>

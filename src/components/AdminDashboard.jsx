@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FiLogOut, FiHome, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiLogOut, FiHome, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2 } from 'react-icons/fi';
 
 export default function AdminDashboard({ onLogout, userData }) {
   const [clicks, setClicks] = useState([]);
@@ -11,6 +11,7 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteMode, setDeleteMode] = useState(null); // 'single' or 'all' or null
   const [clickToDelete, setClickToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const limit = 10;
 
   const fetchData = async () => {
@@ -41,6 +42,63 @@ export default function AdminDashboard({ onLogout, userData }) {
   }, [page]);
 
   const totalPages = Math.ceil(total / limit);
+
+  const handleDeleteClick = async (clickId) => {
+    if (!clickId) return;
+    
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/clicks/${clickId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete click');
+      
+      // Refresh data after successful deletion
+      await fetchData();
+      setShowDeleteModal(false);
+      setClickToDelete(null);
+    } catch (error) {
+      console.error('Error deleting click:', error);
+      alert('Failed to delete click');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm('Are you sure you want to delete all click data? This action cannot be undone.')) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/clicks`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete all clicks');
+      
+      // Refresh data after successful deletion
+      await fetchData();
+      setShowDeleteModal(false);
+    } catch (error) {
+      console.error('Error deleting all clicks:', error);
+      alert('Failed to delete all clicks');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 flex">
@@ -83,7 +141,7 @@ export default function AdminDashboard({ onLogout, userData }) {
             className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <FiLogOut size={16} />
-            Sign out
+            Log out
           </button>
         </div>
       </aside>
@@ -101,6 +159,17 @@ export default function AdminDashboard({ onLogout, userData }) {
                 <p className="text-sm text-gray-500">Total Clicks</p>
                 <p className="text-xl font-semibold">{total}</p>
               </div>
+              <button
+                onClick={() => {
+                  setClickToDelete(null);
+                  setShowDeleteModal(true);
+                }}
+                className="flex items-center space-x-2 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                disabled={total === 0 || isLoading}
+              >
+                <FiTrash2 size={16} />
+                <span>Delete All</span>
+              </button>
             </div>
           </div>
 
@@ -139,11 +208,23 @@ export default function AdminDashboard({ onLogout, userData }) {
                                 minute: '2-digit'
                               })}
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button
+                                onClick={() => {
+                                  setClickToDelete(click._id);
+                                  setShowDeleteModal(true);
+                                }}
+                                className="text-red-600 hover:text-red-900 hover:bg-red-50 p-2 rounded-full"
+                                title="Delete this entry"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="3" className="px-6 py-8 text-center text-gray-500">
+                          <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
                             No click data available
                           </td>
                         </tr>
@@ -206,6 +287,41 @@ export default function AdminDashboard({ onLogout, userData }) {
               </>
             )}
           </div>
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {clickToDelete ? 'Delete Click Record' : 'Delete All Records'}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {clickToDelete 
+                    ? 'Are you sure you want to delete this click record? This action cannot be undone.'
+                    : 'Are you sure you want to delete ALL click records? This action cannot be undone.'}
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setClickToDelete(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => clickToDelete ? handleDeleteClick(clickToDelete) : handleDeleteAll()}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
