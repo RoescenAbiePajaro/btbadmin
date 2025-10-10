@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-require('dotenv').config(); // Add this at the top
+require('dotenv').config();
 
 const app = express();
 
@@ -11,15 +11,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection - now using environment variable
+// MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => console.log('✅ Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// Admin Schema
+// =====================
+// 🧱 SCHEMAS
+// =====================
+
+// Admin Schema (untouched)
 const adminSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
@@ -27,30 +31,41 @@ const adminSchema = new mongoose.Schema({
   password: { type: String, required: true },
   accessCode: { type: String, required: true }
 });
-
 const Admin = mongoose.model('Admin', adminSchema);
 
-// Test Endpoint
+// ✅ NEW: Click Schema
+const clickSchema = new mongoose.Schema({
+  button: String,
+  page: String,
+  timestamp: { type: Date, default: Date.now },
+});
+const Click = mongoose.model('Click', clickSchema);
+
+// =====================
+// ⚙️ TEST ENDPOINT
+// =====================
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Admin server is running' });
 });
 
-// Generate JWT Token
+// =====================
+// 🔐 JWT TOKEN UTILS
+// =====================
 const generateToken = (admin) => {
   return jwt.sign(
     { id: admin._id, username: admin.username },
-    process.env.JWT_SECRET, // Now using environment variable
+    process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
 };
 
-// Middleware to verify JWT
+// JWT Verification Middleware
 const verifyToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'No token provided' });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Now using environment variable
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -58,31 +73,27 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Admin Login Endpoint
+// =====================
+// 👤 ADMIN AUTH ENDPOINTS
+// =====================
+
+// Admin Login
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
+  if (!username || !password)
     return res.status(400).json({ message: 'Username and password are required' });
-  }
 
   try {
-    // Find admin by username
     const admin = await Admin.findOne({ username });
-    if (!admin) {
-      return res.status(401).json({ message: 'Invalid username or password' });
-    }
+    if (!admin) return res.status(401).json({ message: 'Invalid username or password' });
 
-    // Check password
     const isPasswordValid = await bcrypt.compare(password, admin.password);
-    if (!isPasswordValid) {
+    if (!isPasswordValid)
       return res.status(401).json({ message: 'Invalid username or password' });
-    }
 
-    // Generate token
     const token = generateToken(admin);
 
-    // Return user data (excluding password)
     const adminData = admin.toObject();
     delete adminData.password;
     delete adminData.__v;
@@ -98,32 +109,23 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Admin Registration Endpoint
+// Admin Registration
 app.post('/api/admin/register', async (req, res) => {
   const { firstName, lastName, username, password, accessCode } = req.body;
 
-  // Validation
-  if (!firstName || !lastName || !username || !password || !accessCode) {
+  if (!firstName || !lastName || !username || !password || !accessCode)
     return res.status(400).json({ message: 'All fields are required' });
-  }
 
-  if (password.length < 6) {
+  if (password.length < 6)
     return res.status(400).json({ message: 'Password must be at least 6 characters long' });
-  }
-
-  // Admin access code validation is now handled by environment variable
 
   try {
-    // Check if admin username already exists
     const existingAdmin = await Admin.findOne({ username });
-    if (existingAdmin) {
+    if (existingAdmin)
       return res.status(400).json({ message: 'Admin username already exists' });
-    }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new admin
     const admin = new Admin({
       firstName,
       lastName,
@@ -140,8 +142,50 @@ app.post('/api/admin/register', async (req, res) => {
   }
 });
 
-// Start Server
+// =====================
+// 📊 GUEST CLICK TRACKING ENDPOINTS
+// =====================
+
+// Log a click
+app.post('/api/clicks', async (req, res) => {
+  try {
+    const { button, page } = req.body;
+
+    if (!button || !page) {
+      return res.status(400).json({ message: 'Button and page are required' });
+    }
+
+    const click = new Click({ button, page });
+    await click.save();
+    res.status(201).json({ message: 'Click logged successfully' });
+  } catch (error) {
+    console.error('Error logging click:', error);
+    res.status(500).json({ message: 'Server error logging click' });
+  }
+});
+
+// Get paginated click logs
+app.get('/api/clicks', verifyToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const clicks = await Click.find()
+      .sort({ timestamp: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Click.countDocuments();
+
+    res.json({ clicks, total });
+  } catch (error) {
+    console.error('Error fetching click logs:', error);
+    res.status(500).json({ message: 'Server error fetching click logs' });
+  }
+});
+
+// =====================
+// 🚀 START SERVER
+// =====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Admin server running on port ${PORT}`);
+  console.log(`🚀 Admin server running on port ${PORT}`);
 });
