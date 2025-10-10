@@ -16,7 +16,25 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [deleteMode, setDeleteMode] = useState(null);
   const [clickToDelete, setClickToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const limit = 10;
+
+  // Check screen size and handle responsiveness
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -151,10 +169,17 @@ export default function AdminDashboard({ onLogout, userData }) {
     };
   };
 
+  const handleNavClick = (nav) => {
+    setActiveNav(nav);
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
+  };
+
   // Analytics Component
   const AnalyticsSection = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
           <p className="text-gray-400">Visual insights into guest interactions</p>
@@ -168,13 +193,14 @@ export default function AdminDashboard({ onLogout, userData }) {
       </div>
 
       {clicks.length > 0 ? (
-        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+        <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
           <h2 className="text-lg font-medium text-white mb-4">Engagements</h2>
-          <div className="bg-gray-900 p-4 rounded-lg">
+          <div className="bg-gray-900 p-3 sm:p-4 rounded-lg">
             <Bar
               data={getChartData()}
               options={{
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                   legend: { 
                     position: 'top',
@@ -208,11 +234,12 @@ export default function AdminDashboard({ onLogout, userData }) {
                   }
                 }
               }}
+              height={300}
             />
           </div>
         </div>
       ) : (
-        <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 text-center">
+        <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 text-center">
           <p className="text-gray-400">No data available for analytics</p>
         </div>
       )}
@@ -222,7 +249,7 @@ export default function AdminDashboard({ onLogout, userData }) {
   // Guest Clicks Component
   const GuestClicksSection = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Guest Click Activity</h1>
           <p className="text-gray-400">Detailed view of all guest interactions</p>
@@ -238,7 +265,7 @@ export default function AdminDashboard({ onLogout, userData }) {
             disabled={total === 0 || isLoading}
           >
             <FiTrash2 size={16} />
-            <span>Delete All</span>
+            <span className="hidden sm:inline">Delete All</span>
           </button>
         </div>
       </div>
@@ -254,24 +281,24 @@ export default function AdminDashboard({ onLogout, userData }) {
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-750">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Button</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Page</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date & Time</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Button</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Page</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date & Time</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">ID</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
                   {clicks.length > 0 ? (
                     clicks.map((click, idx) => (
                       <tr key={click._id || idx} className="hover:bg-gray-750 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-200">
                             {click.button}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{click.page}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{click.page}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-400">
                           {new Date(click.timestamp).toLocaleString(undefined, {
                             year: 'numeric',
                             month: 'short',
@@ -280,10 +307,10 @@ export default function AdminDashboard({ onLogout, userData }) {
                             minute: '2-digit'
                           })}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell">
                           {click._id ? click._id.substring(0, 8) + '...' : 'No ID'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
                             onClick={() => handleDeleteClick(click._id)}
                             className="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
@@ -307,7 +334,7 @@ export default function AdminDashboard({ onLogout, userData }) {
             </div>
 
             {/* Pagination */}
-            <div className="px-6 py-4 bg-gray-750 border-t border-gray-700 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 bg-gray-750 border-t border-gray-700 flex items-center justify-between">
               <div className="flex-1 flex justify-between sm:hidden">
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
@@ -365,15 +392,34 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   return (
     <div className="min-h-screen bg-black text-gray-300 flex">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && isMobile && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 shadow-lg flex flex-col border-r border-gray-800">
-        <div className="p-6 border-b border-gray-800">
+      <aside className={`
+        fixed md:static inset-y-0 left-0 z-50
+        w-64 bg-gray-900 shadow-lg flex flex-col border-r border-gray-800
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-6 border-b border-gray-800 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden text-gray-400 hover:text-white"
+          >
+            <FiX size={24} />
+          </button>
         </div>
         
         <nav className="flex-1 p-4 space-y-2 pt-6 md:pt-4">
           <button 
-            onClick={() => setActiveNav('analytics')}
+            onClick={() => handleNavClick('analytics')}
             className={`flex items-center w-full p-3 rounded-lg transition-colors ${
               activeNav === 'analytics' 
                 ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
@@ -384,7 +430,7 @@ export default function AdminDashboard({ onLogout, userData }) {
             <span>Analytics</span>
           </button>
           <button 
-            onClick={() => setActiveNav('guests')}
+            onClick={() => handleNavClick('guests')}
             className={`flex items-center w-full p-3 rounded-lg transition-colors ${
               activeNav === 'guests' 
                 ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
@@ -418,7 +464,21 @@ export default function AdminDashboard({ onLogout, userData }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-black p-8">
+      <main className="flex-1 overflow-auto bg-black p-4 sm:p-6 md:p-8 min-h-screen">
+        {/* Mobile Header */}
+        <div className="md:hidden flex items-center justify-between mb-6">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+          >
+            <FiMenu size={20} className="text-white" />
+          </button>
+          <h1 className="text-xl font-bold text-white">
+            {activeNav === 'analytics' ? 'Analytics' : 'Guest Activity'}
+          </h1>
+          <div className="w-8"></div> {/* Spacer for balance */}
+        </div>
+
         {activeNav === 'analytics' ? <AnalyticsSection /> : <GuestClicksSection />}
 
         {/* Delete Confirmation Modal */}
