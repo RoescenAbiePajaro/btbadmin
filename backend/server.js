@@ -182,6 +182,34 @@ app.get('/api/clicks', verifyToken, async (req, res) => {
   }
 });
 
+// Delete a single click log
+app.delete('/api/clicks/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedClick = await Click.findByIdAndDelete(id);
+    
+    if (!deletedClick) {
+      return res.status(404).json({ message: 'Click log not found' });
+    }
+    
+    res.json({ message: 'Click log deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting click log:', error);
+    res.status(500).json({ message: 'Server error deleting click log' });
+  }
+});
+
+// Delete all click logs
+app.delete('/api/clicks', verifyToken, async (req, res) => {
+  try {
+    await Click.deleteMany({});
+    res.json({ message: 'All click logs deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting all click logs:', error);
+    res.status(500).json({ message: 'Server error deleting all click logs' });
+  }
+});
+
 // =====================
 // 🚀 START SERVER
 // =====================
