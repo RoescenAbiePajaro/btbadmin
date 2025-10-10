@@ -182,11 +182,11 @@ export default function AdminDashboard({ onLogout, userData }) {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
-          <p className="text-gray-400">Visual insights into guest interactions</p>
+          <p className="text-gray-200">Visual insights into guest interactions</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-            <p className="text-sm text-gray-400">Total Clicks</p>
+            <p className="text-sm text-gray-200">Total Clicks</p>
             <p className="text-xl font-semibold text-white">{total}</p>
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function AdminDashboard({ onLogout, userData }) {
       {clicks.length > 0 ? (
         <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
           <h2 className="text-lg font-medium text-white mb-4">Engagements</h2>
-          <div className="bg-gray-900 p-3 sm:p-4 rounded-lg">
+          <div className="bg-gray-800 p-3 sm:p-4 rounded-lg">
             <Bar
               data={getChartData()}
               options={{
@@ -240,7 +240,7 @@ export default function AdminDashboard({ onLogout, userData }) {
         </div>
       ) : (
         <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 text-center">
-          <p className="text-gray-400">No data available for analytics</p>
+          <p className="text-gray-200">No data available for analytics</p>
         </div>
       )}
     </div>
@@ -252,11 +252,11 @@ export default function AdminDashboard({ onLogout, userData }) {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Guest Click Activity</h1>
-          <p className="text-gray-400">Detailed view of all guest interactions</p>
+          <p className="text-gray-200">Detailed view of all guest interactions</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-            <p className="text-sm text-gray-400">Total Clicks</p>
+            <p className="text-sm text-gray-200">Total Clicks</p>
             <p className="text-xl font-semibold text-white">{total}</p>
           </div>
           <button
@@ -279,7 +279,7 @@ export default function AdminDashboard({ onLogout, userData }) {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-700">
-                <thead className="bg-gray-750">
+                <thead className="bg-gray-800">
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Button</th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Page</th>
@@ -297,7 +297,7 @@ export default function AdminDashboard({ onLogout, userData }) {
                             {click.button}
                           </span>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{click.page}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-200">{click.page}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-400">
                           {new Date(click.timestamp).toLocaleString(undefined, {
                             year: 'numeric',

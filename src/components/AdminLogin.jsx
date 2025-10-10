@@ -118,7 +118,7 @@ const AdminLogin = () => {
               <button
                 type="button"
                 onClick={handleRegister}
-                className="w-full flex justify-center py-3 px-6 border-2 border-white rounded-lg font-semibold text-lg text-white hover:bg-white hover:text-black transition duration-200"
+                className="w-full flex justify-center py-3 px-6 border border-transparent rounded-lg font-semibold text-lg text-black bg-white hover:bg-gray-200 transition duration-200"
               >
                 Register
               </button>
