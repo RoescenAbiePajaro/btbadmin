@@ -7,12 +7,22 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeNav, setActiveNav] = useState('analytics');
+  const [selectedClicks, setSelectedClicks] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(null); // 'single' or 'all' or null
+  const [clickToDelete, setClickToDelete] = useState(null);
   const limit = 10;
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/clicks?page=${page}&limit=${limit}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/clicks?page=${page}&limit=${limit}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       if (!res.ok) throw new Error('Failed to fetch data');
       const data = await res.json();
       setClicks(data.clicks || []);

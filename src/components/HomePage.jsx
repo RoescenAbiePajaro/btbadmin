@@ -1,6 +1,7 @@
 // HomePage.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { trackClick } from "../utils/trackClick";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -56,12 +57,18 @@ export default function HomePage() {
               <a 
                 href="https://your-get-started-url.com" 
                 className="bg-white text-black py-3 px-6 rounded-lg font-semibold text-lg hover:bg-gray-200 transition duration-200 text-center no-underline"
+                onClick={() => trackClick('visit_link', 'home_page')}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 Visit Link
               </a>
               <a 
                 href="https://your-learn-more-url.com" 
                 className="border-2 border-white text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-white hover:text-black transition duration-200 text-center no-underline"
+                onClick={() => trackClick('download', 'home_page')}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 Download Now
               </a>
