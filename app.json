@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "db90bc4c-7460-48cb-8626-ab01ef853c98"
+      }
+    },
+    "android": {
+      "package": "com.abie1.btbreact"
+    }
+  }
+}
