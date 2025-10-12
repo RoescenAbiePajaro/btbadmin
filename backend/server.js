@@ -3,6 +3,31 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+
+// Toast notification utility
+const createToastResponse = (res, status, message, type = 'info', data = null) => {
+  return res.status(status).json({
+    toast: {
+      message,
+      type,
+      show: true
+    },
+    ...(data && { data })
+  });
+};
+
+// Error handler middleware with toast notifications
+const errorHandler = (err, req, res, next) => {
+  console.error('Error:', err);
+  
+  // Default error message and status
+  const status = err.status || 500;
+  const message = err.message || 'An unexpected error occurred';
+  
+  // Send error response with toast
+  return createToastResponse(res, status, message, 'error');
+};
+
 require('dotenv').config();
 
 const app = express();
@@ -118,11 +143,6 @@ app.post('/api/admin/register', async (req, res) => {
 
   if (password.length < 6)
     return res.status(400).json({ message: 'Password must be at least 6 characters long' });
-    
-  // Validate access code
-  if (accessCode !== process.env.ADMIN_ACCESS_CODE) {
-    return res.status(400).json({ message: 'Invalid access code' });
-  }
 
   try {
     const existingAdmin = await Admin.findOne({ username });
