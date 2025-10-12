@@ -118,6 +118,11 @@ app.post('/api/admin/register', async (req, res) => {
 
   if (password.length < 6)
     return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    
+  // Validate access code
+  if (accessCode !== process.env.ADMIN_ACCESS_CODE) {
+    return res.status(400).json({ message: 'Invalid access code' });
+  }
 
   try {
     const existingAdmin = await Admin.findOne({ username });

@@ -2,20 +2,31 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Toast from './Toast';
 
 const AdminLogin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [error, setError] = useState('');
+  const [toastType, setToastType] = useState('error');
   const navigate = useNavigate();
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastType('error');
+    setShowToast(true);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setShowToast(false);
 
     // Basic validation
     if (!username.trim() || !password) {
-      setError('Please enter both username and password');
+      showErrorToast('Please enter both username and password');
       return;
     }
 
@@ -42,7 +53,7 @@ const AdminLogin = () => {
       navigate('/admin-dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.message || 'An error occurred during login. Please try again.');
+      showErrorToast(error.message || 'An error occurred during login. Please try again.');
     }
   };
 
@@ -74,8 +85,12 @@ const AdminLogin = () => {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md">
           <h2 className="text-2xl font-bold mb-6 text-center text-white">Admin Login</h2>
-          {error && (
-            <div className="mb-4 text-red-500 text-center">{error}</div>
+          {showToast && (
+            <Toast 
+              message={toastMessage} 
+              type={toastType} 
+              onClose={() => setShowToast(false)} 
+            />
           )}
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
