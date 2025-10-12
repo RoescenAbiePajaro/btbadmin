@@ -1,8 +1,8 @@
-
 // AdminRegistration.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Toast from './Toast';
 
 const AdminRegistration = () => {
   const [firstName, setFirstName] = useState('');
@@ -13,7 +13,16 @@ const AdminRegistration = () => {
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const navigate = useNavigate();
+
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -22,22 +31,24 @@ const AdminRegistration = () => {
 
     // Validation
     if (!firstName || !lastName || !username || !password || !confirmPassword || !accessCode) {
-      setError('All fields are required');
+      showToast('All fields are required', 'error');
       setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      showToast('Passwords do not match', 'error');
       setLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      showToast('Password must be at least 6 characters long', 'error');
       setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     try {
       const response = await fetch('http://localhost:5000/api/admin/register', {
@@ -58,14 +69,16 @@ const AdminRegistration = () => {
 
       if (response.ok) {
         console.log('Registration successful:', data);
-        alert('Registration successful!');
-        navigate('/admin');
+        showToast('Registration successful!', 'success');
+        setTimeout(() => {
+          navigate('/admin');
+        }, 1500);
       } else {
-        setError(data.message || 'Registration failed');
+        showToast(data.message || 'Registration failed', 'error');
       }
     } catch (err) {
       console.error('Error during registration:', err);
-      setError('Unable to connect to server. Please try again.');
+      showToast('Unable to connect to server. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -92,7 +105,14 @@ const AdminRegistration = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
+    <div className="min-h-screen bg-black flex flex-col relative">
+      {toast.show && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={hideToast} 
+        />
+      )}
       {/* Header Navigation */}
       <header className="w-full bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">

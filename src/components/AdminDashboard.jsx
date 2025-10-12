@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX } from 'react-icons/fi';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import Toast from './Toast';
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -18,7 +19,16 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('info');
   const limit = 10;
+
+  const showToastMessage = (message, type = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
 
   // Check screen size and handle responsiveness
   useEffect(() => {
@@ -42,8 +52,8 @@ export default function AdminDashboard({ onLogout, userData }) {
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No token found in localStorage');
-        alert('Please log in again');
-        onLogout();
+        showToastMessage('Your session has expired. Please log in again.', 'error');
+        setTimeout(() => onLogout(), 2000);
         return;
       }
 
@@ -57,18 +67,21 @@ export default function AdminDashboard({ onLogout, userData }) {
       if (!res.ok) {
         const errorData = await res.json();
         console.error('Fetch error:', errorData);
-        throw new Error(`Failed to fetch data: ${errorData.message || res.statusText}`);
+        throw new Error(errorData.message || 'Failed to fetch data');
       }
 
       const data = await res.json();
       console.log('Fetched data:', data);
       setClicks(data.clicks || []);
       setTotal(data.total || 0);
+      if (data.clicks?.length === 0) {
+        showToastMessage('No click data available', 'info');
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       setClicks([]);
       setTotal(0);
-      alert('Failed to fetch click data');
+      showToastMessage(error.message || 'Failed to fetch click data', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -85,8 +98,8 @@ export default function AdminDashboard({ onLogout, userData }) {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('Please log in again');
-        onLogout();
+        showToastMessage('Your session has expired. Please log in again.', 'error');
+        setTimeout(() => onLogout(), 2000);
         return;
       }
 
@@ -98,8 +111,7 @@ export default function AdminDashboard({ onLogout, userData }) {
       }
 
       console.log(`Deleting ${deleteMode} with URL:`, url);
-
-      const res = await fetch(url, {
+      const response = await fetch(url, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -107,23 +119,23 @@ export default function AdminDashboard({ onLogout, userData }) {
         }
       });
 
-      const responseData = await res.json();
-      console.log('Delete response:', responseData);
-
-      if (!res.ok) {
-        throw new Error(responseData.message || `Failed to delete ${deleteMode === 'single' ? 'click' : 'all clicks'}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete data');
       }
 
-      alert(responseData.message || `${deleteMode === 'single' ? 'Click' : 'All clicks'} deleted successfully`);
+      // Show success message
+      const successMessage = deleteMode === 'single' 
+        ? 'Click data deleted successfully' 
+        : 'All click data deleted successfully';
+      showToastMessage(successMessage, 'success');
       
+      // Refresh data
       await fetchData();
       setShowDeleteModal(false);
-      setClickToDelete(null);
-      setDeleteMode(null);
-      
     } catch (error) {
-      console.error(`Error deleting ${deleteMode === 'single' ? 'click' : 'all clicks'}:`, error);
-      alert(error.message || `Failed to delete ${deleteMode === 'single' ? 'click' : 'all clicks'}`);
+      console.error('Error deleting data:', error);
+      showToastMessage(error.message || 'Failed to delete data', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -131,21 +143,16 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   const handleDeleteAll = () => {
     if (total === 0) {
-      alert('No clicks to delete');
+      showToastMessage('No click data available to delete', 'info');
       return;
     }
     setDeleteMode('all');
     setShowDeleteModal(true);
   };
 
-  const handleDeleteClick = (clickId) => {
-    console.log('Attempting to delete click with ID:', clickId);
-    if (!clickId) {
-      alert('Invalid click ID');
-      return;
-    }
+  const handleDeleteClick = (id) => {
     setDeleteMode('single');
-    setClickToDelete(clickId);
+    setClickToDelete(id);
     setShowDeleteModal(true);
   };
 
@@ -181,7 +188,19 @@ export default function AdminDashboard({ onLogout, userData }) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
+            <button 
+              onClick={fetchData}
+              className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
+              title="Refresh Analytics"
+              disabled={isLoading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
           <p className="text-gray-200">Visual insights into guest interactions</p>
         </div>
         <div className="flex items-center space-x-4">
@@ -251,18 +270,26 @@ export default function AdminDashboard({ onLogout, userData }) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Guest Click Activity</h1>
-          <p className="text-gray-200">Detailed view of all guest interactions</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-            <p className="text-sm text-gray-200">Total Clicks</p>
-            <p className="text-xl font-semibold text-white">{total}</p>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-2xl font-bold text-white">Guest Activity</h2>
+            <button 
+              onClick={fetchData}
+              className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
+              title="Refresh Activity"
+              disabled={isLoading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           </div>
+          <p className="text-gray-200">Detailed log of all guest interactions</p>
+        </div>
+        <div className="flex items-center space-x-2">
           <button
             onClick={handleDeleteAll}
-            className="flex items-center space-x-2 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-900 hover:bg-opacity-20 transition-colors"
-            disabled={total === 0 || isLoading}
+            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700"
+            disabled={total === 0}
           >
             <FiTrash2 size={16} />
             <span className="hidden sm:inline">Delete All</span>
