@@ -99,6 +99,24 @@ const verifyToken = (req, res, next) => {
 };
 
 // =====================
+// 👤 ADMIN ENDPOINTS
+// =====================
+
+// Get current admin data
+app.get('/api/admin/me', verifyToken, async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.userId).select('-password -accessCode');
+    if (!admin) {
+      return createToastResponse(res, 404, 'Admin not found', 'error');
+    }
+    return res.json({ data: admin });
+  } catch (error) {
+    console.error('Error fetching admin data:', error);
+    return createToastResponse(res, 500, 'Failed to fetch admin data', 'error');
+  }
+});
+
+// =====================
 // 👤 ADMIN AUTH ENDPOINTS
 // =====================
 
