@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX, FiDownload } from 'react-icons/fi';
+import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX, FiDownload, FiKey } from 'react-icons/fi';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import Toast from './Toast';
+import AdminAccessCode from './AdminAccessCode';
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
@@ -31,6 +32,7 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeNav, setActiveNav] = useState('analytics');
+  const [showAccessCodes, setShowAccessCodes] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteMode, setDeleteMode] = useState(null);
   const [clickToDelete, setClickToDelete] = useState(null);
@@ -278,6 +280,7 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   const handleNavClick = (nav) => {
     setActiveNav(nav);
+    setShowAccessCodes(nav === 'access-codes');
     if (isMobile) {
       setIsSidebarOpen(false);
     }
@@ -711,6 +714,17 @@ const GuestClicksSection = () => {
             <FiUsers className="mr-3" />
             <span>Guest Activity</span>
           </button>
+          <button 
+            onClick={() => handleNavClick('access-codes')}
+            className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+              activeNav === 'access-codes' 
+                ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
+                : 'hover:bg-gray-800 text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            <FiKey className="mr-3" />
+            <span>Access Codes</span>
+          </button>
         </nav>
         
         <div className="p-4 border-t border-gray-800">
@@ -750,7 +764,18 @@ const GuestClicksSection = () => {
           <div className="w-8"></div> {/* Spacer for balance */}
         </div>
 
-        {activeNav === 'analytics' ? <AnalyticsSection /> : <GuestClicksSection />}
+        {activeNav === 'analytics' ? (
+          <AnalyticsSection />
+        ) : activeNav === 'guests' ? (
+          <GuestClicksSection />
+        ) : (
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-white mb-6">Access Codes Management</h2>
+            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+              <AdminAccessCode />
+            </div>
+          </div>
+        )}
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
