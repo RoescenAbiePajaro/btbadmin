@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX } from 'react-icons/fi';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX, FiDownload } from 'react-icons/fi';
+import { Bar, Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import Toast from './Toast';
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 export default function AdminDashboard({ onLogout, userData }) {
   const [clicks, setClicks] = useState([]);
@@ -45,6 +45,63 @@ export default function AdminDashboard({ onLogout, userData }) {
     
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // Prevent browser back button and direct access
+  useEffect(() => {
+    // Set access flag when dashboard loads properly
+    sessionStorage.setItem('dashboardAccess', 'true');
+    
+    // Prevent back button navigation
+    const handleBackButton = (e) => {
+      // Prevent the default back behavior
+      window.history.pushState(null, null, window.location.href);
+    };
+
+    // Push current state to history to prevent back navigation
+    window.history.pushState(null, null, window.location.href);
+    window.addEventListener('popstate', handleBackButton);
+
+    // Check if this is a direct access (new tab or direct URL)
+    const checkDirectAccess = () => {
+      const navigationEntry = performance.getEntriesByType('navigation')[0];
+      const hasReferrer = document.referrer && document.referrer !== '';
+      const isSameOriginReferrer = document.referrer.includes(window.location.origin);
+      
+      // If no referrer or referrer is not from same origin, it's direct access
+      if ((!hasReferrer || !isSameOriginReferrer) && !sessionStorage.getItem('dashboardAccess')) {
+        showToastMessage('Please access the dashboard through proper login', 'error');
+        setTimeout(() => {
+          onLogout();
+        }, 2000);
+      }
+    };
+
+    // Check access after a short delay to ensure component is mounted
+    setTimeout(checkDirectAccess, 100);
+
+    return () => {
+      window.removeEventListener('popstate', handleBackButton);
+      // Don't remove sessionStorage here to allow page refresh
+    };
+  }, [onLogout]);
+
+  // Additional protection on page load
+  useEffect(() => {
+    // Check if user has proper access rights
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToastMessage('Session expired. Please log in again.', 'error');
+      setTimeout(() => onLogout(), 2000);
+      return;
+    }
+
+    // Double-check access rights
+    const dashboardAccess = sessionStorage.getItem('dashboardAccess');
+    if (!dashboardAccess) {
+      showToastMessage('Invalid access. Redirecting...', 'error');
+      setTimeout(() => onLogout(), 2000);
+    }
+  }, [onLogout]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -162,14 +219,24 @@ export default function AdminDashboard({ onLogout, userData }) {
       return acc;
     }, {});
 
+    const colors = [
+      'rgba(99, 102, 241, 0.6)',
+      'rgba(220, 38, 38, 0.6)',
+      'rgba(5, 150, 105, 0.6)',
+      'rgba(202, 138, 4, 0.6)',
+      'rgba(217, 70, 239, 0.6)',
+      'rgba(20, 184, 166, 0.6)',
+      'rgba(239, 68, 68, 0.6)',
+    ];
+
     return {
       labels: Object.keys(buttonCounts),
       datasets: [
         {
           label: 'Clicks per Button',
           data: Object.values(buttonCounts),
-          backgroundColor: 'rgba(99, 102, 241, 0.6)',
-          borderColor: 'rgba(99, 102, 241, 1)',
+          backgroundColor: colors.slice(0, Object.keys(buttonCounts).length),
+          borderColor: colors.map(color => color.replace('0.6', '1')),
           borderWidth: 1
         }
       ]
@@ -181,6 +248,49 @@ export default function AdminDashboard({ onLogout, userData }) {
     if (isMobile) {
       setIsSidebarOpen(false);
     }
+  };
+
+  // Handle logout with cleanup
+  const handleLogout = () => {
+    // Clear session storage on logout
+    sessionStorage.removeItem('dashboardAccess');
+    onLogout();
+  };
+
+  const handleExportCSV = () => {
+    if (clicks.length === 0) {
+      showToastMessage('No data to export', 'info');
+      return;
+    }
+
+    // Define CSV headers
+    const headers = ['Button', 'Page', 'Timestamp', 'ID'];
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...clicks.map(click => [
+        `"${click.button}"`,
+        `"${click.page}"`,
+        `"${new Date(click.timestamp).toISOString()}"`,
+        `"${click._id}"`
+      ].join(','))
+    ].join('\n');
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')
+    link.setAttribute('href', url);
+    link.setAttribute('download', `click_data_${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToastMessage('CSV export started', 'success');
   };
 
   // Analytics Component
@@ -212,49 +322,89 @@ export default function AdminDashboard({ onLogout, userData }) {
       </div>
 
       {clicks.length > 0 ? (
-        <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
-          <h2 className="text-lg font-medium text-white mb-4">Engagements</h2>
-          <div className="bg-gray-800 p-3 sm:p-4 rounded-lg">
-            <Bar
-              data={getChartData()}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { 
-                    position: 'top',
-                    labels: { color: 'white' }
-                  },
-                  title: { 
-                    display: true, 
-                    text: 'Clicks per Button',
-                    color: 'white'
-                  }
-                },
-                scales: {
-                  y: { 
-                    beginAtZero: true, 
+        <div className="space-y-6">
+          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
+            <h2 className="text-lg font-medium text-white mb-4">Engagements - Bar Chart</h2>
+            <div className="bg-gray-800 p-3 sm:p-4 rounded-lg">
+              <Bar
+                data={getChartData()}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { 
+                      position: 'top',
+                      labels: { color: 'white' }
+                    },
                     title: { 
                       display: true, 
-                      text: 'Number of Clicks',
+                      text: 'Clicks per Button',
                       color: 'white'
-                    },
-                    ticks: { color: 'white' },
-                    grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
                   },
-                  x: { 
-                    title: { 
-                      display: true, 
-                      text: 'Button',
-                      color: 'white'
+                  scales: {
+                    y: { 
+                      beginAtZero: true, 
+                      title: { 
+                        display: true, 
+                        text: 'Number of Clicks',
+                        color: 'white'
+                      },
+                      ticks: { color: 'white' },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
                     },
-                    ticks: { color: 'white' },
-                    grid: { color: 'rgba(255,255,255,0.1)' }
+                    x: { 
+                      title: { 
+                        display: true, 
+                        text: 'Button',
+                        color: 'white'
+                      },
+                      ticks: { color: 'white' },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
                   }
-                }
-              }}
-              height={300}
-            />
+                }}
+                height={300}
+              />
+            </div>
+          </div>
+
+          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
+            <h2 className="text-lg font-medium text-white mb-4">Click Distribution - Pie Chart</h2>
+            <div className="bg-gray-800 p-3 sm:p-4 rounded-lg">
+              <Pie
+                data={getChartData()}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { 
+                      position: 'right',
+                      labels: { 
+                        color: 'white',
+                        padding: 20,
+                        boxWidth: 12,
+                        font: {
+                          size: 12
+                        }
+                      }
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          const label = context.label || '';
+                          const value = context.raw || 0;
+                          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                          const percentage = Math.round((value / total) * 100);
+                          return `${label}: ${value} (${percentage}%)`;
+                        }
+                      }
+                    }
+                  }
+                }}
+                height={300}
+              />
+            </div>
           </div>
         </div>
       ) : (
@@ -287,9 +437,19 @@ export default function AdminDashboard({ onLogout, userData }) {
         </div>
         <div className="flex items-center space-x-2">
           <button
+            onClick={handleExportCSV}
+            className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-green-400 hover:bg-green-900 hover:bg-opacity-20 rounded-lg transition-colors border border-green-800 hover:border-green-700"
+            disabled={clicks.length === 0}
+            title="Export to CSV"
+          >
+            <FiDownload size={16} />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
+          <button
             onClick={handleDeleteAll}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700"
+            className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700"
             disabled={total === 0}
+            title="Delete all records"
           >
             <FiTrash2 size={16} />
             <span className="hidden sm:inline">Delete All</span>
@@ -474,14 +634,14 @@ export default function AdminDashboard({ onLogout, userData }) {
             <div className="w-10 h-10 rounded-full bg-blue-900 bg-opacity-50 flex items-center justify-center text-blue-300 font-semibold border border-blue-700">
               {userData?.username?.charAt(0).toUpperCase() || 'A'}
             </div>
-            <div className="ml-3">
+            <div className="ml-3 flex flex-col">
               <p className="text-sm font-medium text-white">{userData?.username || 'Admin'}</p>
-              <p className="text-xs text-gray-500">Administrator</p>
+              <p className="text-xs text-gray-500 mt-0.5">Administrator</p>
             </div>
           </div>
           
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700"
           >
             <FiLogOut size={16} />
@@ -542,6 +702,15 @@ export default function AdminDashboard({ onLogout, userData }) {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Toast Notification */}
+        {showToast && (
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => setShowToast(false)}
+          />
         )}
       </main>
     </div>
