@@ -55,20 +55,31 @@ export default function HomePage() {
             {/* Two buttons with URL links */}
             <div className="flex flex-col space-y-4">
               <a 
-                href="https://your-get-started-url.com" 
+                href="https://btblites.vercel.app/" 
                 className="bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline"
-                onClick={() => trackClick('visit_link', 'home_page')}
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  const url = e.currentTarget.href;
+                  try {
+                    await trackClick('visit_link', 'home_page');
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  } catch (error) {
+                    console.error('Error tracking click:', error);
+                    // Still open the link even if tracking fails
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                }}
               >
-                Visit Link (Beyond The Brush Lite)
+                Visit Link
               </a>
               <a 
                 href="https://your-learn-more-url.com"
                 className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
-                onClick={() => trackClick('download', 'home_page')}
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  await trackClick('download', 'home_page');
+                  window.open(e.currentTarget.href, '_blank', 'noopener,noreferrer');
+                }}
               >
                 Download PC
               </a>
