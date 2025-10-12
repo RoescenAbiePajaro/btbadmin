@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Toast from './Toast';
 
 const AdminRegistration = () => {
   const [firstName, setFirstName] = useState('');
@@ -14,52 +13,31 @@ const AdminRegistration = () => {
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('error');
   const navigate = useNavigate();
-
-  const showErrorToast = (message) => {
-    setToastMessage(message);
-    setToastType('error');
-    setShowToast(true);
-  };
-
-  const showSuccessToast = (message) => {
-    setToastMessage(message);
-    setToastType('success');
-    setShowToast(true);
-  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
-    setShowToast(false);
-    
+    setLoading(true);
+
     // Validation
     if (!firstName || !lastName || !username || !password || !confirmPassword || !accessCode) {
-      showErrorToast('All fields are required');
+      setError('All fields are required');
+      setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      showErrorToast('Passwords do not match');
+      setError('Passwords do not match');
+      setLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      showErrorToast('Password must be at least 6 characters long');
+      setError('Password must be at least 6 characters long');
+      setLoading(false);
       return;
     }
-
-    // Validate access code
-    const ADMIN_ACCESS_CODE = '$7722Olbg21!';
-    if (accessCode !== ADMIN_ACCESS_CODE) {
-      showErrorToast('Invalid access code');
-      return;
-    }
-
-    setLoading(true);
 
     try {
       const response = await fetch('http://localhost:5000/api/admin/register', {
@@ -80,16 +58,14 @@ const AdminRegistration = () => {
 
       if (response.ok) {
         console.log('Registration successful:', data);
-        showSuccessToast('Registration successful! Redirecting to login...');
-        setTimeout(() => {
-          navigate('/admin');
-        }, 2000);
+        alert('Registration successful!');
+        navigate('/admin');
       } else {
-        showErrorToast(data.message || 'Registration failed');
+        setError(data.message || 'Registration failed');
       }
     } catch (err) {
       console.error('Error during registration:', err);
-      showErrorToast('Unable to connect to server. Please try again.');
+      setError('Unable to connect to server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -135,12 +111,8 @@ const AdminRegistration = () => {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md">
           <h2 className="text-2xl font-bold mb-6 text-center text-white">Admin Registration</h2>
-          {showToast && (
-            <Toast 
-              message={toastMessage} 
-              type={toastType} 
-              onClose={() => setShowToast(false)} 
-            />
+          {error && (
+            <div className="text-red-500 text-sm mb-4 text-center">{error}</div>
           )}
           <form onSubmit={handleRegister} className="space-y-6">
             <div>
