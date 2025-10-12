@@ -7,6 +7,24 @@ import Toast from './Toast';
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
+// Click categories
+const clickCategories = {
+  'Home Page': [
+    { button: 'download', page: 'home_page' },
+    { button: 'visit_link', page: 'home_page' }
+  ],
+  'Page Menu': [
+    { button: 'btblite_enter', page: 'page_menu' },
+    { button: 'btblite_exit', page: 'page_menu' },
+    { button: 'btblite_download_image', page: 'toolbar_save' }
+  ],
+  'Beyond The Brush': [
+    { button: 'btb_enter', page: 'beyondthebrush_app' },
+    { button: 'btb_exit', page: 'beyondthebrush_app' },
+    { button: 'save_canvas', page: 'virtual_painter' }
+  ]
+};
+
 export default function AdminDashboard({ onLogout, userData }) {
   const [clicks, setClicks] = useState([]);
   const [page, setPage] = useState(1);
@@ -22,6 +40,7 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const limit = 10;
 
   const showToastMessage = (message, type = 'info') => {
@@ -114,7 +133,13 @@ export default function AdminDashboard({ onLogout, userData }) {
         return;
       }
 
-      const res = await fetch(`http://localhost:5000/api/clicks?page=${page}&limit=${limit}`, {
+      let url = `http://localhost:5000/api/clicks?page=${page}&limit=${limit}`;
+      if (selectedCategory !== 'all') {
+        const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
+        url += `&buttons=${categoryButtons.join(',')}`;
+      }
+
+      const res = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -145,8 +170,16 @@ export default function AdminDashboard({ onLogout, userData }) {
   };
 
   useEffect(() => {
+    // Reset to first page when category changes
+    setPage(1);
     fetchData();
-  }, [page]);
+  }, [selectedCategory, page]);
+
+  const getFilteredClicks = () => {
+    if (selectedCategory === 'all') return clicks;
+    const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
+    return clicks.filter(click => categoryButtons.includes(click.button));
+  };
 
   const totalPages = Math.ceil(total / limit);
 
@@ -214,7 +247,7 @@ export default function AdminDashboard({ onLogout, userData }) {
   };
 
   const getChartData = () => {
-    const buttonCounts = clicks.reduce((acc, click) => {
+    const buttonCounts = getFilteredClicks().reduce((acc, click) => {
       acc[click.button] = (acc[click.button] || 0) + 1;
       return acc;
     }, {});
@@ -269,7 +302,7 @@ export default function AdminDashboard({ onLogout, userData }) {
     // Create CSV content
     const csvContent = [
       headers.join(','),
-      ...clicks.map(click => [
+      ...getFilteredClicks().map(click => [
         `"${click.button}"`,
         `"${click.page}"`,
         `"${new Date(click.timestamp).toISOString()}"`,
@@ -312,6 +345,25 @@ export default function AdminDashboard({ onLogout, userData }) {
             </button>
           </div>
           <p className="text-gray-200">Visual insights into guest interactions</p>
+          
+          <div className="mt-4">
+            <label htmlFor="category-filter" className="block text-sm font-medium text-gray-300 mb-1">
+              Filter by Category:
+            </label>
+            <select
+              id="category-filter"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="bg-gray-700 text-white border border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">All Categories</option>
+              {Object.keys(clickCategories).map(category => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex items-center space-x-4">
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
@@ -321,7 +373,7 @@ export default function AdminDashboard({ onLogout, userData }) {
         </div>
       </div>
 
-      {clicks.length > 0 ? (
+      {getFilteredClicks().length > 0 ? (
         <div className="space-y-6">
           <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
             <h2 className="text-lg font-medium text-white mb-4">Engagements - Bar Chart</h2>
@@ -416,7 +468,10 @@ export default function AdminDashboard({ onLogout, userData }) {
   );
 
   // Guest Clicks Component
-  const GuestClicksSection = () => (
+const GuestClicksSection = () => {
+  const filteredClicks = getFilteredClicks();
+
+  return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
@@ -434,26 +489,49 @@ export default function AdminDashboard({ onLogout, userData }) {
             </button>
           </div>
           <p className="text-gray-200">Detailed log of all guest interactions</p>
+          
+          <div className="mt-4">
+            <label htmlFor="guest-category-filter" className="block text-sm font-medium text-gray-300 mb-1">
+              Filter by Category:
+            </label>
+            <select
+              id="guest-category-filter"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="bg-gray-700 text-white border border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">All Categories</option>
+              {Object.keys(clickCategories).map(category => (
+                <option key={`guest-${category}`} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-green-400 hover:bg-green-900 hover:bg-opacity-20 rounded-lg transition-colors border border-green-800 hover:border-green-700"
-            disabled={clicks.length === 0}
-            title="Export to CSV"
-          >
-            <FiDownload size={16} />
-            <span className="hidden sm:inline">Export CSV</span>
-          </button>
-          <button
-            onClick={handleDeleteAll}
-            className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700"
-            disabled={total === 0}
-            title="Delete all records"
-          >
-            <FiTrash2 size={16} />
-            <span className="hidden sm:inline">Delete All</span>
-          </button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="mb-2 sm:mb-0">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-green-400 hover:bg-green-900 hover:bg-opacity-20 rounded-lg transition-colors border border-green-800 hover:border-green-700 w-full sm:w-auto"
+              disabled={filteredClicks.length === 0}
+              title="Export to CSV"
+            >
+              <FiDownload size={16} />
+              <span className="hidden sm:inline">Export CSV</span>
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={handleDeleteAll}
+              className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700 w-full sm:w-auto"
+              disabled={total === 0}
+              title="Delete all records"
+            >
+              <FiTrash2 size={16} />
+              <span className="hidden sm:inline">Delete All</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -476,8 +554,8 @@ export default function AdminDashboard({ onLogout, userData }) {
                   </tr>
                 </thead>
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
-                  {clicks.length > 0 ? (
-                    clicks.map((click, idx) => (
+                  {filteredClicks.length > 0 ? (
+                    filteredClicks.map((click, idx) => (
                       <tr key={click._id || idx} className="hover:bg-gray-750 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-200">
@@ -512,7 +590,7 @@ export default function AdminDashboard({ onLogout, userData }) {
                   ) : (
                     <tr>
                       <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                        No click data available
+                        No click data available{selectedCategory !== 'all' ? ` for ${selectedCategory}` : ''}
                       </td>
                     </tr>
                   )}
@@ -544,6 +622,9 @@ export default function AdminDashboard({ onLogout, userData }) {
                     Showing <span className="font-medium text-white">{(page - 1) * limit + 1}</span> to{' '}
                     <span className="font-medium text-white">{Math.min(page * limit, total)}</span> of{' '}
                     <span className="font-medium text-white">{total}</span> results
+                    {selectedCategory !== 'all' && (
+                      <span className="text-blue-300 ml-2">(Filtered: {filteredClicks.length})</span>
+                    )}
                   </p>
                 </div>
                 <div>
@@ -576,6 +657,9 @@ export default function AdminDashboard({ onLogout, userData }) {
       </div>
     </div>
   );
+};
+
+  /////////////////////////////////////////
 
   return (
     <div className="min-h-screen bg-black text-gray-300 flex">

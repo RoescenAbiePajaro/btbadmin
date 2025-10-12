@@ -1,3 +1,5 @@
+// server.js
+
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
@@ -99,20 +101,20 @@ const verifyToken = (req, res, next) => {
 };
 
 // =====================
-// 👤 ADMIN ENDPOINTS
+// 📋 ADMIN LIST ENDPOINT
 // =====================
 
-// Get current admin data
-app.get('/api/admin/me', verifyToken, async (req, res) => {
+// Get all admins (for admin list display)
+app.get('/api/admins', verifyToken, async (req, res) => {
   try {
-    const admin = await Admin.findById(req.userId).select('-password -accessCode');
-    if (!admin) {
-      return createToastResponse(res, 404, 'Admin not found', 'error');
-    }
-    return res.json({ data: admin });
+    const admins = await Admin.find()
+      .select('-password -accessCode -__v') // Exclude sensitive fields
+      .sort({ username: 1 });
+    
+    res.json(admins);
   } catch (error) {
-    console.error('Error fetching admin data:', error);
-    return createToastResponse(res, 500, 'Failed to fetch admin data', 'error');
+    console.error('Error fetching admin list:', error);
+    res.status(500).json({ message: 'Server error fetching admin list' });
   }
 });
 
