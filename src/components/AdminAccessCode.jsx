@@ -259,19 +259,26 @@ export default function AdminAccessCode() {
   return (
     <div className="p-2 sm:p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-white">Access Codes</h2>
+        <div>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-2xl font-bold text-white">Access Codes Management</h2>
+            <button 
+              onClick={fetchAccessCodes}
+              className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
+              title="Refresh Access Codes"
+              disabled={isLoading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-gray-200">Manage and monitor access codes for guest authentication</p>
+        </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button
-            onClick={fetchAccessCodes}
-            className="flex items-center justify-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm sm:text-base"
-            title="Refresh access codes"
-          >
-            <FiRefreshCw className="mr-2" />
-            Refresh
-          </button>
-          <button
             onClick={toggleAddForm}
-            className=" bg-blue-800 text-white font-semibold text-sm hover:bg-blue-900 rounded-lg transition-colors flex items-center justify-center gap-2 px-4 py-2 text-sm hover:bg-blue-900 rounded-lg transition-colors w-full sm:w-auto"
+            className="bg-blue-800 text-white font-semibold text-sm hover:bg-blue-900 rounded-lg transition-colors flex items-center justify-center gap-2 px-4 py-2 text-sm hover:bg-blue-900 rounded-lg transition-colors w-full sm:w-auto"
           >           
             <FiPlus className="mr-2" />
             {isAdding ? 'Cancel' : 'Add New Code'}
