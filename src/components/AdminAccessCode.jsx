@@ -14,6 +14,9 @@ export default function AdminAccessCode() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [codeToDelete, setCodeToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     code: '',
     description: '',
@@ -186,16 +189,22 @@ export default function AdminAccessCode() {
     setIsAdding(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this access code?')) return;
+  const handleDelete = (id) => {
+    setCodeToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!codeToDelete) return;
     
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`http://localhost:5000/api/access-codes/${id}`, {
+      const response = await fetch(`http://localhost:5000/api/access-codes/${codeToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -223,8 +232,12 @@ export default function AdminAccessCode() {
 
       showToastMessage('Access code deleted successfully', 'success');
       await fetchAccessCodes();
+      setShowDeleteModal(false);
+      setCodeToDelete(null);
     } catch (err) {
       showToastMessage(err.message, 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -357,13 +370,13 @@ export default function AdminAccessCode() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center justify-center"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-800 hover:bg-blue-900 rounded-md transition-colors flex items-center justify-center"
               >
                 <FiSave className="mr-2" />
                 {editingId ? 'Update' : 'Create'} Code
@@ -375,41 +388,38 @@ export default function AdminAccessCode() {
 
       {/* Access Codes Table */}
       <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-full inline-block align-middle">
-            <div className="overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-700">
-                <thead className="bg-gray-700">
+                <thead className="bg-gray-800">
                   <tr>
-                    <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Code
                     </th>
-                    <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th scope="col" className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Description
                     </th>
-                    <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Uses
                     </th>
-                    <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th scope="col" className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th scope="col" className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
-                  {accessCodes.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-400">
-                        <FiKey className="mx-auto h-8 w-8 text-gray-600 mb-2" />
-                        No access codes found. Create your first access code to get started.
-                      </td>
-                    </tr>
-                  ) : (
+                  {accessCodes.length > 0 ? (
                     accessCodes.map((code) => (
                       <tr key={code._id} className="hover:bg-gray-750 transition-colors">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">
                           <div className="flex flex-col">
                             <span className="font-mono">{code.code}</span>
                             <span className="sm:hidden text-xs text-gray-400 mt-1">
@@ -422,48 +432,88 @@ export default function AdminAccessCode() {
                             </span>
                           </div>
                         </td>
-                        <td className="hidden sm:table-cell px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
+                        <td className="hidden sm:table-cell px-4 py-4 text-sm text-gray-300 max-w-xs truncate">
                           {code.description || '-'}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
                           <span className={`font-mono ${code.currentUses >= code.maxUses ? 'text-red-400' : 'text-green-400'}`}>
                             {code.currentUses} / {code.maxUses}
                           </span>
                         </td>
-                        <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                        <td className="hidden sm:table-cell px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${code.isActive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
                             {code.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
                             <button
                               onClick={() => handleEdit(code)}
-                              className="p-1.5 sm:p-1 text-blue-400 hover:text-blue-300 rounded-full hover:bg-gray-700 transition-colors"
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
                               aria-label="Edit"
                               title="Edit access code"
                             >
-                              <FiEdit2 className="h-4 w-4" />
+                              <FiEdit2 size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(code._id)}
-                              className="p-1.5 sm:p-1 text-red-400 hover:text-red-300 rounded-full hover:bg-gray-700 transition-colors"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
                               aria-label="Delete"
                               title="Delete access code"
                             >
-                              <FiTrash2 className="h-4 w-4" />
+                              <FiTrash2 size={16} />
                             </button>
                           </div>
                         </td>
                       </tr>
                     ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                        <FiKey className="mx-auto h-8 w-8 text-gray-600 mb-2" />
+                        No access codes found. Create your first access code to get started.
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
             </div>
+          </>
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700">
+            <h3 className="text-lg font-medium text-white mb-4">
+              Delete Access Code
+            </h3>
+            <p className="text-gray-400 mb-6">
+              Are you sure you want to delete this access code? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setCodeToDelete(null);
+                }}
+                className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-colors"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Toast Notification */}
       {showToast && (
