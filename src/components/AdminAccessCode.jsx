@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { FiKey, FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
 import Toast from './Toast';
@@ -291,7 +290,7 @@ export default function AdminAccessCode() {
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={toggleAddForm}
-            className="bg-blue-800 text-white font-semibold text-sm hover:bg-blue-900 rounded-lg transition-colors flex items-center justify-center gap-2 px-4 py-2 text-sm hover:bg-blue-900 rounded-lg transition-colors w-full sm:w-auto"
+            className={`${isAdding ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2 px-4 py-2 w-full sm:w-auto`}
           >           
             <FiPlus className="mr-2" />
             {isAdding ? 'Cancel' : 'Add New Code'}
@@ -393,92 +392,98 @@ export default function AdminAccessCode() {
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-700">
-                <thead className="bg-gray-800">
-                  <tr>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Code
-                    </th>
-                    <th scope="col" className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Uses
-                    </th>
-                    <th scope="col" className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-gray-800 divide-y divide-gray-700">
-                  {accessCodes.length > 0 ? (
-                    accessCodes.map((code) => (
-                      <tr key={code._id} className="hover:bg-gray-750 transition-colors">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          <div className="flex flex-col">
-                            <span className="font-mono">{code.code}</span>
-                            <span className="sm:hidden text-xs text-gray-400 mt-1">
-                              {code.description ? code.description.substring(0, 20) + (code.description.length > 20 ? '...' : '') : '-'}
-                            </span>
-                            <span className="sm:hidden mt-1">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${code.isActive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-800">
+                <tr>
+                  <th scope="col" className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Code
+                  </th>
+                  <th scope="col" className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th scope="col" className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    Uses
+                  </th>
+                  <th scope="col" className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-gray-800 divide-y divide-gray-700">
+                {accessCodes.length > 0 ? (
+                  accessCodes.map((code) => (
+                    <tr key={code._id} className="hover:bg-gray-750 transition-colors">
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-white font-mono">{code.code}</span>
+                          <div className="sm:hidden mt-1 space-y-1">
+                            <p className="text-xs text-gray-400 truncate max-w-[200px]">
+                              {code.description || 'No description'}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-xs font-mono ${code.currentUses >= code.maxUses ? 'text-red-400' : 'text-green-400'}`}>
+                                {code.currentUses}/{code.maxUses} uses
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${code.isActive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
                                 {code.isActive ? 'Active' : 'Inactive'}
                               </span>
-                            </span>
+                            </div>
                           </div>
-                        </td>
-                        <td className="hidden sm:table-cell px-4 py-4 text-sm text-gray-300 max-w-xs truncate">
-                          {code.description || '-'}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                          <span className={`font-mono ${code.currentUses >= code.maxUses ? 'text-red-400' : 'text-green-400'}`}>
-                            {code.currentUses} / {code.maxUses}
-                          </span>
-                        </td>
-                        <td className="hidden sm:table-cell px-4 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${code.isActive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
-                            {code.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => handleEdit(code)}
-                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
-                              aria-label="Edit"
-                              title="Edit access code"
-                            >
-                              <FiEdit2 size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(code._id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
-                              aria-label="Delete"
-                              title="Delete access code"
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                        <FiKey className="mx-auto h-8 w-8 text-gray-600 mb-2" />
-                        No access codes found. Create your first access code to get started.
+                        </div>
+                      </td>
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 text-sm text-gray-300 max-w-[200px] 2xl:max-w-md truncate">
+                        {code.description || '-'}
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        <span className={`text-sm font-mono ${code.currentUses >= code.maxUses ? 'text-red-400' : 'text-green-400'}`}>
+                          {code.currentUses}/{code.maxUses}
+                        </span>
+                      </td>
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${code.isActive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                          {code.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-1 sm:space-x-2">
+                          <button
+                            onClick={() => handleEdit(code)}
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-900 hover:bg-opacity-20 p-1.5 sm:p-2 rounded-full transition-colors"
+                            aria-label="Edit"
+                            title="Edit access code"
+                          >
+                            <FiEdit2 className="w-4 h-4 sm:w-4 sm:h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(code._id)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-20 p-1.5 sm:p-2 rounded-full transition-colors"
+                            aria-label="Delete"
+                            title="Delete access code"
+                          >
+                            <FiTrash2 className="w-4 h-4 sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <FiKey className="h-8 w-8 text-gray-600" />
+                        <p className="text-sm text-gray-400">No access codes found</p>
+                        <p className="text-xs text-gray-500">Create your first access code to get started</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -498,7 +503,7 @@ export default function AdminAccessCode() {
                   setShowDeleteModal(false);
                   setCodeToDelete(null);
                 }}
-                className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                className="px-4 py-2 rounded-md text-white hover:bg-gray-700 transition-colors"
                 disabled={isDeleting}
               >
                 Cancel
