@@ -72,13 +72,15 @@ export default function HomePage() {
               >
                 Visit Link
               </a>
-              <a 
-                href="https://your-learn-more-url.com"
+              <a
+                href="btbbtb_setup.exe"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
-                onClick={async (e) => {
-                  e.preventDefault();
-                  await trackClick('download', 'home_page');
-                  window.open(e.currentTarget.href, '_blank', 'noopener,noreferrer');
+                onClick={(e) => {
+                  // Don't prevent default or await tracking. Let the browser open the link
+                  // synchronously to avoid popup blocking, and fire-and-forget the tracking request.
+                  trackClick('download', 'home_page');
                 }}
               >
                 Download PC
