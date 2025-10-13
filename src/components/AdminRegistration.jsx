@@ -11,6 +11,8 @@ const AdminRegistration = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accessCode, setAccessCode] = useState('');
+  const [accessCodeInfo, setAccessCodeInfo] = useState(null);
+  const [accessCodeValidating, setAccessCodeValidating] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
@@ -23,6 +25,57 @@ const AdminRegistration = () => {
   const hideToast = () => {
     setToast(prev => ({ ...prev, show: false }));
   };
+
+  // Validate access code
+  const validateAccessCode = async (code) => {
+    if (!code || code.trim().length === 0) {
+      setAccessCodeInfo(null);
+      return;
+    }
+
+    setAccessCodeValidating(true);
+    try {
+      const response = await fetch(`http://localhost:5000/api/access-codes/validate/${code.trim()}`);
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setAccessCodeInfo({
+          code: data.code,
+          description: data.description,
+          remainingUses: data.remainingUses,
+          valid: true
+        });
+      } else {
+        setAccessCodeInfo({
+          code: code.trim().toUpperCase(),
+          valid: false,
+          message: data.message || 'Invalid access code'
+        });
+      }
+    } catch (error) {
+      console.error('Error validating access code:', error);
+      setAccessCodeInfo({
+        code: code.trim().toUpperCase(),
+        valid: false,
+        message: 'Unable to validate access code'
+      });
+    } finally {
+      setAccessCodeValidating(false);
+    }
+  };
+
+  // Debounced access code validation
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (accessCode.trim()) {
+        validateAccessCode(accessCode);
+      } else {
+        setAccessCodeInfo(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [accessCode]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -48,6 +101,19 @@ const AdminRegistration = () => {
       return;
     }
 
+    // Check access code validity
+    if (!accessCodeInfo || !accessCodeInfo.valid) {
+      showToast('Please enter a valid access code', 'error');
+      setLoading(false);
+      return;
+    }
+
+    if (accessCodeValidating) {
+      showToast('Please wait while validating access code', 'error');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -69,7 +135,10 @@ const AdminRegistration = () => {
 
       if (response.ok) {
         console.log('Registration successful:', data);
-        showToast('Registration successful!', 'success');
+        const successMessage = data.accessCodeUsed 
+          ? `Registration successful! Used access code: ${data.accessCodeUsed.code}${data.accessCodeUsed.description ? ` (${data.accessCodeUsed.description})` : ''}`
+          : 'Registration successful!';
+        showToast(successMessage, 'success');
         setTimeout(() => {
           navigate('/admin');
         }, 1500);
@@ -210,15 +279,69 @@ const AdminRegistration = () => {
               <label htmlFor="accessCode" className="block text-sm font-medium text-white">
                 Access Code
               </label>
-              <input
-                id="accessCode"
-                type="text"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-800 rounded-md shadow-sm bg-black text-white focus:outline-none focus:ring-white focus:border-white"
-                placeholder="Enter your access code"
-                required
-              />
+              <div className="relative">
+                <input
+                  id="accessCode"
+                  type="text"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-black text-white focus:outline-none focus:ring-2 ${
+                    accessCodeValidating 
+                      ? 'border-yellow-500 focus:ring-yellow-500 focus:border-yellow-500'
+                      : accessCodeInfo?.valid 
+                        ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                        : accessCodeInfo?.valid === false
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-800 focus:ring-white focus:border-white'
+                  }`}
+                  placeholder="Enter your access code"
+                  required
+                />
+                {accessCodeValidating && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                  </div>
+                )}
+                {accessCodeInfo?.valid && !accessCodeValidating && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg className="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                {accessCodeInfo?.valid === false && !accessCodeValidating && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg className="h-4 w-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              
+              {/* Access Code Information */}
+              {accessCodeInfo && (
+                <div className={`mt-2 p-3 rounded-md text-sm ${
+                  accessCodeInfo.valid 
+                    ? 'bg-green-900/20 border border-green-500/30 text-green-300'
+                    : 'bg-red-900/20 border border-red-500/30 text-red-300'
+                }`}>
+                  {accessCodeInfo.valid ? (
+                    <div>
+                      <div className="font-medium">✓ Valid Access Code</div>
+                      <div className="text-xs mt-1">
+                        {accessCodeInfo.description && (
+                          <div>Description: {accessCodeInfo.description}</div>
+                        )}
+                        <div>Remaining uses: {accessCodeInfo.remainingUses}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="font-medium">✗ {accessCodeInfo.message}</div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <button

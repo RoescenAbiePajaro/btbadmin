@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FiKey, FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
+import Toast from './Toast';
 
 export default function AdminAccessCode() {
   const [accessCodes, setAccessCodes] = useState([]);
@@ -10,6 +11,9 @@ export default function AdminAccessCode() {
   const [success, setSuccess] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('info');
   const [formData, setFormData] = useState({
     code: '',
     description: '',
@@ -18,26 +22,21 @@ export default function AdminAccessCode() {
     currentUses: 0
   });
 
+  const showToastMessage = (message, type = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
+
   // Fetch access codes on component mount
   useEffect(() => {
     fetchAccessCodes();
   }, []);
 
-  // Clear messages after 5 seconds
-  useEffect(() => {
-    if (error || success) {
-      const timer = setTimeout(() => {
-        setError('');
-        setSuccess('');
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, success]);
 
   const fetchAccessCodes = async () => {
     try {
       setIsLoading(true);
-      setError('');
       
       const token = localStorage.getItem('token');
       if (!token) {
@@ -67,7 +66,7 @@ export default function AdminAccessCode() {
       setAccessCodes(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Fetch error:', err);
-      setError(err.message || 'Failed to load access codes. Please check your connection.');
+      showToastMessage(err.message || 'Failed to load access codes. Please check your connection.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -93,8 +92,6 @@ export default function AdminAccessCode() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
@@ -166,12 +163,12 @@ export default function AdminAccessCode() {
         ? 'Access code updated successfully' 
         : 'Access code created successfully';
       
-      setSuccess(successMessage);
+      showToastMessage(successMessage, 'success');
       await fetchAccessCodes();
       resetForm();
     } catch (err) {
       console.error('Submit error:', err);
-      setError(err.message || 'An unexpected error occurred. Please try again.');
+      showToastMessage(err.message || 'An unexpected error occurred. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -187,8 +184,6 @@ export default function AdminAccessCode() {
       currentUses: code.currentUses
     });
     setIsAdding(true);
-    setError('');
-    setSuccess('');
   };
 
   const handleDelete = async (id) => {
@@ -226,10 +221,10 @@ export default function AdminAccessCode() {
         throw new Error(errorMessage);
       }
 
-      setSuccess('Access code deleted successfully');
+      showToastMessage('Access code deleted successfully', 'success');
       await fetchAccessCodes();
     } catch (err) {
-      setError(err.message);
+      showToastMessage(err.message, 'error');
     }
   };
 
@@ -243,8 +238,6 @@ export default function AdminAccessCode() {
     });
     setEditingId(null);
     setIsAdding(false);
-    setError('');
-    setSuccess('');
   };
 
   const toggleAddForm = () => {
@@ -278,7 +271,7 @@ export default function AdminAccessCode() {
           </button>
           <button
             onClick={toggleAddForm}
-            className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+            className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-blue-400 hover:bg-blue-900 hover:bg-opacity-20 rounded-lg transition-colors border border-blue-800 hover:border-blue-700 w-full sm:w-auto"
           >
             <FiPlus className="mr-2" />
             {isAdding ? 'Cancel' : 'Add New Code'}
@@ -286,33 +279,6 @@ export default function AdminAccessCode() {
         </div>
       </div>
 
-      {/* Enhanced Error Message with retry option */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-900/50 border border-red-700 text-red-100 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <FiX className="mr-2 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-            <button
-              onClick={fetchAccessCodes}
-              className="ml-4 px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-sm transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Success Message */}
-      {success && (
-        <div className="mb-4 p-4 bg-green-900/50 border border-green-700 text-green-100 rounded-lg">
-          <div className="flex items-center">
-            <FiSave className="mr-2 flex-shrink-0" />
-            {success}
-          </div>
-        </div>
-      )}
 
       {/* Add/Edit Form */}
       {isAdding && (
@@ -491,6 +457,15 @@ export default function AdminAccessCode() {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 }

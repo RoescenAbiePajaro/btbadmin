@@ -172,10 +172,27 @@ app.post('/api/admin/register', async (req, res) => {
     return res.status(400).json({ message: 'Password must be at least 6 characters long' });
 
   try {
+    // Check if username already exists
     const existingAdmin = await Admin.findOne({ username });
     if (existingAdmin)
       return res.status(400).json({ message: 'Admin username already exists' });
 
+    // Validate and consume the access code
+    const code = accessCode.trim().toUpperCase();
+    const accessCodeDoc = await AccessCode.findActiveByCode(code);
+    
+    if (!accessCodeDoc) {
+      return res.status(400).json({ message: 'Invalid access code' });
+    }
+
+    if (!accessCodeDoc.canBeUsed()) {
+      return res.status(400).json({ message: 'This access code cannot be used (inactive or max uses reached)' });
+    }
+
+    // Consume the access code
+    await accessCodeDoc.incrementUsage();
+
+    // Hash password and create admin
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const admin = new Admin({
@@ -183,11 +200,18 @@ app.post('/api/admin/register', async (req, res) => {
       lastName,
       username,
       password: hashedPassword,
-      accessCode
+      accessCode: code // Store the validated code
     });
 
     await admin.save();
-    res.status(201).json({ message: 'Admin registration successful' });
+    
+    res.status(201).json({ 
+      message: 'Admin registration successful',
+      accessCodeUsed: {
+        code: accessCodeDoc.code,
+        description: accessCodeDoc.description
+      }
+    });
   } catch (error) {
     console.error('Admin registration error:', error);
     res.status(500).json({ message: 'Server error during admin registration' });
@@ -265,6 +289,62 @@ app.delete('/api/clicks', verifyToken, async (req, res) => {
 // =====================
 // 🔑 ACCESS CODE ENDPOINTS
 // =====================
+
+// Public endpoint to validate access code (for registration)
+app.get('/api/access-codes/validate/:code', async (req, res) => {
+  try {
+    const code = req.params.code.trim().toUpperCase();
+    const accessCode = await AccessCode.findActiveByCode(code);
+
+    if (!accessCode) {
+      return res.status(404).json({ valid: false, message: 'Invalid access code' });
+    }
+
+    if (!accessCode.canBeUsed()) {
+      return res.status(400).json({ valid: false, message: 'This access code cannot be used' });
+    }
+
+    res.json({
+      valid: true,
+      message: 'Access code is valid',
+      code: accessCode.code,
+      description: accessCode.description,
+      remainingUses: accessCode.maxUses - accessCode.currentUses
+    });
+  } catch (error) {
+    console.error('Error validating access code:', error);
+    res.status(500).json({ valid: false, message: 'Server error' });
+  }
+});
+
+// Public endpoint to consume access code (for registration)
+app.post('/api/access-codes/use/:code', async (req, res) => {
+  try {
+    const code = req.params.code.trim().toUpperCase();
+    const accessCode = await AccessCode.findActiveByCode(code);
+
+    if (!accessCode) {
+      return res.status(404).json({ success: false, message: 'Invalid access code' });
+    }
+
+    if (!accessCode.canBeUsed()) {
+      return res.status(400).json({ success: false, message: 'This access code cannot be used' });
+    }
+
+    await accessCode.incrementUsage();
+
+    res.json({
+      success: true,
+      message: 'Access code used successfully',
+      code: accessCode.code,
+      description: accessCode.description,
+      remainingUses: accessCode.maxUses - accessCode.currentUses
+    });
+  } catch (error) {
+    console.error('Error using access code:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 // Get all access codes
 app.get('/api/access-codes', verifyToken, async (req, res) => {
