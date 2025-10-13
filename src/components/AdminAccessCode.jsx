@@ -1,10 +1,13 @@
+
+
 import React, { useState, useEffect } from 'react';
-import { FiKey, FiPlus, FiEdit2, FiTrash2, FiSave, FiX } from 'react-icons/fi';
+import { FiKey, FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
 
 export default function AdminAccessCode() {
   const [accessCodes, setAccessCodes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -20,10 +23,29 @@ export default function AdminAccessCode() {
     fetchAccessCodes();
   }, []);
 
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError('');
+        setSuccess('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
+
   const fetchAccessCodes = async () => {
     try {
+      setIsLoading(true);
+      setError('');
+      
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
       const response = await fetch('http://localhost:5000/api/access-codes', {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -31,14 +53,22 @@ export default function AdminAccessCode() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch access codes');
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          throw new Error('Authentication failed. Please login again.');
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. You do not have permission to view access codes.');
+        }
+        throw new Error(`Failed to fetch access codes: ${response.status}`);
       }
 
       const data = await response.json();
-      setAccessCodes(data);
-      setIsLoading(false);
+      setAccessCodes(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message);
+      console.error('Fetch error:', err);
+      setError(err.message || 'Failed to load access codes. Please check your connection.');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -47,27 +77,49 @@ export default function AdminAccessCode() {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : 
+              type === 'number' ? Math.max(1, parseInt(value) || 1) : value
     }));
+  };
+
+  const validateForm = () => {
+    if (!formData.code.trim()) {
+      throw new Error('Access code is required');
+    }
+    if (formData.maxUses < 1) {
+      throw new Error('Max uses must be at least 1');
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      // Validate form before submission
+      validateForm();
+
       const url = editingId 
         ? `http://localhost:5000/api/access-codes/${editingId}`
         : 'http://localhost:5000/api/access-codes';
       
       const method = editingId ? 'PUT' : 'POST';
 
-      // Only send the fields that the backend expects
       const requestData = {
-        code: formData.code,
-        description: formData.description,
-        maxUses: formData.maxUses,
+        code: formData.code.trim().toUpperCase(),
+        description: formData.description.trim(),
+        maxUses: parseInt(formData.maxUses) || 1,
         isActive: formData.isActive
       };
+
+      // Show loading state
+      setIsLoading(true);
 
       const response = await fetch(url, {
         method,
@@ -78,14 +130,50 @@ export default function AdminAccessCode() {
         body: JSON.stringify(requestData)
       });
 
-      if (!response.ok) {
-        throw new Error(editingId ? 'Failed to update access code' : 'Failed to create access code');
+      const responseText = await response.text();
+      let responseData = {};
+
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Invalid response from server. Please try again.');
       }
 
+      if (!response.ok) {
+        // Handle specific error status codes
+        if (response.status === 400) {
+          const errorMessage = responseData.toast?.message || 
+                             responseData.message ||
+                             responseData.error ||
+                             'Invalid data provided';
+          throw new Error(errorMessage);
+        } else if (response.status === 401) {
+          localStorage.removeItem('token');
+          throw new Error('Your session has expired. Please login again.');
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to perform this action.');
+        } else if (response.status === 404) {
+          throw new Error('The requested resource was not found.');
+        } else {
+          throw new Error(
+            `Server error: ${response.status} - ${response.statusText}`
+          );
+        }
+      }
+
+      const successMessage = editingId 
+        ? 'Access code updated successfully' 
+        : 'Access code created successfully';
+      
+      setSuccess(successMessage);
       await fetchAccessCodes();
       resetForm();
     } catch (err) {
-      setError(err.message);
+      console.error('Submit error:', err);
+      setError(err.message || 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -93,12 +181,14 @@ export default function AdminAccessCode() {
     setEditingId(code._id);
     setFormData({
       code: code.code,
-      description: code.description,
+      description: code.description || '',
       isActive: code.isActive,
       maxUses: code.maxUses,
       currentUses: code.currentUses
     });
     setIsAdding(true);
+    setError('');
+    setSuccess('');
   };
 
   const handleDelete = async (id) => {
@@ -106,17 +196,37 @@ export default function AdminAccessCode() {
     
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch(`http://localhost:5000/api/access-codes/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to delete access code');
+      const responseText = await response.text();
+      let responseData;
+
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Invalid response from server');
       }
 
+      if (!response.ok) {
+        const errorMessage = responseData.toast?.message || 
+                           responseData.message ||
+                           responseData.error ||
+                           'Failed to delete access code';
+        throw new Error(errorMessage);
+      }
+
+      setSuccess('Access code deleted successfully');
       await fetchAccessCodes();
     } catch (err) {
       setError(err.message);
@@ -133,6 +243,8 @@ export default function AdminAccessCode() {
     });
     setEditingId(null);
     setIsAdding(false);
+    setError('');
+    setSuccess('');
   };
 
   const toggleAddForm = () => {
@@ -143,38 +255,73 @@ export default function AdminAccessCode() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading access codes...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Access Codes</h2>
-        <button
-          onClick={toggleAddForm}
-          className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <FiPlus className="mr-2" />
-          {isAdding ? 'Cancel' : 'Add New Code'}
-        </button>
+    <div className="p-2 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-white">Access Codes</h2>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={fetchAccessCodes}
+            className="flex items-center justify-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm sm:text-base"
+            title="Refresh access codes"
+          >
+            <FiRefreshCw className="mr-2" />
+            Refresh
+          </button>
+          <button
+            onClick={toggleAddForm}
+            className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+          >
+            <FiPlus className="mr-2" />
+            {isAdding ? 'Cancel' : 'Add New Code'}
+          </button>
+        </div>
       </div>
 
+      {/* Enhanced Error Message with retry option */}
       {error && (
-        <div className="mb-4 p-3 bg-red-900 text-red-100 rounded-lg">
-          {error}
+        <div className="mb-4 p-4 bg-red-900/50 border border-red-700 text-red-100 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <FiX className="mr-2 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={fetchAccessCodes}
+              className="ml-4 px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-sm transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="mb-4 p-4 bg-green-900/50 border border-green-700 text-green-100 rounded-lg">
+          <div className="flex items-center">
+            <FiSave className="mr-2 flex-shrink-0" />
+            {success}
+          </div>
         </div>
       )}
 
       {/* Add/Edit Form */}
       {isAdding && (
-        <div className="mb-8 p-6 bg-gray-800 rounded-xl border border-gray-700">
+        <div className="mb-6 p-4 sm:p-6 bg-gray-800 rounded-xl border border-gray-700">
           <h3 className="text-lg font-medium text-white mb-4">
             {editingId ? 'Edit Access Code' : 'Add New Access Code'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   Code *
@@ -184,8 +331,10 @@ export default function AdminAccessCode() {
                   name="code"
                   value={formData.code}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm sm:text-base bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter access code"
                   required
+                  autoFocus
                 />
               </div>
               <div>
@@ -198,7 +347,7 @@ export default function AdminAccessCode() {
                   min="1"
                   value={formData.maxUses}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm sm:text-base bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -211,8 +360,9 @@ export default function AdminAccessCode() {
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
+                className="w-full px-3 py-2 text-sm sm:text-base bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows="3"
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Optional description for this access code"
               />
             </div>
             
@@ -223,113 +373,122 @@ export default function AdminAccessCode() {
                 name="isActive"
                 checked={formData.isActive}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded"
+                className="h-4 w-4 text-blue-600 rounded border-gray-600 bg-gray-700 focus:ring-blue-500 focus:ring-offset-gray-800"
               />
-              <label htmlFor="isActive" className="ml-2 block text-sm text-gray-300">
-                Active
+              <label htmlFor="isActive" className="ml-2 text-sm text-gray-300">
+                Active (code can be used)
               </label>
             </div>
             
-            <div className="flex justify-end space-x-3 pt-2">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:space-x-3 pt-2">
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-4 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center justify-center"
               >
-                {editingId ? 'Update' : 'Save'}
+                <FiSave className="mr-2" />
+                {editingId ? 'Update' : 'Create'} Code
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Access Codes List */}
+      {/* Access Codes Table */}
       <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className="bg-gray-700">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Code
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Description
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Uses
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-gray-800 divide-y divide-gray-700">
-              {accessCodes.length > 0 ? (
-                accessCodes.map((code) => (
-                  <tr key={code._id} className="hover:bg-gray-750">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <FiKey className="flex-shrink-0 h-5 w-5 text-blue-400" />
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-white">{code.code}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-300 max-w-xs truncate">
-                        {code.description || 'No description'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-300">
-                        {code.currentUses} / {code.maxUses || '∞'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        code.isActive 
-                          ? 'bg-green-900 text-green-200' 
-                          : 'bg-gray-700 text-gray-300'
-                      }`}>
-                        {code.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(code)}
-                        className="text-blue-400 hover:text-blue-300 mr-4"
-                        title="Edit"
-                      >
-                        <FiEdit2 className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(code._id)}
-                        className="text-red-400 hover:text-red-300"
-                        title="Delete"
-                      >
-                        <FiTrash2 className="h-5 w-5" />
-                      </button>
-                    </td>
+          <div className="min-w-full inline-block align-middle">
+            <div className="overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-700">
+                <thead className="bg-gray-700">
+                  <tr>
+                    <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Code
+                    </th>
+                    <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Uses
+                    </th>
+                    <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-400">
-                    No access codes found. Click 'Add New Code' to create one.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="bg-gray-800 divide-y divide-gray-700">
+                  {accessCodes.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-400">
+                        <FiKey className="mx-auto h-8 w-8 text-gray-600 mb-2" />
+                        No access codes found. Create your first access code to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    accessCodes.map((code) => (
+                      <tr key={code._id} className="hover:bg-gray-750 transition-colors">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                          <div className="flex flex-col">
+                            <span className="font-mono">{code.code}</span>
+                            <span className="sm:hidden text-xs text-gray-400 mt-1">
+                              {code.description ? code.description.substring(0, 20) + (code.description.length > 20 ? '...' : '') : '-'}
+                            </span>
+                            <span className="sm:hidden mt-1">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${code.isActive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                                {code.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="hidden sm:table-cell px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
+                          {code.description || '-'}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          <span className={`font-mono ${code.currentUses >= code.maxUses ? 'text-red-400' : 'text-green-400'}`}>
+                            {code.currentUses} / {code.maxUses}
+                          </span>
+                        </td>
+                        <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${code.isActive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                            {code.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => handleEdit(code)}
+                              className="p-1.5 sm:p-1 text-blue-400 hover:text-blue-300 rounded-full hover:bg-gray-700 transition-colors"
+                              aria-label="Edit"
+                              title="Edit access code"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(code._id)}
+                              className="p-1.5 sm:p-1 text-red-400 hover:text-red-300 rounded-full hover:bg-gray-700 transition-colors"
+                              aria-label="Delete"
+                              title="Delete access code"
+                            >
+                              <FiTrash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>

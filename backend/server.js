@@ -47,8 +47,11 @@ mongoose.connect(process.env.MONGODB_URI, {
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // =====================
-// 🧱 SCHEMAS
+// 🧱 SCHEMAS & MODELS
 // =====================
+
+// Import AccessCode model
+const AccessCode = require('./models/AccessCode');
 
 // Admin Schema (untouched)
 const adminSchema = new mongoose.Schema({
@@ -68,113 +71,7 @@ const clickSchema = new mongoose.Schema({
 });
 const Click = mongoose.model('Click', clickSchema);
 
-// Import AccessCode model
-const AccessCode = require('./models/AccessCode');
 
-// =====================
-// ⚙️ ACCESS CODE ENDPOINTS
-// =====================
-
-// Get all access codes
-app.get('/api/access-codes', verifyToken, async (req, res) => {
-  try {
-    const codes = await AccessCode.find().sort({ createdAt: -1 });
-    res.json(codes);
-  } catch (err) {
-    console.error('Error fetching access codes:', err);
-    createToastResponse(res, 500, 'Failed to fetch access codes', 'error');
-  }
-});
-
-// Create new access code
-app.post('/api/access-codes', verifyToken, async (req, res) => {
-  try {
-    const { code, description, maxUses, isActive } = req.body;
-    
-    if (!code || typeof code !== 'string' || code.trim() === '') {
-      return createToastResponse(res, 400, 'Access code is required', 'error');
-    }
-
-    const existingCode = await AccessCode.findOne({ code: code.trim().toUpperCase() });
-    if (existingCode) {
-      return createToastResponse(res, 400, 'Access code already exists', 'error');
-    }
-
-    const newCode = new AccessCode({
-      code: code.trim().toUpperCase(),
-      description: description || '',
-      maxUses: Number.isInteger(Number(maxUses)) && Number(maxUses) > 0 ? Number(maxUses) : 1,
-      isActive: isActive !== undefined ? Boolean(isActive) : true
-    });
-
-    await newCode.save();
-    createToastResponse(res, 201, 'Access code created successfully', 'success', newCode);
-  } catch (err) {
-    console.error('Error creating access code:', err);
-    
-    // More specific error messages
-    if (err.name === 'ValidationError') {
-      return createToastResponse(res, 400, `Validation error: ${err.message}`, 'error');
-    }
-    if (err.name === 'MongoError' && err.code === 11000) {
-      return createToastResponse(res, 400, 'This access code already exists', 'error');
-    }
-    
-    createToastResponse(res, 500, `Failed to create access code: ${err.message}`, 'error');
-  }
-});
-
-// Update access code
-app.put('/api/access-codes/:id', verifyToken, async (req, res) => {
-  try {
-    const { code, description, maxUses, isActive } = req.body;
-    const updateData = { description, maxUses, isActive };
-
-    if (code) {
-      updateData.code = code.trim().toUpperCase();
-      // Check if code is already taken by another document
-      const existingCode = await AccessCode.findOne({ 
-        code: updateData.code,
-        _id: { $ne: req.params.id }
-      });
-      
-      if (existingCode) {
-        return createToastResponse(res, 400, 'Access code already exists', 'error');
-      }
-    }
-
-    const updatedCode = await AccessCode.findByIdAndUpdate(
-      req.params.id,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedCode) {
-      return createToastResponse(res, 404, 'Access code not found', 'error');
-    }
-
-    createToastResponse(res, 200, 'Access code updated successfully', 'success', updatedCode);
-  } catch (err) {
-    console.error('Error updating access code:', err);
-    createToastResponse(res, 500, 'Failed to update access code', 'error');
-  }
-});
-
-// Delete access code
-app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
-  try {
-    const deletedCode = await AccessCode.findByIdAndDelete(req.params.id);
-    
-    if (!deletedCode) {
-      return createToastResponse(res, 404, 'Access code not found', 'error');
-    }
-
-    createToastResponse(res, 200, 'Access code deleted successfully', 'success');
-  } catch (err) {
-    console.error('Error deleting access code:', err);
-    createToastResponse(res, 500, 'Failed to delete access code', 'error');
-  }
-});
 
 // =====================
 // ⚙️ TEST ENDPOINT
@@ -207,6 +104,8 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: 'Invalid token' });
   }
 };
+
+
 
 // =====================
 // 📋 ADMIN LIST ENDPOINT
@@ -360,6 +259,143 @@ app.delete('/api/clicks', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error deleting all click logs:', error);
     res.status(500).json({ message: 'Server error deleting all click logs' });
+  }
+});
+
+// =====================
+// 🔑 ACCESS CODE ENDPOINTS
+// =====================
+
+// Get all access codes
+app.get('/api/access-codes', verifyToken, async (req, res) => {
+  try {
+    const accessCodes = await AccessCode.find()
+      .sort({ createdAt: -1 });
+    
+    res.json(accessCodes);
+  } catch (error) {
+    console.error('Error fetching access codes:', error);
+    return createToastResponse(res, 500, 'Server error fetching access codes', 'error');
+  }
+});
+
+// Create new access code
+app.post('/api/access-codes', verifyToken, async (req, res) => {
+  try {
+    const { code, description, maxUses, isActive } = req.body;
+
+    // Validate required fields
+    if (!code || !code.trim()) {
+      return createToastResponse(res, 400, 'Access code is required', 'error');
+    }
+
+    // Check for duplicate code
+    const existingCode = await AccessCode.findOne({ code: code.trim().toUpperCase() });
+    if (existingCode) {
+      return createToastResponse(res, 400, 'Access code already exists', 'error');
+    }
+
+    // Create new access code
+    const accessCode = new AccessCode({
+      code: code.trim().toUpperCase(),
+      description: description?.trim() || '',
+      maxUses: parseInt(maxUses) || 1,
+      isActive: isActive !== undefined ? isActive : true,
+      currentUses: 0
+    });
+
+    await accessCode.save();
+    
+    return createToastResponse(res, 201, 'Access code created successfully', 'success', accessCode);
+  } catch (error) {
+    console.error('Error creating access code:', error);
+    
+    // Handle mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return createToastResponse(res, 400, messages.join(', '), 'error');
+    }
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return createToastResponse(res, 400, 'Access code already exists', 'error');
+    }
+    
+    return createToastResponse(res, 500, 'Server error creating access code', 'error');
+  }
+});
+
+// Update access code
+app.put('/api/access-codes/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { code, description, maxUses, isActive } = req.body;
+
+    // Validate required fields
+    if (!code || !code.trim()) {
+      return createToastResponse(res, 400, 'Access code is required', 'error');
+    }
+
+    // Check if access code exists
+    const existingCode = await AccessCode.findById(id);
+    if (!existingCode) {
+      return createToastResponse(res, 404, 'Access code not found', 'error');
+    }
+
+    // Check for duplicate code (excluding current record)
+    const duplicateCode = await AccessCode.findOne({ 
+      code: code.trim().toUpperCase(),
+      _id: { $ne: id }
+    });
+    if (duplicateCode) {
+      return createToastResponse(res, 400, 'Access code already exists', 'error');
+    }
+
+    // Update access code
+    const updatedCode = await AccessCode.findByIdAndUpdate(
+      id,
+      {
+        code: code.trim().toUpperCase(),
+        description: description?.trim() || '',
+        maxUses: parseInt(maxUses) || 1,
+        isActive: isActive !== undefined ? isActive : true
+      },
+      { new: true, runValidators: true }
+    );
+
+    return createToastResponse(res, 200, 'Access code updated successfully', 'success', updatedCode);
+  } catch (error) {
+    console.error('Error updating access code:', error);
+    
+    // Handle mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return createToastResponse(res, 400, messages.join(', '), 'error');
+    }
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return createToastResponse(res, 400, 'Access code already exists', 'error');
+    }
+    
+    return createToastResponse(res, 500, 'Server error updating access code', 'error');
+  }
+});
+
+// Delete access code
+app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const deletedCode = await AccessCode.findByIdAndDelete(id);
+    if (!deletedCode) {
+      return createToastResponse(res, 404, 'Access code not found', 'error');
+    }
+    
+    return createToastResponse(res, 200, 'Access code deleted successfully', 'success');
+  } catch (error) {
+    console.error('Error deleting access code:', error);
+    return createToastResponse(res, 500, 'Server error deleting access code', 'error');
   }
 });
 
