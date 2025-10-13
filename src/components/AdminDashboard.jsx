@@ -14,7 +14,7 @@ const clickCategories = {
     { button: 'download', page: 'home_page' },
     { button: 'visit_link', page: 'home_page' }
   ],
-  'Page Menu': [
+  'Beyond The Brush Lite': [
     { button: 'btblite_enter', page: 'page_menu' },
     { button: 'btblite_exit', page: 'page_menu' },
     { button: 'btblite_download_image', page: 'toolbar_save' }
@@ -43,6 +43,8 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [allClicks, setAllClicks] = useState([]); // Store all clicks for analytics
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const limit = 10;
 
   const showToastMessage = (message, type = 'info') => {
@@ -171,16 +173,70 @@ export default function AdminDashboard({ onLogout, userData }) {
     }
   };
 
+  const fetchAllClicksForAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found in localStorage');
+        return;
+      }
+
+      // Fetch all clicks without pagination for analytics
+      let url = 'http://localhost:5000/api/clicks?page=1&limit=10000'; // Large limit to get all
+      if (selectedCategory !== 'all') {
+        const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
+        url += `&buttons=${categoryButtons.join(',')}`;
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('Analytics fetch error:', errorData);
+        throw new Error(errorData.message || 'Failed to fetch analytics data');
+      }
+
+      const data = await res.json();
+      setAllClicks(data.clicks || []);
+    } catch (error) {
+      console.error('Error fetching analytics data:', error);
+      setAllClicks([]);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Reset to first page when category changes
-    setPage(1);
     fetchData();
-  }, [selectedCategory, page]);
+  }, [page, selectedCategory]);
+
+  useEffect(() => {
+    if (activeNav === 'analytics') {
+      fetchAllClicksForAnalytics();
+    }
+  }, [activeNav, selectedCategory]);
+
+  // Reset to first page when category changes
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
+  }, [selectedCategory]);
 
   const getFilteredClicks = () => {
-    if (selectedCategory === 'all') return clicks;
-    const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
-    return clicks.filter(click => categoryButtons.includes(click.button));
+    // Backend now handles filtering, so we just return the clicks as received
+    return clicks;
+  };
+
+  const getAnalyticsData = () => {
+    // Use allClicks for analytics calculations
+    return allClicks;
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -224,6 +280,10 @@ export default function AdminDashboard({ onLogout, userData }) {
       
       // Refresh data
       await fetchData();
+      // Also refresh analytics data if we're on analytics page
+      if (activeNav === 'analytics') {
+        await fetchAllClicksForAnalytics();
+      }
       setShowDeleteModal(false);
     } catch (error) {
       console.error('Error deleting data:', error);
@@ -249,7 +309,8 @@ export default function AdminDashboard({ onLogout, userData }) {
   };
 
   const getChartData = () => {
-    const buttonCounts = getFilteredClicks().reduce((acc, click) => {
+    const analyticsData = getAnalyticsData();
+    const buttonCounts = analyticsData.reduce((acc, click) => {
       acc[click.button] = (acc[click.button] || 0) + 1;
       return acc;
     }, {});
@@ -283,6 +344,10 @@ export default function AdminDashboard({ onLogout, userData }) {
     setShowAccessCodes(nav === 'access-codes');
     if (isMobile) {
       setIsSidebarOpen(false);
+    }
+    // Refresh data when switching to analytics
+    if (nav === 'analytics') {
+      fetchAllClicksForAnalytics();
     }
   };
 
@@ -337,10 +402,13 @@ export default function AdminDashboard({ onLogout, userData }) {
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
             <button 
-              onClick={fetchData}
+              onClick={() => {
+                fetchData();
+                fetchAllClicksForAnalytics();
+              }}
               className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
               title="Refresh Analytics"
-              disabled={isLoading}
+              disabled={isLoading || analyticsLoading}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -370,13 +438,22 @@ export default function AdminDashboard({ onLogout, userData }) {
         </div>
         <div className="flex items-center space-x-4">
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <p className="text-sm text-gray-200">Filtered Clicks</p>
+            <p className="text-xl font-semibold text-white">{getAnalyticsData().length}</p>
+          </div>
+          <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
             <p className="text-sm text-gray-200">Total Clicks</p>
             <p className="text-xl font-semibold text-white">{total}</p>
           </div>
         </div>
       </div>
 
-      {getFilteredClicks().length > 0 ? (
+      {analyticsLoading ? (
+        <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-200">Loading analytics data...</p>
+        </div>
+      ) : getAnalyticsData().length > 0 ? (
         <div className="space-y-6">
           <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
             <h2 className="text-lg font-medium text-white mb-4">Engagements - Bar Chart</h2>
@@ -464,7 +541,7 @@ export default function AdminDashboard({ onLogout, userData }) {
         </div>
       ) : (
         <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 text-center">
-          <p className="text-gray-200">No data available for analytics</p>
+          <p className="text-gray-200">No data available for analytics{selectedCategory !== 'all' ? ` in ${selectedCategory}` : ''}</p>
         </div>
       )}
     </div>
@@ -517,7 +594,7 @@ const GuestClicksSection = () => {
             <button
               onClick={handleExportCSV}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold text-sm hover:bg-green-700 rounded-lg transition-colors w-full sm:w-auto"
-              disabled={filteredClicks.length === 0}
+              disabled={getFilteredClicks().length === 0}
               title="Export to CSV"
             >
               <FiDownload size={16} />
@@ -557,8 +634,8 @@ const GuestClicksSection = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
-                  {filteredClicks.length > 0 ? (
-                    filteredClicks.map((click, idx) => (
+                  {getFilteredClicks().length > 0 ? (
+                    getFilteredClicks().map((click, idx) => (
                       <tr key={click._id || idx} className="hover:bg-gray-750 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-200">
@@ -622,11 +699,11 @@ const GuestClicksSection = () => {
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-400">
-                    Showing <span className="font-medium text-white">{(page - 1) * limit + 1}</span> to{' '}
+                    Showing <span className="font-medium text-white">{getFilteredClicks().length > 0 ? (page - 1) * limit + 1 : 0}</span> to{' '}
                     <span className="font-medium text-white">{Math.min(page * limit, total)}</span> of{' '}
                     <span className="font-medium text-white">{total}</span> results
                     {selectedCategory !== 'all' && (
-                      <span className="text-blue-300 ml-2">(Filtered: {filteredClicks.length})</span>
+                      <span className="text-gray-500 ml-2">(filtered by {selectedCategory})</span>
                     )}
                   </p>
                 </div>
@@ -759,7 +836,7 @@ const GuestClicksSection = () => {
             <FiMenu size={20} className="text-white" />
           </button>
           <h1 className="text-xl font-bold text-white">
-            {activeNav === 'analytics' ? 'Analytics' : 'Guest Activity'}
+            {activeNav === 'analytics' ? 'Analytics' : activeNav === 'guests' ? 'Guest Activity' : 'Access Codes'}
           </h1>
           <div className="w-8"></div> {/* Spacer for balance */}
         </div>

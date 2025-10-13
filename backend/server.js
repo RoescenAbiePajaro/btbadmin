@@ -243,13 +243,21 @@ app.post('/api/clicks', async (req, res) => {
 // Get paginated click logs
 app.get('/api/clicks', verifyToken, async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    const clicks = await Click.find()
+    const { page = 1, limit = 10, buttons } = req.query;
+    
+    // Build query object for filtering
+    let query = {};
+    if (buttons) {
+      const buttonList = buttons.split(',');
+      query.button = { $in: buttonList };
+    }
+    
+    const clicks = await Click.find(query)
       .sort({ timestamp: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
-    const total = await Click.countDocuments();
+    const total = await Click.countDocuments(query);
 
     res.json({ clicks, total });
   } catch (error) {
