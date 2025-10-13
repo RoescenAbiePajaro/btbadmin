@@ -516,7 +516,7 @@ const GuestClicksSection = () => {
           <div className="mb-2 sm:mb-0">
             <button
               onClick={handleExportCSV}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-green-400 hover:bg-green-900 hover:bg-opacity-20 rounded-lg transition-colors border border-green-800 hover:border-green-700 w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold text-sm hover:bg-green-700 rounded-lg transition-colors w-full sm:w-auto"
               disabled={filteredClicks.length === 0}
               title="Export to CSV"
             >
@@ -527,7 +527,7 @@ const GuestClicksSection = () => {
           <div>
             <button
               onClick={handleDeleteAll}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700 w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white font-semibold text-sm hover:bg-red-700 rounded-lg transition-colors w-full sm:w-auto"
               disabled={total === 0}
               title="Delete all records"
             >
@@ -740,7 +740,7 @@ const GuestClicksSection = () => {
           
           <button
             onClick={handleLogout}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900 hover:bg-opacity-20 rounded-lg transition-colors border border-red-800 hover:border-red-700"
+            className="bg-red-600 text-white py-2 px-6 rounded-lg font-semibold text-sm mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 hover:bg-red-700 rounded-lg transition-colors"
           >
             <FiLogOut size={16} />
             Log out
@@ -796,7 +796,7 @@ const GuestClicksSection = () => {
                     setClickToDelete(null);
                     setDeleteMode(null);
                   }}
-                  className="px-4 py-2 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-900 transition-colors"
+                  className="px-4 py-2 rounded-md text-gray-300 hover:bg-gray-700 transition-colors"
                   disabled={isDeleting}
                 >
                   Cancel

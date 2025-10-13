@@ -271,8 +271,8 @@ export default function AdminAccessCode() {
           </button>
           <button
             onClick={toggleAddForm}
-            className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-blue-400 hover:bg-blue-900 hover:bg-opacity-20 rounded-lg transition-colors border border-blue-800 hover:border-blue-700 w-full sm:w-auto"
-          >
+            className=" bg-blue-800 text-white font-semibold text-sm hover:bg-blue-900 rounded-lg transition-colors flex items-center justify-center gap-2 px-4 py-2 text-sm hover:bg-blue-900 rounded-lg transition-colors w-full sm:w-auto"
+          >           
             <FiPlus className="mr-2" />
             {isAdding ? 'Cancel' : 'Add New Code'}
           </button>
