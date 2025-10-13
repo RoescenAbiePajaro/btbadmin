@@ -45,7 +45,7 @@ export default function AdminAccessCode() {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      const response = await fetch('http://localhost:5000/api/access-codes', {
+      const response = await fetch('https://beyondthebrush.onrender.com/api/access-codes', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -105,8 +105,8 @@ export default function AdminAccessCode() {
       validateForm();
 
       const url = editingId 
-        ? `http://localhost:5000/api/access-codes/${editingId}`
-        : 'http://localhost:5000/api/access-codes';
+        ? `https://beyondthebrush.onrender.com/api/access-codes/${editingId}`
+        : 'https://beyondthebrush.onrender.com/api/access-codes';
       
       const method = editingId ? 'PUT' : 'POST';
 
@@ -203,7 +203,7 @@ export default function AdminAccessCode() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`http://localhost:5000/api/access-codes/${codeToDelete}`, {
+      const response = await fetch(`https://beyondthebrush.onrender.com/api/access-codes/${codeToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
