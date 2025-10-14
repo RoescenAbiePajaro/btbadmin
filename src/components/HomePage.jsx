@@ -55,7 +55,7 @@ export default function HomePage() {
             {/* Two buttons with URL links */}
             <div className="flex flex-col space-y-4">
               <a 
-                href="https://btblites.vercel.app/" 
+                href="https://btblite.onrender.com" 
                 className="bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline"
                 onClick={async (e) => {
                   e.preventDefault();
@@ -73,14 +73,18 @@ export default function HomePage() {
                 Visit Link
               </a>
               <a
-                href="btbbtb_setup.exe"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/btbbtb_setup.exe"
+                download
                 className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
-                onClick={(e) => {
-                  // Don't prevent default or await tracking. Let the browser open the link
-                  // synchronously to avoid popup blocking, and fire-and-forget the tracking request.
-                  trackClick('download', 'home_page');
+                onClick={() => {
+                  // Fire-and-forget the tracking request; don't await so the browser
+                  // can start the download immediately and avoid popup blocking.
+                  try {
+                    trackClick('download', 'home_page');
+                  } catch (err) {
+                    // swallow errors from tracking
+                    console.error('trackClick error', err);
+                  }
                 }}
               >
                 Download PC
