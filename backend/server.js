@@ -37,6 +37,8 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+const path = require('path');
+const fs = require('fs');
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
@@ -510,6 +512,27 @@ app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
 // fall back to HOST / PORT and finally sensible defaults.
 const HOST = process.env.WEB_SERVICES_HOST || process.env.HOST || '0.0.0.0';
 const PORT = process.env.WEB_SERVICES_PORT || process.env.PORT || 3000;
+
+// Serve frontend static files (if present) and provide SPA fallback so
+// client-side routes don't return 404 on refresh. The Vite build output
+// is expected at the project root `dist` directory.
+const frontendDistPath = path.resolve(__dirname, '..', 'dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+
+  // Catch-all: serve index.html for any non-API route (SPA fallback)
+  app.get('*', (req, res, next) => {
+    // If request is for an API route, continue to API handlers
+    if (req.path.startsWith('/api')) return next();
+
+    const indexPath = path.join(frontendDistPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      return res.sendFile(indexPath);
+    }
+
+    return res.status(404).send('Not found');
+  });
+}
 
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Admin server running on ${HOST}:${PORT}`);
