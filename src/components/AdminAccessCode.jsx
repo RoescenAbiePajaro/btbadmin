@@ -45,7 +45,7 @@ export default function AdminAccessCode() {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      const response = await fetch('https://beyondthebrush.onrender.com/api/access-codes', {
+      const response = await fetch('https://btbsitess.onrender.com/api/access-codes', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

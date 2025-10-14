@@ -505,7 +505,12 @@ app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
 // =====================
 // 🚀 START SERVER
 // =====================
-const REACT_APP_BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 5000;
-app.listen(REACT_APP_BACKEND_URL, () => {
-  console.log(`🚀 Admin server running on port ${REACT_APP_BACKEND_URL}`);
+// Allow configuring host and port via environment variables.
+// Prefer WEB_SERVICES_HOST / WEB_SERVICES_PORT for explicit web service config,
+// fall back to HOST / PORT and finally sensible defaults.
+const HOST = process.env.WEB_SERVICES_HOST || process.env.HOST || '0.0.0.0';
+const PORT = process.env.WEB_SERVICES_PORT || process.env.PORT || 3000;
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Admin server running on ${HOST}:${PORT}`);
 });
