@@ -1,10 +1,11 @@
 // HomePage.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { trackClick } from "../../backend/utils/trackClick";
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const downloadAvailable = useCheckDownload('/btbbtb_setup.exe');
 
   const handleMenuClick = () => {
     navigate("/admin");
@@ -72,11 +73,23 @@ export default function HomePage() {
               >
                 Visit Link
               </a>
+              {/* Download button: check if file exists on server before enabling */}
               <a
-                href="/btbbtb_setup.exe"
-                download
-                className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
-                onClick={() => {
+                href={downloadAvailable ? "/btbbtb_setup.exe" : '#'}
+                download={!!downloadAvailable}
+                aria-disabled={downloadAvailable === false}
+                className={`py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 text-center no-underline ${
+                  downloadAvailable === false
+                    ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+                onClick={(e) => {
+                  if (downloadAvailable === false) {
+                    // Prevent navigation when not available
+                    e.preventDefault();
+                    return;
+                  }
+
                   // Fire-and-forget the tracking request; don't await so the browser
                   // can start the download immediately and avoid popup blocking.
                   try {
@@ -86,8 +99,9 @@ export default function HomePage() {
                     console.error('trackClick error', err);
                   }
                 }}
+                title={downloadAvailable === false ? 'Download not available on this server' : 'Download for PC'}
               >
-                Download PC
+                {downloadAvailable === false ? 'Download Unavailable' : 'Download PC'}
               </a>
             </div>
           </div>
@@ -95,4 +109,30 @@ export default function HomePage() {
       </div>
     </div>
   );
+}
+
+// Check for the existence of the file when the component mounts
+function useCheckDownload(url) {
+  const [available, setAvailable] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function check() {
+      try {
+        const resp = await fetch(url, { method: 'HEAD' });
+        if (!cancelled) setAvailable(resp.ok);
+      } catch (err) {
+        if (!cancelled) setAvailable(false);
+      }
+    }
+
+    check();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  return available;
 }
