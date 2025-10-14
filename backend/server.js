@@ -49,6 +49,13 @@ mongoose.connect(process.env.MONGODB_URI, {
 // =====================
 // 🧱 SCHEMAS & MODELS
 // =====================
+// Root route to avoid default "Cannot GET /" and provide basic info
+app.get('/', (req, res) => {
+  res.json({
+    message: 'BTB Admin backend is running. See /api/test for a quick check.',
+    docs: '/api/test'
+  });
+});
 
 // Import AccessCode model
 const AccessCode = require('./models/AccessCode');
@@ -70,6 +77,14 @@ const clickSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 });
 const Click = mongoose.model('Click', clickSchema);
+
+// Root route to avoid default "Cannot GET /" and provide basic info
+app.get('/', (req, res) => {
+  res.json({
+    message: 'BTB Admin backend is running. See /api/test for a quick check.',
+    docs: '/api/test'
+  });
+});
 
 
 
@@ -490,7 +505,20 @@ app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
 // =====================
 // 🚀 START SERVER
 // =====================
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Admin server running on port ${PORT}`);
+// Host and PORT must be provided by the environment when running as a web service.
+const HOST = process.env.HOST || '0.0.0.0';
+const PORT = process.env.PORT;
+
+if (!PORT) {
+  console.error('ERROR: The environment variable PORT is required.');
+  // Exit with non-zero so process managers or containers detect failure
+  process.exit(1);
+}
+
+// Start listening. Binding host allows external services to control interface.
+app.listen(Number(PORT), HOST, () => {
+  console.log(`🚀 Admin server running on ${HOST}:${PORT}`);
 });
+
+// Export app for external runners (e.g., serverless adapters, tests, or PM2)
+module.exports = app;
