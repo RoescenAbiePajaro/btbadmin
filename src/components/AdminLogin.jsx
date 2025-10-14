@@ -19,6 +19,9 @@ const AdminLogin = () => {
     setShowToast(true);
   };
 
+   // Get backend URL from environment variables
+  const API_URL = process.env.REACT_APP_BACKEND_URL;
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -31,7 +34,9 @@ const AdminLogin = () => {
     }
 
     try {
-      const response = await fetch('https://btbadmin2.onrender.com/api/admin/login', {
+      console.log('Attempting login to:', `${API_URL}/api/admin/login`);
+      
+      const response = await fetch(`${API_URL}/api/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +47,7 @@ const AdminLogin = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        throw new Error(data.message || `Login failed with status ${response.status}`);
       }
 
       // Save token and admin data

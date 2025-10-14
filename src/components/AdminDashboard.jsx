@@ -47,6 +47,9 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const limit = 10;
 
+  // ✅ Get backend URL from environment variables
+  const API_URL = process.env.REACT_APP_BACKEND_URL;
+
   const showToastMessage = (message, type = 'info') => {
     setToastMessage(message);
     setToastType(type);
@@ -137,7 +140,8 @@ export default function AdminDashboard({ onLogout, userData }) {
         return;
       }
 
-      let url = `https://btbadmin2.onrender.com/api/clicks?page=${page}&limit=${limit}`;
+      // ✅ FIXED: Use environment variable for API URL
+      let url = `${API_URL}/api/clicks?page=${page}&limit=${limit}`;
       if (selectedCategory !== 'all') {
         const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
         url += `&buttons=${categoryButtons.join(',')}`;
@@ -182,8 +186,8 @@ export default function AdminDashboard({ onLogout, userData }) {
         return;
       }
 
-      // Fetch all clicks without pagination for analytics
-      let url = 'https://btbadmin2.onrender.com/api/clicks?page=1&limit=10000'; // Large limit to get all
+      // ✅ FIXED: Use environment variable for API URL
+      let url = `${API_URL}/api/clicks?page=1&limit=10000`; // Large limit to get all
       if (selectedCategory !== 'all') {
         const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
         url += `&buttons=${categoryButtons.join(',')}`;
@@ -251,11 +255,12 @@ export default function AdminDashboard({ onLogout, userData }) {
         return;
       }
 
+      // ✅ FIXED: Use environment variable for API URL
       let url;
       if (deleteMode === 'single') {
-        url = `https://btbadmin2.onrender.com/api/clicks/${clickToDelete}`;
+        url = `${API_URL}/api/clicks/${clickToDelete}`;
       } else {
-        url = 'https://btbadmin2.onrender.com/api/clicks';
+        url = `${API_URL}/api/clicks`;
       }
 
       console.log(`Deleting ${deleteMode} with URL:`, url);

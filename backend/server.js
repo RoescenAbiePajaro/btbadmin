@@ -1,10 +1,9 @@
-// server.js
-
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const path = require('path');
 
 // Toast notification utility
 const createToastResponse = (res, status, message, type = 'info', data = null) => {
@@ -34,8 +33,17 @@ require('dotenv').config();
 
 const app = express();
 
+// CORS configuration
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://btbadmin.onrender.com', // Replace with your actual frontend URL
+    process.env.FRONTEND_URL // You can set this in Render environment variables
+  ].filter(Boolean),
+  credentials: true
+}));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
@@ -49,50 +57,121 @@ mongoose.connect(process.env.MONGODB_URI, {
 // =====================
 // 🧱 SCHEMAS & MODELS
 // =====================
-// Root route to avoid default "Cannot GET /" and provide basic info
-app.get('/', (req, res) => {
-  res.json({
-    message: 'BTB Admin backend is running. See /api/test for a quick check.',
-    docs: '/api/test'
-  });
+
+// AccessCode Schema
+const accessCodeSchema = new mongoose.Schema({
+  code: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    uppercase: true,
+    trim: true
+  },
+  description: { 
+    type: String, 
+    default: '' 
+  },
+  maxUses: { 
+    type: Number, 
+    default: 1,
+    min: 1
+  },
+  currentUses: { 
+    type: Number, 
+    default: 0 
+  },
+  isActive: { 
+    type: Boolean, 
+    default: true 
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  }
 });
 
-// Import AccessCode model
-const AccessCode = require('./models/AccessCode');
+// Static method to find active code
+accessCodeSchema.statics.findActiveByCode = function(code) {
+  return this.findOne({ 
+    code: code.toUpperCase().trim(),
+    isActive: true 
+  });
+};
 
-// Admin Schema (untouched)
+// Instance method to check if code can be used
+accessCodeSchema.methods.canBeUsed = function() {
+  return this.isActive && this.currentUses < this.maxUses;
+};
+
+// Instance method to increment usage
+accessCodeSchema.methods.incrementUsage = function() {
+  this.currentUses += 1;
+  return this.save();
+};
+
+const AccessCode = mongoose.model('AccessCode', accessCodeSchema);
+
+// Admin Schema
 const adminSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  accessCode: { type: String, required: true }
+  accessCode: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
 });
+
 const Admin = mongoose.model('Admin', adminSchema);
 
-// ✅ NEW: Click Schema
+// Click Schema
 const clickSchema = new mongoose.Schema({
   button: String,
   page: String,
   timestamp: { type: Date, default: Date.now },
 });
+
 const Click = mongoose.model('Click', clickSchema);
 
-// Root route to avoid default "Cannot GET /" and provide basic info
-app.get('/', (req, res) => {
-  res.json({
-    message: 'BTB Admin backend is running. See /api/test for a quick check.',
-    docs: '/api/test'
+// =====================
+// 🏠 ROOT ROUTES
+// =====================
+
+// Health check route for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    backend: 'BTB Admin API',
+    version: '1.0.0'
   });
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'BTB Admin backend is running successfully! 🚀',
+    endpoints: {
+      health: '/health',
+      test: '/api/test',
+      admin: {
+        login: '/api/admin/login',
+        register: '/api/admin/register',
+        list: '/api/admins'
+      },
+      clicks: '/api/clicks',
+      accessCodes: '/api/access-codes'
+    },
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
-
-// =====================
-// ⚙️ TEST ENDPOINT
-// =====================
+// Test endpoint
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'Admin server is running' });
+  res.json({ 
+    message: 'Admin server is running perfectly! ✅',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // =====================
@@ -102,7 +181,6 @@ const generateToken = (admin) => {
   return jwt.sign(
     { id: admin._id, username: admin.username },
     process.env.JWT_SECRET,
-    { expiresIn: '24h' }
   );
 };
 
@@ -120,17 +198,13 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-
-
 // =====================
 // 📋 ADMIN LIST ENDPOINT
 // =====================
-
-// Get all admins (for admin list display)
 app.get('/api/admins', verifyToken, async (req, res) => {
   try {
     const admins = await Admin.find()
-      .select('-password -accessCode -__v') // Exclude sensitive fields
+      .select('-password -accessCode -__v')
       .sort({ username: 1 });
     
     res.json(admins);
@@ -143,8 +217,6 @@ app.get('/api/admins', verifyToken, async (req, res) => {
 // =====================
 // 👤 ADMIN AUTH ENDPOINTS
 // =====================
-
-// Admin Login
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -160,7 +232,6 @@ app.post('/api/admin/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
 
     const token = generateToken(admin);
-
     const adminData = admin.toObject();
     delete adminData.password;
     delete adminData.__v;
@@ -176,7 +247,6 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Admin Registration
 app.post('/api/admin/register', async (req, res) => {
   const { firstName, lastName, username, password, accessCode } = req.body;
 
@@ -187,12 +257,10 @@ app.post('/api/admin/register', async (req, res) => {
     return res.status(400).json({ message: 'Password must be at least 6 characters long' });
 
   try {
-    // Check if username already exists
     const existingAdmin = await Admin.findOne({ username });
     if (existingAdmin)
       return res.status(400).json({ message: 'Admin username already exists' });
 
-    // Validate and consume the access code
     const code = accessCode.trim().toUpperCase();
     const accessCodeDoc = await AccessCode.findActiveByCode(code);
     
@@ -204,10 +272,8 @@ app.post('/api/admin/register', async (req, res) => {
       return res.status(400).json({ message: 'This access code cannot be used (inactive or max uses reached)' });
     }
 
-    // Consume the access code
     await accessCodeDoc.incrementUsage();
 
-    // Hash password and create admin
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const admin = new Admin({
@@ -215,7 +281,7 @@ app.post('/api/admin/register', async (req, res) => {
       lastName,
       username,
       password: hashedPassword,
-      accessCode: code // Store the validated code
+      accessCode: code
     });
 
     await admin.save();
@@ -234,10 +300,8 @@ app.post('/api/admin/register', async (req, res) => {
 });
 
 // =====================
-// 📊 GUEST CLICK TRACKING ENDPOINTS
+// 📊 CLICK TRACKING ENDPOINTS
 // =====================
-
-// Log a click
 app.post('/api/clicks', async (req, res) => {
   try {
     const { button, page } = req.body;
@@ -255,12 +319,10 @@ app.post('/api/clicks', async (req, res) => {
   }
 });
 
-// Get paginated click logs
 app.get('/api/clicks', verifyToken, async (req, res) => {
   try {
     const { page = 1, limit = 10, buttons } = req.query;
     
-    // Build query object for filtering
     let query = {};
     if (buttons) {
       const buttonList = buttons.split(',');
@@ -281,7 +343,6 @@ app.get('/api/clicks', verifyToken, async (req, res) => {
   }
 });
 
-// Delete a single click log
 app.delete('/api/clicks/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -298,7 +359,6 @@ app.delete('/api/clicks/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Delete all click logs
 app.delete('/api/clicks', verifyToken, async (req, res) => {
   try {
     await Click.deleteMany({});
@@ -312,8 +372,6 @@ app.delete('/api/clicks', verifyToken, async (req, res) => {
 // =====================
 // 🔑 ACCESS CODE ENDPOINTS
 // =====================
-
-// Public endpoint to validate access code (for registration)
 app.get('/api/access-codes/validate/:code', async (req, res) => {
   try {
     const code = req.params.code.trim().toUpperCase();
@@ -340,7 +398,6 @@ app.get('/api/access-codes/validate/:code', async (req, res) => {
   }
 });
 
-// Public endpoint to consume access code (for registration)
 app.post('/api/access-codes/use/:code', async (req, res) => {
   try {
     const code = req.params.code.trim().toUpperCase();
@@ -369,12 +426,9 @@ app.post('/api/access-codes/use/:code', async (req, res) => {
   }
 });
 
-// Get all access codes
 app.get('/api/access-codes', verifyToken, async (req, res) => {
   try {
-    const accessCodes = await AccessCode.find()
-      .sort({ createdAt: -1 });
-    
+    const accessCodes = await AccessCode.find().sort({ createdAt: -1 });
     res.json(accessCodes);
   } catch (error) {
     console.error('Error fetching access codes:', error);
@@ -382,23 +436,19 @@ app.get('/api/access-codes', verifyToken, async (req, res) => {
   }
 });
 
-// Create new access code
 app.post('/api/access-codes', verifyToken, async (req, res) => {
   try {
     const { code, description, maxUses, isActive } = req.body;
 
-    // Validate required fields
     if (!code || !code.trim()) {
       return createToastResponse(res, 400, 'Access code is required', 'error');
     }
 
-    // Check for duplicate code
     const existingCode = await AccessCode.findOne({ code: code.trim().toUpperCase() });
     if (existingCode) {
       return createToastResponse(res, 400, 'Access code already exists', 'error');
     }
 
-    // Create new access code
     const accessCode = new AccessCode({
       code: code.trim().toUpperCase(),
       description: description?.trim() || '',
@@ -413,13 +463,11 @@ app.post('/api/access-codes', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error creating access code:', error);
     
-    // Handle mongoose validation errors
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
       return createToastResponse(res, 400, messages.join(', '), 'error');
     }
     
-    // Handle duplicate key error
     if (error.code === 11000) {
       return createToastResponse(res, 400, 'Access code already exists', 'error');
     }
@@ -428,24 +476,20 @@ app.post('/api/access-codes', verifyToken, async (req, res) => {
   }
 });
 
-// Update access code
 app.put('/api/access-codes/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { code, description, maxUses, isActive } = req.body;
 
-    // Validate required fields
     if (!code || !code.trim()) {
       return createToastResponse(res, 400, 'Access code is required', 'error');
     }
 
-    // Check if access code exists
     const existingCode = await AccessCode.findById(id);
     if (!existingCode) {
       return createToastResponse(res, 404, 'Access code not found', 'error');
     }
 
-    // Check for duplicate code (excluding current record)
     const duplicateCode = await AccessCode.findOne({ 
       code: code.trim().toUpperCase(),
       _id: { $ne: id }
@@ -454,7 +498,6 @@ app.put('/api/access-codes/:id', verifyToken, async (req, res) => {
       return createToastResponse(res, 400, 'Access code already exists', 'error');
     }
 
-    // Update access code
     const updatedCode = await AccessCode.findByIdAndUpdate(
       id,
       {
@@ -470,13 +513,11 @@ app.put('/api/access-codes/:id', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error updating access code:', error);
     
-    // Handle mongoose validation errors
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
       return createToastResponse(res, 400, messages.join(', '), 'error');
     }
     
-    // Handle duplicate key error
     if (error.code === 11000) {
       return createToastResponse(res, 400, 'Access code already exists', 'error');
     }
@@ -485,7 +526,6 @@ app.put('/api/access-codes/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Delete access code
 app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -502,23 +542,27 @@ app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
   }
 });
 
+// Error handling middleware
+app.use(errorHandler);
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    message: 'Route not found',
+    path: req.originalUrl,
+    availableEndpoints: {
+      health: '/health',
+      api: '/api/test'
+    }
+  });
+});
+
 // =====================
 // 🚀 START SERVER
 // =====================
-// Host and PORT must be provided by the environment when running as a web service.
-const HOST = process.env.HOST || '0.0.0.0';
-const PORT = process.env.PORT;
-
-if (!PORT) {
-  console.error('ERROR: The environment variable PORT is required.');
-  // Exit with non-zero so process managers or containers detect failure
-  process.exit(1);
-}
-
-// Start listening. Binding host allows external services to control interface.
-app.listen(Number(PORT), HOST, () => {
-  console.log(`🚀 Admin server running on ${HOST}:${PORT}`);
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Admin server running on port ${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
 });
-
-// Export app for external runners (e.g., serverless adapters, tests, or PM2)
-module.exports = app;
