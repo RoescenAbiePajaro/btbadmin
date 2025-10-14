@@ -19,9 +19,6 @@ const AdminLogin = () => {
     setShowToast(true);
   };
 
-   // Get backend URL from environment variables
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -34,9 +31,7 @@ const AdminLogin = () => {
     }
 
     try {
-      console.log('Attempting login to:', `${API_URL}/api/admin/login`);
-      
-      const response = await fetch(`${API_URL}/api/admin/login`, {
+      const response = await fetch('https://beyondthebrush.onrender.com/api/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,7 +42,7 @@ const AdminLogin = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || `Login failed with status ${response.status}`);
+        throw new Error(data.message || 'Login failed');
       }
 
       // Save token and admin data

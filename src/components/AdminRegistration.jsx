@@ -35,7 +35,7 @@ const AdminRegistration = () => {
 
     setAccessCodeValidating(true);
     try {
-      const response = await fetch(`https://btbadmin2.onrender.com/api/access-codes/validate/${code.trim()}`);
+      const response = await fetch(`https://beyondthebrush.onrender.com/api/access-codes/validate/${code.trim()}`);
       const data = await response.json();
 
       if (response.ok && data.valid) {
@@ -117,7 +117,7 @@ const AdminRegistration = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('https://btbadmin2.onrender.com/api/admin/register', {
+      const response = await fetch('https://beyondthebrush.onrender.com/api/admin/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,7 +160,7 @@ const AdminRegistration = () => {
   // Test server connection (optional)
   const testServerConnection = async () => {
     try {
-      const response = await fetch('https://btbadmin2.onrender.com/api/admin');
+      const response = await fetch('https://beyondthebrush.onrender.com/api/admin');
       const data = await response.json();
       console.log('Server test:', data);
     } catch (err) {
