@@ -31,7 +31,7 @@ const AdminLogin = () => {
     }
 
     try {
-      const response = await fetch('https://localhost:5000/api/admin/login', {
+      const response = await fetch('https://btbadmin2.onrender.com/api/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,6 @@
 export const trackClick = async (button, page) => {
     try {
-      await fetch("https://localhost:5000/api/clicks", {
+      await fetch("https://btbadmin2.onrender.com/api/clicks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ button, page }),
