@@ -1,6 +1,6 @@
 export const trackClick = async (button, page) => {
     try {
-      await fetch("https://beyondthebrush.onrender.com/api/clicks", {
+      await fetch("https://localhost:5000/api/clicks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ button, page }),

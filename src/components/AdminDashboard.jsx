@@ -137,7 +137,7 @@ export default function AdminDashboard({ onLogout, userData }) {
         return;
       }
 
-      let url = `https://beyondthebrush.onrender.com/api/clicks?page=${page}&limit=${limit}`;
+      let url = `https://localhost:5000/api/clicks?page=${page}&limit=${limit}`;
       if (selectedCategory !== 'all') {
         const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
         url += `&buttons=${categoryButtons.join(',')}`;
@@ -183,7 +183,7 @@ export default function AdminDashboard({ onLogout, userData }) {
       }
 
       // Fetch all clicks without pagination for analytics
-      let url = 'https://beyondthebrush.onrender.com/api/clicks?page=1&limit=10000'; // Large limit to get all
+      let url = 'https://localhost:5000/api/clicks?page=1&limit=10000'; // Large limit to get all
       if (selectedCategory !== 'all') {
         const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
         url += `&buttons=${categoryButtons.join(',')}`;
@@ -253,9 +253,9 @@ export default function AdminDashboard({ onLogout, userData }) {
 
       let url;
       if (deleteMode === 'single') {
-        url = `https://beyondthebrush.onrender.com/api/clicks/${clickToDelete}`;
+        url = `https://localhost:5000/api/clicks/${clickToDelete}`;
       } else {
-        url = 'https://beyondthebrush.onrender.com/api/clicks';
+        url = 'https://localhost:5000/api/clicks';
       }
 
       console.log(`Deleting ${deleteMode} with URL:`, url);

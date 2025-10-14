@@ -1,7 +1,7 @@
 // HomePage.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { trackClick } from "../utils/trackClick";
+import { trackClick } from "../../backend/utils/trackClick";
 
 export default function HomePage() {
   const navigate = useNavigate();
