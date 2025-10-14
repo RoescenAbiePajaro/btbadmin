@@ -19,10 +19,10 @@ const clickCategories = {
     { button: 'btblite_exit', page: 'page_menu' },
     { button: 'btblite_download_image', page: 'toolbar_save' }
   ],
-  'Beyond The Brush': [
+  'Beyond The Brush Pc': [
     { button: 'btb_enter', page: 'beyondthebrush_app' },
     { button: 'btb_exit', page: 'beyondthebrush_app' },
-    { button: 'save_canvas', page: 'virtual_painter' }
+    { button: 'save_canvas', page: 'beyondthebrush_app' }
   ]
 };
 

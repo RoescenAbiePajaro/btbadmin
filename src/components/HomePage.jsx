@@ -10,30 +10,21 @@ export default function HomePage() {
     navigate("/admin");
   };
 
-  const handleDownload = async () => {
-    try {
-      await trackClick("download", "home_page");
-    } catch (error) {
-      console.error("Error tracking click:", error);
-    }
-
-    // Direct automatic download (from your hosted server)
-    const link = document.createElement("a");
-    link.href = "/btbbtb_setup.exe"; // ✅ your hosted file path
-    link.download = "btbbtb_setup.exe"; // filename for the computer
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      {/* Header */}
+      {/* Header Navigation */}
       <header className="w-full bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          {/* Left side - empty for balance */}
           <div className="w-20"></div>
-          <div className="flex-1 flex justify-center"></div>
-          <button
+          
+          {/* Center - empty since logo was removed */}
+          <div className="flex-1 flex justify-center">
+            {/* Logo removed from header */}
+          </div>
+          
+          {/* Right side - menu button */}
+          <button 
             onClick={handleMenuClick}
             className="bg-white text-black py-2 px-6 rounded-lg font-semibold text-sm hover:bg-gray-200 transition duration-200"
           >
@@ -42,44 +33,59 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Main */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="bg-black rounded-2xl p-8 w-full max-w-md text-center">
-          <div className="w-32 h-32 mx-auto mb-4">
-            <img
-              src="/icon/logo.png"
-              alt="Beyond The Brush"
-              className="w-full h-full object-contain"
-              onError={(e) => (e.target.style.display = "none")}
-            />
-          </div>
-          <h2 className="text-4xl text-white mb-8">Beyond The Brush</h2>
-
-          {/* Buttons */}
-          <div className="flex flex-col space-y-4">
-            <a
-              href="https://btblite.onrender.com"
-              onClick={async (e) => {
-                e.preventDefault();
-                const url = e.currentTarget.href;
-                try {
-                  await trackClick("visit_link", "home_page");
-                } catch (error) {
-                  console.error("Error tracking click:", error);
-                }
-                window.open(url, "_blank", "noopener,noreferrer");
-              }}
-              className="bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 no-underline"
-            >
-              Visit Link
-            </a>
-
-            <button
-              onClick={handleDownload}
-              className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200"
-            >
-              Download PC
-            </button>
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+        <div className="bg-black rounded-2xl p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-32 h-32 mx-auto mb-4">
+              <img 
+                src="/icon/logo.png" 
+                alt="Beyond The Brush" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'block';
+                }}
+              />
+            </div>
+            <h2 className="text-4xl text-white text-center mb-8">
+              Beyond The Brush
+            </h2>
+            
+            {/* Two buttons with URL links */}
+            <div className="flex flex-col space-y-4">
+              <a 
+                href="https://btblites.vercel.app/" 
+                className="bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  const url = e.currentTarget.href;
+                  try {
+                    await trackClick('visit_link', 'home_page');
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  } catch (error) {
+                    console.error('Error tracking click:', error);
+                    // Still open the link even if tracking fails
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+              >
+                Visit Link
+              </a>
+              <a
+                href="https://drive.google.com/file/d/1RBmjwyMX9_s4faE6F2b6L0v3GuOoT3ki/view?usp=drive_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
+                onClick={(e) => {
+                  // Don't prevent default or await tracking. Let the browser open the link
+                  // synchronously to avoid popup blocking, and fire-and-forget the tracking request.
+                  trackClick('download', 'home_page');
+                }}
+              >
+                Download PC
+              </a>
+            </div>
           </div>
         </div>
       </div>
