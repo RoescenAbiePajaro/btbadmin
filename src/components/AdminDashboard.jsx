@@ -7,6 +7,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, T
 import Toast from './Toast';
 import AdminAccessCode from './AdminAccessCode';
 
+
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -73,40 +74,19 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   // Prevent browser back button and direct access
   useEffect(() => {
-    // Set access flag when dashboard loads properly
-    sessionStorage.setItem('dashboardAccess', 'true');
-    
-    // Prevent back button navigation
+    // Prevent back button navigation by pushing a history state and blocking popstate.
+    // NOTE: We intentionally avoid using sessionStorage for access checks so the
+    // dashboard remains visible after a full page refresh. Authentication is
+    // enforced via the token stored in localStorage elsewhere in this component.
     const handleBackButton = (e) => {
-      // Prevent the default back behavior
       window.history.pushState(null, null, window.location.href);
     };
 
-    // Push current state to history to prevent back navigation
     window.history.pushState(null, null, window.location.href);
     window.addEventListener('popstate', handleBackButton);
 
-    // Check if this is a direct access (new tab or direct URL)
-    const checkDirectAccess = () => {
-      const navigationEntry = performance.getEntriesByType('navigation')[0];
-      const hasReferrer = document.referrer && document.referrer !== '';
-      const isSameOriginReferrer = document.referrer.includes(window.location.origin);
-      
-      // If no referrer or referrer is not from same origin, it's direct access
-      if ((!hasReferrer || !isSameOriginReferrer) && !sessionStorage.getItem('dashboardAccess')) {
-        showToastMessage('Please access the dashboard through proper login', 'error');
-        setTimeout(() => {
-          onLogout();
-        }, 2000);
-      }
-    };
-
-    // Check access after a short delay to ensure component is mounted
-    setTimeout(checkDirectAccess, 100);
-
     return () => {
       window.removeEventListener('popstate', handleBackButton);
-      // Don't remove sessionStorage here to allow page refresh
     };
   }, [onLogout]);
 
@@ -119,13 +99,8 @@ export default function AdminDashboard({ onLogout, userData }) {
       setTimeout(() => onLogout(), 2000);
       return;
     }
-
-    // Double-check access rights
-    const dashboardAccess = sessionStorage.getItem('dashboardAccess');
-    if (!dashboardAccess) {
-      showToastMessage('Invalid access. Redirecting...', 'error');
-      setTimeout(() => onLogout(), 2000);
-    }
+    // Authentication is handled via token. We don't rely on sessionStorage
+    // flags to allow full page refreshes without redirecting the user.
   }, [onLogout]);
 
   const fetchData = async () => {
@@ -355,8 +330,8 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   // Handle logout with cleanup
   const handleLogout = () => {
-    // Clear session storage on logout
-    sessionStorage.removeItem('dashboardAccess');
+    // Leave local/session storage keys intact only if needed by other parts
+    // of the app. Authentication token should be cleared by the caller (onLogout).
     onLogout();
   };
 
@@ -839,7 +814,7 @@ export default function AdminDashboard({ onLogout, userData }) {
           
           <button
             onClick={handleLogout}
-            className="bg-red-600 text-white py-2 px-6 rounded-lg font-semibold text-sm mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 hover:bg-red-700 rounded-lg transition-colors"
+            className="bg-red-600 text-white font-semibold text-sm mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 hover:bg-red-700 rounded-lg transition-colors"
           >
             <FiLogOut size={16} />
             Log out
