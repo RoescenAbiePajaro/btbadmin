@@ -1,7 +1,7 @@
 // App.jsx
 
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import HomePage from "./components/HomePage";
 import AdminPage from "./components/AdminLogin";
 import AdminRegistration from "./components/AdminRegistration";
