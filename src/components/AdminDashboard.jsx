@@ -1,3 +1,5 @@
+// AdminDashboard.jsx
+
 import React, { useEffect, useState } from 'react';
 import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX, FiDownload, FiKey } from 'react-icons/fi';
 import { Bar, Pie } from 'react-chartjs-2';

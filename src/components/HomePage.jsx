@@ -46,7 +46,7 @@ export default function HomePage() {
 
           <div className="flex flex-col space-y-4">
             <a
-              href="https://btblites.vercel.app/"
+              href="https://btblite.onrender.com"
               className="bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline"
               onClick={async (e) => {
                 e.preventDefault();
