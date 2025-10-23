@@ -64,7 +64,7 @@ export default function HomePage() {
             </a>
 
             <a
-              href="https://drive.google.com/file/d/1RBmjwyMX9_s4faE6F2b6L0v3GuOoT3ki/view?usp=sharing"
+              href="https://mega.nz/folder/NFVAnJSL#xdiixtFhQvP7t-McXYN_kw"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
