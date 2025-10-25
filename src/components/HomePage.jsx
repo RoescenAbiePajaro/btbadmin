@@ -6,6 +6,8 @@ import AnimatedBackground from "./AnimatedBackground";
 export default function HomePage() {
   const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isLinkLoading, setIsLinkLoading] = useState(false);
+  const [isDownloadLoading, setIsDownloadLoading] = useState(false);
 
   const handleMenuClick = () => {
     navigate("/admin");
@@ -46,35 +48,47 @@ export default function HomePage() {
           </h2>
 
           <div className="flex flex-col space-y-4">
-            <a
-              href="https://btblite.onrender.com"
-              className="bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline"
+            <button
+              className="w-full bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={async (e) => {
                 e.preventDefault();
-                const url = e.currentTarget.href;
+                const url = "https://btblite.onrender.com";
+                setIsLinkLoading(true);
                 try {
                   await trackClick("visit_link", "home_page");
                   window.open(url, "_blank", "noopener,noreferrer");
                 } catch (error) {
                   console.error("Error tracking click:", error);
                   window.open(url, "_blank", "noopener,noreferrer");
+                } finally {
+                  setIsLinkLoading(false);
                 }
               }}
+              disabled={isLinkLoading}
             >
-              Visit Link
-            </a>
+              {isLinkLoading ? 'Opening...' : 'Visit Link'}
+            </button>
 
-            <a
-              href="https://mega.nz/folder/NFVAnJSL#xdiixtFhQvP7t-McXYN_kw"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline"
-              onClick={() => {
-                trackClick("download", "home_page");
+            <button
+              className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={async (e) => {
+                e.preventDefault();
+                const url = "https://mega.nz/folder/NFVAnJSL#xdiixtFhQvP7t-McXYN_kw";
+                setIsDownloadLoading(true);
+                try {
+                  await trackClick("download", "home_page");
+                  window.open(url, "_blank", "noopener,noreferrer");
+                } catch (error) {
+                  console.error("Error tracking download:", error);
+                  window.open(url, "_blank", "noopener,noreferrer");
+                } finally {
+                  setIsDownloadLoading(false);
+                }
               }}
+              disabled={isDownloadLoading}
             >
-              Download PC
-            </a>
+              {isDownloadLoading ? 'Preparing...' : 'Download PC'}
+            </button>
           </div>
         </div>
 

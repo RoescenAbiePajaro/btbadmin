@@ -10,6 +10,7 @@ const AdminLogin = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [error, setError] = useState('');
   const [toastType, setToastType] = useState('error');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const showErrorToast = (message) => {
@@ -29,6 +30,7 @@ const AdminLogin = () => {
       return;
     }
 
+    setLoading(true);
     try {
       const response = await fetch('https://btbsitess.onrender.com/api/admin/login', {
         method: 'POST',
@@ -53,6 +55,8 @@ const AdminLogin = () => {
     } catch (error) {
       console.error('Login error:', error);
       showErrorToast(error.message || 'An error occurred during login. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -133,7 +137,7 @@ const AdminLogin = () => {
                 type="submit"
                 className="w-full flex justify-center py-3 px-6 border border-transparent rounded-lg font-semibold text-lg text-black bg-white hover:bg-gray-200 transition duration-200"
               >
-                Login
+                {loading ? 'Logging in...' : 'Login'}
               </button>
             </div>
             <div>
