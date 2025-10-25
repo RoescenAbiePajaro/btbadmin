@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Toast from './Toast';
+import AnimatedBackground from './AnimatedBackground';
 
 const AdminRegistration = () => {
   const [firstName, setFirstName] = useState('');
@@ -175,6 +176,7 @@ const AdminRegistration = () => {
 
   return (
     <div className="min-h-screen bg-black flex flex-col relative">
+      <AnimatedBackground />
       {toast.show && (
         <Toast 
           message={toast.message} 

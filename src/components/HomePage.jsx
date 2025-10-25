@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { trackClick } from "../../backend/utils/trackClick";
+import AnimatedBackground from "./AnimatedBackground";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col relative">
+      <AnimatedBackground />
       {/* Header Navigation */}
       <header className="w-full bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -29,9 +31,8 @@ export default function HomePage() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-hidden">
-        {/* Card (unchanged) */}
-        <div className="bg-black rounded-2xl p-8 w-full max-w-md text-center">
+      <div className="flex-1 flex flex-col items-center justify-center p-6">
+        <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md text-center">
           <div className="w-28 h-28 mx-auto mb-4">
             <img
               src="/icon/logo.png"

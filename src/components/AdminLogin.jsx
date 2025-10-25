@@ -1,8 +1,7 @@
-// AdminLogin.jsx
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from './Toast';
+import AnimatedBackground from './AnimatedBackground';
 
 const AdminLogin = () => {
   const [username, setUsername] = useState('');
@@ -66,11 +65,19 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
+    <div className="min-h-screen bg-black flex flex-col relative">
+      <AnimatedBackground />
+      {showToast && (
+        <Toast 
+          message={toastMessage} 
+          type={toastType} 
+          onClose={() => setShowToast(false)} 
+        />
+      )}
       {/* Header Navigation */}
       <header className="w-full bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <button
+          <button 
             onClick={handleBack}
             className="bg-white text-black py-2 px-6 rounded-lg font-semibold text-sm hover:bg-gray-200 transition duration-200"
           >
