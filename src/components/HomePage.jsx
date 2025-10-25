@@ -37,9 +37,13 @@ export default function HomePage() {
         <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md text-center">
           <div className="w-28 h-28 mx-auto mb-4">
             <img
-              src="/icon/logo.png"
+              src="/icon/logo.webp"
+              srcSet="/icon/logo.png 1x, /icon/logo@2x.webp 2x"
               alt="Beyond The Brush"
               className="w-full h-full object-contain"
+              width="112"
+              height="112"
+              loading="lazy"
             />
           </div>
 
@@ -98,6 +102,7 @@ export default function HomePage() {
             {/* Image 1 */}
             <div className="flex flex-col items-center text-center">
               <img
+                loading="lazy"
                 src="/1.jpg"
                 alt="Art Showcase"
                 className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition"
@@ -113,6 +118,7 @@ export default function HomePage() {
             {/* Image 2 */}
             <div className="flex flex-col items-center text-center">
               <img
+                loading="lazy"
                 src="/7faf63e8-ed37-4167-8bc3-8354acbdca5f.jpg"
                 alt="Art Collaboration"
                 className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition"
