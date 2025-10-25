@@ -1,7 +1,7 @@
 // AdminDashboard.jsx
 
 import React, { useEffect, useState } from 'react';
-import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX, FiDownload, FiKey } from 'react-icons/fi';
+import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX, FiDownload, FiKey, FiCalendar } from 'react-icons/fi';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import Toast from './Toast';
@@ -46,6 +46,9 @@ export default function AdminDashboard({ onLogout, userData }) {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [allClicks, setAllClicks] = useState([]); // Store all clicks for analytics
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const limit = 10;
@@ -119,6 +122,11 @@ export default function AdminDashboard({ onLogout, userData }) {
         const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
         url += `&buttons=${categoryButtons.join(',')}`;
       }
+      
+      // Add date range to the URL if custom date range is selected
+      if (timeFilter === 'custom' && startDate && endDate) {
+        url += `&startDate=${new Date(startDate).toISOString()}&endDate=${new Date(endDate).toISOString()}`;
+      }
 
       const res = await fetch(url, {
         headers: {
@@ -138,7 +146,7 @@ export default function AdminDashboard({ onLogout, userData }) {
       setClicks(data.clicks || []);
       setTotal(data.total || 0);
       if (data.clicks?.length === 0) {
-        showToastMessage('No click data available', 'info');
+        showToastMessage('No data available', 'info');
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -164,6 +172,11 @@ export default function AdminDashboard({ onLogout, userData }) {
       if (selectedCategory !== 'all') {
         const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
         url += `&buttons=${categoryButtons.join(',')}`;
+      }
+      
+      // Add date range to the URL if custom date range is selected
+      if (timeFilter === 'custom' && startDate && endDate) {
+        url += `&startDate=${new Date(startDate).toISOString()}&endDate=${new Date(endDate).toISOString()}`;
       }
 
       const res = await fetch(url, {
@@ -191,29 +204,79 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   useEffect(() => {
     fetchData();
-  }, [page, selectedCategory]);
+  }, [page, selectedCategory, timeFilter]);
 
   useEffect(() => {
     if (activeNav === 'analytics') {
       fetchAllClicksForAnalytics();
     }
-  }, [activeNav, selectedCategory]);
+  }, [activeNav, selectedCategory, timeFilter]);
 
-  // Reset to first page when category changes
+  // Reset to first page when category or time filter changes
   useEffect(() => {
     if (page !== 1) {
       setPage(1);
     }
-  }, [selectedCategory]);
+    
+    // Reset date range when time filter changes to non-custom
+    if (timeFilter !== 'custom') {
+      setStartDate('');
+      setEndDate('');
+    }
+  }, [selectedCategory, timeFilter]);
+
+  const filterByTime = (clicks) => {
+    // Helper function to normalize dates to the start of the day for comparison
+    const normalizeDate = (date) => {
+      const d = new Date(date);
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    };
+
+    const now = new Date();
+    const today = normalizeDate(now);
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+
+    return clicks.filter(click => {
+      const clickDate = normalizeDate(click.timestamp);
+      
+      switch(timeFilter) {
+        case 'today':
+          return clickDate.getTime() === today.getTime();
+        case 'week':
+          return clickDate >= firstDayOfWeek && clickDate <= today;
+        case 'month':
+          return clickDate >= firstDayOfMonth && clickDate <= today;
+        case 'year':
+          return clickDate >= firstDayOfYear && clickDate <= today;
+        case 'custom':
+          if (!startDate || !endDate) return true;
+          const start = normalizeDate(startDate);
+          const end = normalizeDate(endDate);
+          // Include the entire end day by setting time to 23:59:59.999
+          end.setHours(23, 59, 59, 999);
+          return clickDate >= start && clickDate <= end;
+        default:
+          return true;
+      }
+    });
+  };
 
   const getFilteredClicks = () => {
-    // Backend now handles filtering, so we just return the clicks as received
-    return clicks;
+    // First filter by time if needed
+    let filtered = [...clicks];
+    if (timeFilter !== 'all') {
+      filtered = filterByTime(filtered);
+    }
+    return filtered;
   };
 
   const getAnalyticsData = () => {
-    // Use allClicks for analytics calculations
-    return allClicks;
+    // Filter allClicks by time if needed
+    if (timeFilter === 'all') return allClicks;
+    return filterByTime(allClicks);
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -272,7 +335,7 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   const handleDeleteAll = () => {
     if (total === 0) {
-      showToastMessage('No click data available to delete', 'info');
+      showToastMessage('No data available to delete', 'info');
       return;
     }
     setDeleteMode('all');
@@ -412,6 +475,23 @@ export default function AdminDashboard({ onLogout, userData }) {
               ))}
             </select>
           </div>
+          <div className="w-full max-w-xs">
+            <label htmlFor="time-filter" className="block text-sm font-medium text-gray-300 mb-2">
+              Filter by Time:
+            </label>
+            <select
+              id="time-filter"
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
+            >
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="year">This Year</option>
+            </select>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="bg-gray-800 p-3 sm:p-4 rounded-lg border border-gray-700 min-w-[120px]">
@@ -544,7 +624,7 @@ export default function AdminDashboard({ onLogout, userData }) {
         </div>
       ) : (
         <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 text-center">
-          <p className="text-gray-200">No data available for analytics{selectedCategory !== 'all' ? ` in ${selectedCategory}` : ''}</p>
+          <p className="text-gray-200">No data available for analytics{selectedCategory !== 'all' ? ` in ${selectedCategory}` : ''}{timeFilter !== 'all' ? ` for this ${timeFilter}` : ''}</p>
         </div>
       )}
     </div>
@@ -573,23 +653,81 @@ export default function AdminDashboard({ onLogout, userData }) {
             </div>
             <p className="text-gray-200 mb-4">Detailed log of all guest interactions</p>
             
-            <div className="w-full max-w-xs">
-              <label htmlFor="guest-category-filter" className="block text-sm font-medium text-gray-300 mb-2">
-                Filter by Category:
-              </label>
-              <select
-                id="guest-category-filter"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
-              >
-                <option value="all">All Categories</option>
-                {Object.keys(clickCategories).map(category => (
-                  <option key={`guest-${category}`} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
+              <div className="w-full sm:w-1/2">
+                <label htmlFor="category-filter" className="block text-sm font-medium text-gray-300 mb-2">
+                  Filter by Category:
+                </label>
+                <select
+                  id="category-filter"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
+                >
+                  <option value="all">All Categories</option>
+                  {Object.keys(clickCategories).map(category => (
+                    <option key={`guest-${category}`} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-full sm:w-1/2">
+                <label htmlFor="time-filter" className="block text-sm font-medium text-gray-300 mb-2">
+                  Filter by Time:
+                </label>
+                <select
+                  id="time-filter"
+                  value={timeFilter}
+                  onChange={(e) => {
+                    setTimeFilter(e.target.value);
+                    // Reset date inputs when changing filter type
+                    if (e.target.value !== 'custom') {
+                      setStartDate('');
+                      setEndDate('');
+                    }
+                  }}
+                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+                {timeFilter === 'custom' && (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <div className="flex items-center">
+                      <FiCalendar className="text-gray-500 mr-1" />
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => {
+                          setStartDate(e.target.value || '');
+                          if (e.target.value && endDate && new Date(e.target.value) > new Date(endDate)) {
+                            setEndDate('');
+                          }
+                        }}
+                        max={endDate || new Date().toISOString().split('T')[0]}
+                        className="border rounded px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <span className="text-gray-500">to</span>
+                    <div className="flex items-center">
+                      <FiCalendar className="text-gray-500 mr-1" />
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value || '')}
+                        min={startDate}
+                        max={new Date().toISOString().split('T')[0]}
+                        className="border rounded px-2 py-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex flex-col xs:flex-row gap-3">
@@ -669,7 +807,7 @@ export default function AdminDashboard({ onLogout, userData }) {
                     ) : (
                       <tr>
                         <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                          No click data available{selectedCategory !== 'all' ? ` for ${selectedCategory}` : ''}
+                          No data available{selectedCategory !== 'all' ? ` for ${selectedCategory}` : ''}{timeFilter !== 'all' ? ` for this ${timeFilter}` : ''}
                         </td>
                       </tr>
                     )}
@@ -701,8 +839,12 @@ export default function AdminDashboard({ onLogout, userData }) {
                       Showing <span className="font-medium text-white">{getFilteredClicks().length > 0 ? (page - 1) * limit + 1 : 0}</span> to{' '}
                       <span className="font-medium text-white">{Math.min(page * limit, total)}</span> of{' '}
                       <span className="font-medium text-white">{total}</span> results
-                      {selectedCategory !== 'all' && (
-                        <span className="text-gray-500 ml-2">(filtered by {selectedCategory})</span>
+                      {(selectedCategory !== 'all' || timeFilter !== 'all') && (
+                        <span className="text-gray-500 ml-2">(filtered by 
+                          {selectedCategory !== 'all' ? ` ${selectedCategory}` : ''}
+                          {selectedCategory !== 'all' && timeFilter !== 'all' ? ' and ' : ''}
+                          {timeFilter !== 'all' ? ` this ${timeFilter}` : ''}
+                          )</span>
                       )}
                     </p>
                   </div>
