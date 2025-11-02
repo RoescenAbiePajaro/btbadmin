@@ -56,7 +56,7 @@ export default function HomePage() {
               className="w-full bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={async (e) => {
                 e.preventDefault();
-                const url = "https://btblite.onrender.com";
+                const url = "https://btblite.vercel.app";
                 setIsLinkLoading(true);
                 try {
                   await trackClick("visit_link", "home_page");
