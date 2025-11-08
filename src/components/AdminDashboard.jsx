@@ -18,14 +18,14 @@ const clickCategories = {
     { button: 'visit_link', page: 'home_page' }
   ],
   'Beyond The Brush Lite': [
-    { button: 'btblite_enter', page: 'page_menu' },
-    { button: 'btblite_exit', page: 'page_menu' },
-    { button: 'btblite_download_image', page: 'toolbar_save' }
+    { button: 'btblite_enter', page: 'beyondthebrush_lite' },
+    { button: 'btblite_exit', page: 'beyondthebrush_lite' },
+    { button: 'btblite_saved_canvas', page: 'toolbar_save' }
   ],
-  'Beyond The Brush Pc': [
-    { button: 'btb_enter', page: 'beyondthebrush_app' },
-    { button: 'btb_exit', page: 'beyondthebrush_app' },
-    { button: 'save_canvas', page: 'beyondthebrush_app' }
+  'Beyond The Brush App_PC ': [
+    { button: 'btb_enter', page: 'beyondthebrush_app_pc' },
+    { button: 'btb_exit', page: 'beyondthebrush_app_pc' },
+    { button: 'btb_saved_canvas', page: 'beyondthebrush_app_pc' }
   ]
 };
 
