@@ -15,37 +15,29 @@ export default function HomePage() {
 
   const closeModal = () => setSelectedImage(null);
 
-  // Optimized link handler - opens immediately while tracking in background
+  // Updated: Opens in same browser tab
   const handleVisitLink = async (e) => {
     e.preventDefault();
     const url = "https://btblite.vercel.app";
     
-    // Open link immediately without waiting
-    const newWindow = window.open(url, "_blank", "noopener,noreferrer");
-    
     setIsLinkLoading(true);
     
-    // Track click in background without blocking the UI
+    // Track click first, then navigate
     try {
       await trackClick("visit_link", "home_page");
     } catch (error) {
       console.error("Error tracking click:", error);
     } finally {
       setIsLinkLoading(false);
-    }
-
-    // Fallback: if popup was blocked, redirect current window
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      // Navigate to the URL in the same tab
       window.location.href = url;
     }
   };
 
-  // Optimized download handler
+  // Updated: Opens in same browser tab
   const handleDownload = async (e) => {
     e.preventDefault();
     const url = "https://mega.nz/folder/NFVAnJSL#xdiixtFhQvP7t-McXYN_kw";
-    
-    const newWindow = window.open(url, "_blank", "noopener,noreferrer");
     
     setIsDownloadLoading(true);
     
@@ -55,9 +47,7 @@ export default function HomePage() {
       console.error("Error tracking download:", error);
     } finally {
       setIsDownloadLoading(false);
-    }
-
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      // Navigate to the URL in the same tab
       window.location.href = url;
     }
   };
@@ -113,19 +103,49 @@ export default function HomePage() {
 
           <div className="flex flex-col space-y-4">
             <button
-              className="w-full bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               onClick={handleVisitLink}
               disabled={isLinkLoading}
             >
-              {isLinkLoading ? 'Opening...' : 'Visit Link'}
+              {isLinkLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Opening...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Visit Link
+                </>
+              )}
             </button>
 
             <button
-              className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               onClick={handleDownload}
               disabled={isDownloadLoading}
             >
-              {isDownloadLoading ? 'Preparing...' : 'Download PC'}
+              {isDownloadLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Preparing...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download PC
+                </>
+              )}
             </button>
           </div>
         </div>
