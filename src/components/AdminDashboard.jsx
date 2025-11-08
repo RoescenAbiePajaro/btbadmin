@@ -414,25 +414,26 @@ export default function AdminDashboard({ onLogout, userData }) {
             </div>
             <p className="text-gray-200 mb-4">Visual insights into guest interactions</p>
             
-            <div className="w-full max-w-xs">
-              <label htmlFor="category-filter" className="block text-sm font-medium text-gray-300 mb-2">
-                Filter by Category:
-              </label>
-              <select
-                id="category-filter"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
-              >
-                <option value="all">All Categories</option>
-                {Object.keys(clickCategories).map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="w-full max-w-xs">
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <div className="w-full sm:w-64">
+                <label htmlFor="category-filter" className="block text-sm font-medium text-gray-300 mb-2">
+                  Filter by Category:
+                </label>
+                <select
+                  id="category-filter"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
+                >
+                  <option value="all">All Categories</option>
+                  {Object.keys(clickCategories).map(category => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-full sm:w-64">
               <label htmlFor="time-filter" className="block text-sm font-medium text-gray-300 mb-2">
                 Filter by Time:
               </label>
@@ -534,6 +535,7 @@ export default function AdminDashboard({ onLogout, userData }) {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
