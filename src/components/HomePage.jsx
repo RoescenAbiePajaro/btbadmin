@@ -15,17 +15,70 @@ export default function HomePage() {
 
   const closeModal = () => setSelectedImage(null);
 
+  // Optimized link handler - opens immediately while tracking in background
+  const handleVisitLink = async (e) => {
+    e.preventDefault();
+    const url = "https://btblite.vercel.app";
+    
+    // Open link immediately without waiting
+    const newWindow = window.open(url, "_blank", "noopener,noreferrer");
+    
+    setIsLinkLoading(true);
+    
+    // Track click in background without blocking the UI
+    try {
+      await trackClick("visit_link", "home_page");
+    } catch (error) {
+      console.error("Error tracking click:", error);
+    } finally {
+      setIsLinkLoading(false);
+    }
+
+    // Fallback: if popup was blocked, redirect current window
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      window.location.href = url;
+    }
+  };
+
+  // Optimized download handler
+  const handleDownload = async (e) => {
+    e.preventDefault();
+    const url = "https://mega.nz/folder/NFVAnJSL#xdiixtFhQvP7t-McXYN_kw";
+    
+    const newWindow = window.open(url, "_blank", "noopener,noreferrer");
+    
+    setIsDownloadLoading(true);
+    
+    try {
+      await trackClick("download", "home_page");
+    } catch (error) {
+      console.error("Error tracking download:", error);
+    } finally {
+      setIsDownloadLoading(false);
+    }
+
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      window.location.href = url;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black flex flex-col relative">
       <AnimatedBackground />
-      {/* Header Navigation */}
+      
+      {/* Header Navigation - Logo removed */}
       <header className="w-full bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          {/* Empty div for spacing - logo removed */}
           <div className="w-20"></div>
-          <div className="flex-1 flex justify-center"></div>
+          
+          <div className="flex-1 flex justify-center">
+            {/* Optional: Add title or other content here */}
+          </div>
+          
           <button
             onClick={handleMenuClick}
-            className="bg-white text-black py-2 px-6 rounded-lg font-semibold text-sm hover:bg-gray-200 transition duration-200"
+            className="bg-white text-black py-2 px-6 rounded-lg font-semibold text-sm hover:bg-gray-200 transition duration-200 flex-shrink-0"
           >
             Admin Login
           </button>
@@ -35,15 +88,22 @@ export default function HomePage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md text-center">
-          <div className="w-28 h-28 mx-auto mb-4">
+          {/* Main Logo - Responsive */}
+          <div className="w-28 h-28 mx-auto mb-4 flex items-center justify-center">
             <img
               src="/icon/logo.webp"
               srcSet="/icon/logo.png 1x, /icon/logo@2x.webp 2x"
               alt="Beyond The Brush"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain max-w-full max-h-full"
               width="112"
               height="112"
-              loading="lazy"
+              loading="eager"
+              onError={(e) => {
+                // Fallback if webp not supported
+                if (e.target.src.includes('.webp')) {
+                  e.target.src = '/icon/logo.png';
+                }
+              }}
             />
           </div>
 
@@ -54,20 +114,7 @@ export default function HomePage() {
           <div className="flex flex-col space-y-4">
             <button
               className="w-full bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={async (e) => {
-                e.preventDefault();
-                const url = "https://btblite.vercel.app";
-                setIsLinkLoading(true);
-                try {
-                  await trackClick("visit_link", "home_page");
-                  window.open(url, "_blank", "noopener,noreferrer");
-                } catch (error) {
-                  console.error("Error tracking click:", error);
-                  window.open(url, "_blank", "noopener,noreferrer");
-                } finally {
-                  setIsLinkLoading(false);
-                }
-              }}
+              onClick={handleVisitLink}
               disabled={isLinkLoading}
             >
               {isLinkLoading ? 'Opening...' : 'Visit Link'}
@@ -75,20 +122,7 @@ export default function HomePage() {
 
             <button
               className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={async (e) => {
-                e.preventDefault();
-                const url = "https://mega.nz/folder/NFVAnJSL#xdiixtFhQvP7t-McXYN_kw";
-                setIsDownloadLoading(true);
-                try {
-                  await trackClick("download", "home_page");
-                  window.open(url, "_blank", "noopener,noreferrer");
-                } catch (error) {
-                  console.error("Error tracking download:", error);
-                  window.open(url, "_blank", "noopener,noreferrer");
-                } finally {
-                  setIsDownloadLoading(false);
-                }
-              }}
+              onClick={handleDownload}
               disabled={isDownloadLoading}
             >
               {isDownloadLoading ? 'Preparing...' : 'Download PC'}
@@ -106,9 +140,7 @@ export default function HomePage() {
                 src="/1.jpg"
                 alt="Art Showcase"
                 className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition"
-                onClick={() =>
-                  setSelectedImage("/1.jpg")
-                }
+                onClick={() => setSelectedImage("/1.jpg")}
               />
               <p className="text-gray-300 mt-3 text-sm max-w-xs">
                 A simple drawing web-app that allows users to draw, present ideas or key terms.
@@ -134,10 +166,11 @@ export default function HomePage() {
               <video
                 src="/Beyond The Brush 2025-09-14 15-04-56.mp4"
                 controls
+                preload="metadata"
                 className="w-64 h-40 rounded-2xl shadow-lg object-cover"
               ></video>
               <p className="text-gray-300 mt-3 text-sm max-w-xs">
-                A PC app that uses hand gesture controls also a  AI-driven digital painting using webcams allowing users to draw or present key ideas.
+                A PC app that uses hand gesture controls also a AI-driven digital painting using webcams allowing users to draw or present key ideas.
               </p>
             </div>
           </div>
