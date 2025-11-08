@@ -1,33 +1,13 @@
-// AdminDashboard.jsx
-
 import React, { useEffect, useState } from 'react';
-import { FiLogOut, FiUsers, FiBarChart2, FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiX, FiDownload, FiKey, FiCalendar } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiDownload, FiCalendar } from 'react-icons/fi';
 import { Bar, Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import Sidebar from './Sidebar';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 import Toast from './Toast';
 import AdminAccessCode from './AdminAccessCode';
-
-
-// Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
-
-// Click categories
-const clickCategories = {
-  'Home Page': [
-    { button: 'download', page: 'home_page' },
-    { button: 'visit_link', page: 'home_page' }
-  ],
-  'Beyond The Brush Lite': [
-    { button: 'btblite_enter', page: 'beyondthebrush_lite' },
-    { button: 'btblite_exit', page: 'beyondthebrush_lite' },
-    { button: 'btblite_saved_canvas', page: 'toolbar_save' }
-  ],
-  'Beyond The Brush App_PC ': [
-    { button: 'btb_enter', page: 'beyondthebrush_app_pc' },
-    { button: 'btb_exit', page: 'beyondthebrush_app_pc' },
-    { button: 'btb_saved_canvas', page: 'beyondthebrush_app_pc' }
-  ]
-};
+import GuestClicksSection from './GuestClicksSection';
+import clickCategories from '../config/clickCategories';
+import ChartJS from '../config/chartConfig';
 
 export default function AdminDashboard({ onLogout, userData }) {
   const [clicks, setClicks] = useState([]);
@@ -77,10 +57,6 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   // Prevent browser back button and direct access
   useEffect(() => {
-    // Prevent back button navigation by pushing a history state and blocking popstate.
-    // NOTE: We intentionally avoid using sessionStorage for access checks so the
-    // dashboard remains visible after a full page refresh. Authentication is
-    // enforced via the token stored in localStorage elsewhere in this component.
     const handleBackButton = (e) => {
       window.history.pushState(null, null, window.location.href);
     };
@@ -95,15 +71,12 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   // Additional protection on page load
   useEffect(() => {
-    // Check if user has proper access rights
     const token = localStorage.getItem('token');
     if (!token) {
       showToastMessage('Session expired. Please log in again.', 'error');
       setTimeout(() => onLogout(), 2000);
       return;
     }
-    // Authentication is handled via token. We don't rely on sessionStorage
-    // flags to allow full page refreshes without redirecting the user.
   }, [onLogout]);
 
   const fetchData = async () => {
@@ -119,11 +92,10 @@ export default function AdminDashboard({ onLogout, userData }) {
 
       let url = `https://btbsitess.onrender.com/api/clicks?page=${page}&limit=${limit}`;
       if (selectedCategory !== 'all') {
-        const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
+        const categoryButtons = clickCategories[selectedCategory]?.map(item => item.button) || [];
         url += `&buttons=${categoryButtons.join(',')}`;
       }
       
-      // Add date range to the URL if custom date range is selected
       if (timeFilter === 'custom' && startDate && endDate) {
         url += `&startDate=${new Date(startDate).toISOString()}&endDate=${new Date(endDate).toISOString()}`;
       }
@@ -167,14 +139,12 @@ export default function AdminDashboard({ onLogout, userData }) {
         return;
       }
 
-      // Fetch all clicks without pagination for analytics
-      let url = 'https://btbsitess.onrender.com/api/clicks?page=1&limit=10000'; // Large limit to get all
+      let url = 'https://btbsitess.onrender.com/api/clicks?page=1&limit=10000';
       if (selectedCategory !== 'all') {
-        const categoryButtons = clickCategories[selectedCategory].map(item => item.button);
+        const categoryButtons = clickCategories[selectedCategory]?.map(item => item.button) || [];
         url += `&buttons=${categoryButtons.join(',')}`;
       }
       
-      // Add date range to the URL if custom date range is selected
       if (timeFilter === 'custom' && startDate && endDate) {
         url += `&startDate=${new Date(startDate).toISOString()}&endDate=${new Date(endDate).toISOString()}`;
       }
@@ -204,13 +174,13 @@ export default function AdminDashboard({ onLogout, userData }) {
 
   useEffect(() => {
     fetchData();
-  }, [page, selectedCategory, timeFilter]);
+  }, [page, selectedCategory, timeFilter, startDate, endDate]);
 
   useEffect(() => {
     if (activeNav === 'analytics') {
       fetchAllClicksForAnalytics();
     }
-  }, [activeNav, selectedCategory, timeFilter]);
+  }, [activeNav, selectedCategory, timeFilter, startDate, endDate]);
 
   // Reset to first page when category or time filter changes
   useEffect(() => {
@@ -218,7 +188,6 @@ export default function AdminDashboard({ onLogout, userData }) {
       setPage(1);
     }
     
-    // Reset date range when time filter changes to non-custom
     if (timeFilter !== 'custom') {
       setStartDate('');
       setEndDate('');
@@ -226,7 +195,6 @@ export default function AdminDashboard({ onLogout, userData }) {
   }, [selectedCategory, timeFilter]);
 
   const filterByTime = (clicks) => {
-    // Helper function to normalize dates to the start of the day for comparison
     const normalizeDate = (date) => {
       const d = new Date(date);
       return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -235,7 +203,7 @@ export default function AdminDashboard({ onLogout, userData }) {
     const now = new Date();
     const today = normalizeDate(now);
     const firstDayOfWeek = new Date(today);
-    firstDayOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+    firstDayOfWeek.setDate(today.getDate() - today.getDay());
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
 
@@ -255,7 +223,6 @@ export default function AdminDashboard({ onLogout, userData }) {
           if (!startDate || !endDate) return true;
           const start = normalizeDate(startDate);
           const end = normalizeDate(endDate);
-          // Include the entire end day by setting time to 23:59:59.999
           end.setHours(23, 59, 59, 999);
           return clickDate >= start && clickDate <= end;
         default:
@@ -265,7 +232,6 @@ export default function AdminDashboard({ onLogout, userData }) {
   };
 
   const getFilteredClicks = () => {
-    // First filter by time if needed
     let filtered = [...clicks];
     if (timeFilter !== 'all') {
       filtered = filterByTime(filtered);
@@ -274,7 +240,6 @@ export default function AdminDashboard({ onLogout, userData }) {
   };
 
   const getAnalyticsData = () => {
-    // Filter allClicks by time if needed
     if (timeFilter === 'all') return allClicks;
     return filterByTime(allClicks);
   };
@@ -312,15 +277,12 @@ export default function AdminDashboard({ onLogout, userData }) {
         throw new Error(errorData.message || 'Failed to delete data');
       }
 
-      // Show success message
       const successMessage = deleteMode === 'single' 
         ? 'Click data deleted successfully' 
         : 'All click data deleted successfully';
       showToastMessage(successMessage, 'success');
       
-      // Refresh data
       await fetchData();
-      // Also refresh analytics data if we're on analytics page
       if (activeNav === 'analytics') {
         await fetchAllClicksForAnalytics();
       }
@@ -348,69 +310,32 @@ export default function AdminDashboard({ onLogout, userData }) {
     setShowDeleteModal(true);
   };
 
-  const getChartData = () => {
-    const analyticsData = getAnalyticsData();
-    const buttonCounts = analyticsData.reduce((acc, click) => {
-      acc[click.button] = (acc[click.button] || 0) + 1;
-      return acc;
-    }, {});
-
-    const colors = [
-      'rgba(99, 102, 241, 0.6)',
-      'rgba(220, 38, 38, 0.6)',
-      'rgba(5, 150, 105, 0.6)',
-      'rgba(202, 138, 4, 0.6)',
-      'rgba(217, 70, 239, 0.6)',
-      'rgba(20, 184, 166, 0.6)',
-      'rgba(239, 68, 68, 0.6)',
-    ];
-
-    return {
-      labels: Object.keys(buttonCounts),
-      datasets: [
-        {
-          label: 'Clicks per Button',
-          data: Object.values(buttonCounts),
-          backgroundColor: colors.slice(0, Object.keys(buttonCounts).length),
-          borderColor: colors.map(color => color.replace('0.6', '1')),
-          borderWidth: 1
-        }
-      ]
-    };
-  };
-
   const handleNavClick = (nav) => {
     setActiveNav(nav);
     setShowAccessCodes(nav === 'access-codes');
     if (isMobile) {
       setIsSidebarOpen(false);
     }
-    // Refresh data when switching to analytics
     if (nav === 'analytics') {
       fetchAllClicksForAnalytics();
     }
   };
 
-  // Handle logout with cleanup
   const handleLogout = () => {
-    // Leave local/session storage keys intact only if needed by other parts
-    // of the app. Authentication token should be cleared by the caller (onLogout).
     onLogout();
   };
 
   const handleExportCSV = () => {
-    if (clicks.length === 0) {
+    const filteredClicks = getFilteredClicks();
+    if (filteredClicks.length === 0) {
       showToastMessage('No data to export', 'info');
       return;
     }
 
-    // Define CSV headers
     const headers = ['Button', 'Page', 'Timestamp', 'ID'];
-    
-    // Create CSV content
     const csvContent = [
       headers.join(','),
-      ...getFilteredClicks().map(click => [
+      ...filteredClicks.map(click => [
         `"${click.button}"`,
         `"${click.page}"`,
         `"${new Date(click.timestamp).toISOString()}"`,
@@ -418,7 +343,6 @@ export default function AdminDashboard({ onLogout, userData }) {
       ].join(','))
     ].join('\n');
 
-    // Create download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -434,260 +358,96 @@ export default function AdminDashboard({ onLogout, userData }) {
     showToastMessage('CSV export started', 'success');
   };
 
-  // Analytics Component
-  const AnalyticsSection = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
-        <div className="flex-1">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 gap-2 mb-4">
-            <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
-            <button 
-              onClick={() => {
-                fetchData();
-                fetchAllClicksForAnalytics();
-              }}
-              className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors self-start sm:self-center"
-              title="Refresh Analytics"
-              disabled={isLoading || analyticsLoading}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-          </div>
-          <p className="text-gray-200 mb-4">Visual insights into guest interactions</p>
-          
-          <div className="w-full max-w-xs">
-            <label htmlFor="category-filter" className="block text-sm font-medium text-gray-300 mb-2">
-              Filter by Category:
-            </label>
-            <select
-              id="category-filter"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
-            >
-              <option value="all">All Categories</option>
-              {Object.keys(clickCategories).map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="w-full max-w-xs">
-            <label htmlFor="time-filter" className="block text-sm font-medium text-gray-300 mb-2">
-              Filter by Time:
-            </label>
-            <select
-              id="time-filter"
-              value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value)}
-              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-            </select>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div className="bg-gray-800 p-3 sm:p-4 rounded-lg border border-gray-700 min-w-[120px]">
-            <p className="text-sm text-gray-200">Filtered Clicks</p>
-            <p className="text-xl font-semibold text-white">{getAnalyticsData().length}</p>
-          </div>
-          <div className="bg-gray-800 p-3 sm:p-4 rounded-lg border border-gray-700 min-w-[120px]">
-            <p className="text-sm text-gray-200">Total Clicks</p>
-            <p className="text-xl font-semibold text-white">{total}</p>
-          </div>
-        </div>
-      </div>
+  // Analytics Component (Integrated back into AdminDashboard)
+  const AnalyticsSection = () => {
+    const analyticsData = getAnalyticsData();
+    
+    const getChartData = () => {
+      const buttonCounts = analyticsData.reduce((acc, click) => {
+        acc[click.button] = (acc[click.button] || 0) + 1;
+        return acc;
+      }, {});
 
-      {analyticsLoading ? (
-        <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-200">Loading analytics data...</p>
-        </div>
-      ) : getAnalyticsData().length > 0 ? (
-        <div className="space-y-6">
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
-            <h2 className="text-lg font-medium text-white mb-4">Engagements - Bar Chart</h2>
-            <div className="bg-gray-800 p-3 sm:p-4 rounded-lg h-64 sm:h-80">
-              <Bar
-                data={getChartData()}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { 
-                      position: 'top',
-                      labels: { 
-                        color: 'white',
-                        font: {
-                          size: window.innerWidth < 640 ? 10 : 12
-                        }
-                      }
-                    },
-                    title: { 
-                      display: true, 
-                      text: 'Clicks per Button',
-                      color: 'white',
-                      font: {
-                        size: window.innerWidth < 640 ? 14 : 16
-                      }
-                    }
-                  },
-                  scales: {
-                    y: { 
-                      beginAtZero: true, 
-                      title: { 
-                        display: true, 
-                        text: 'Number of Clicks',
-                        color: 'white',
-                        font: {
-                          size: window.innerWidth < 640 ? 10 : 12
-                        }
-                      },
-                      ticks: { 
-                        color: 'white',
-                        font: {
-                          size: window.innerWidth < 640 ? 10 : 12
-                        }
-                      },
-                      grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    x: { 
-                      title: { 
-                        display: true, 
-                        text: 'Button',
-                        color: 'white',
-                        font: {
-                          size: window.innerWidth < 640 ? 10 : 12
-                        }
-                      },
-                      ticks: { 
-                        color: 'white',
-                        font: {
-                          size: window.innerWidth < 640 ? 10 : 12
-                        },
-                        maxRotation: 45,
-                        minRotation: 45
-                      },
-                      grid: { color: 'rgba(255,255,255,0.1)' }
-                    }
-                  }
-                }}
-                height={300}
-              />
-            </div>
-          </div>
+      const colors = [
+        'rgba(99, 102, 241, 0.6)',
+        'rgba(220, 38, 38, 0.6)',
+        'rgba(5, 150, 105, 0.6)',
+        'rgba(202, 138, 4, 0.6)',
+        'rgba(217, 70, 239, 0.6)',
+        'rgba(20, 184, 166, 0.6)',
+        'rgba(239, 68, 68, 0.6)',
+      ];
 
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
-            <h2 className="text-lg font-medium text-white mb-4">Click Distribution - Pie Chart</h2>
-            <div className="bg-gray-800 p-3 sm:p-4 rounded-lg h-64 sm:h-80">
-              <Pie
-                data={getChartData()}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { 
-                      position: window.innerWidth < 640 ? 'bottom' : 'right',
-                      labels: { 
-                        color: 'white',
-                        padding: 15,
-                        boxWidth: 12,
-                        font: {
-                          size: window.innerWidth < 640 ? 10 : 12
-                        }
-                      }
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: function(context) {
-                          const label = context.label || '';
-                          const value = context.raw || 0;
-                          const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                          const percentage = Math.round((value / total) * 100);
-                          return `${label}: ${value} (${percentage}%)`;
-                        }
-                      }
-                    }
-                  }
-                }}
-                height={300}
-              />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 text-center">
-          <p className="text-gray-200">No data available for analytics{selectedCategory !== 'all' ? ` in ${selectedCategory}` : ''}{timeFilter !== 'all' ? ` for this ${timeFilter}` : ''}</p>
-        </div>
-      )}
-    </div>
-  );
-
-  // Guest Clicks Component
-  const GuestClicksSection = () => {
-    const filteredClicks = getFilteredClicks();
+      return {
+        labels: Object.keys(buttonCounts),
+        datasets: [
+          {
+            label: 'Clicks per Button',
+            data: Object.values(buttonCounts),
+            backgroundColor: colors.slice(0, Object.keys(buttonCounts).length),
+            borderColor: colors.map(color => color.replace('0.6', '1')),
+            borderWidth: 1
+          }
+        ]
+      };
+    };
 
     return (
       <div className="space-y-6">
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
           <div className="flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 gap-2 mb-4">
-              <h2 className="text-2xl font-bold text-white">Guest Activity</h2>
+              <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
               <button 
-                onClick={fetchData}
+                onClick={() => {
+                  fetchData();
+                  fetchAllClicksForAnalytics();
+                }}
                 className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors self-start sm:self-center"
-                title="Refresh Activity"
-                disabled={isLoading}
+                title="Refresh Analytics"
+                disabled={analyticsLoading}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
             </div>
-            <p className="text-gray-200 mb-4">Detailed log of all guest interactions</p>
+            <p className="text-gray-200 mb-4">Visual insights into guest interactions</p>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
-              <div className="w-full sm:w-1/2">
-                <label htmlFor="category-filter" className="block text-sm font-medium text-gray-300 mb-2">
-                  Filter by Category:
-                </label>
-                <select
-                  id="category-filter"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
-                >
-                  <option value="all">All Categories</option>
-                  {Object.keys(clickCategories).map(category => (
-                    <option key={`guest-${category}`} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="w-full sm:w-1/2">
-                <label htmlFor="time-filter" className="block text-sm font-medium text-gray-300 mb-2">
-                  Filter by Time:
-                </label>
+            <div className="w-full max-w-xs">
+              <label htmlFor="category-filter" className="block text-sm font-medium text-gray-300 mb-2">
+                Filter by Category:
+              </label>
+              <select
+                id="category-filter"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
+              >
+                <option value="all">All Categories</option>
+                {Object.keys(clickCategories).map(category => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-full max-w-xs">
+              <label htmlFor="time-filter" className="block text-sm font-medium text-gray-300 mb-2">
+                Filter by Time:
+              </label>
+              <div className="relative">
                 <select
                   id="time-filter"
                   value={timeFilter}
                   onChange={(e) => {
                     setTimeFilter(e.target.value);
-                    // Reset date inputs when changing filter type
                     if (e.target.value !== 'custom') {
                       setStartDate('');
                       setEndDate('');
                     }
                   }}
-                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
+                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg pl-3 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
                 >
                   <option value="all">All Time</option>
                   <option value="today">Today</option>
@@ -696,273 +456,236 @@ export default function AdminDashboard({ onLogout, userData }) {
                   <option value="year">This Year</option>
                   <option value="custom">Custom Range</option>
                 </select>
-                {timeFilter === 'custom' && (
-                  <div className="flex items-center space-x-2 mt-2">
-                    <div className="flex items-center">
-                      <FiCalendar className="text-gray-500 mr-1" />
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => {
-                          setStartDate(e.target.value || '');
-                          if (e.target.value && endDate && new Date(e.target.value) > new Date(endDate)) {
-                            setEndDate('');
-                          }
-                        }}
-                        max={endDate || new Date().toISOString().split('T')[0]}
-                        className="border rounded px-2 py-1 text-sm"
-                      />
-                    </div>
-                    <span className="text-gray-500">to</span>
-                    <div className="flex items-center">
-                      <FiCalendar className="text-gray-500 mr-1" />
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value || '')}
-                        min={startDate}
-                        max={new Date().toISOString().split('T')[0]}
-                        className="border rounded px-2 py-1 text-sm"
-                      />
-                    </div>
-                  </div>
-                )}
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <FiCalendar className="h-5 w-5 text-gray-400" />
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="flex flex-col xs:flex-row gap-3">
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white font-semibold text-sm hover:bg-green-700 rounded-lg transition-colors w-full xs:w-auto min-w-[120px]"
-              disabled={getFilteredClicks().length === 0}
-              title="Export to CSV"
-            >
-              <FiDownload size={16} />
-              <span>Export CSV</span>
-            </button>
-            <button
-              onClick={handleDeleteAll}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white font-semibold text-sm hover:bg-red-700 rounded-lg transition-colors w-full xs:w-auto min-w-[120px]"
-              disabled={total === 0}
-              title="Delete all records"
-            >
-              <FiTrash2 size={16} />
-              <span>Delete All</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          {isLoading ? (
-            <div className="p-8 flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-700">
-                  <thead className="bg-gray-800">
-                    <tr>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Button</th>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Page</th>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Date & Time</th>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">ID</th>
-                      <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-gray-800 divide-y divide-gray-700">
-                    {getFilteredClicks().length > 0 ? (
-                      getFilteredClicks().map((click, idx) => (
-                        <tr key={click._id || idx} className="hover:bg-gray-750 transition-colors">
-                          <td className="px-3 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-200 max-w-[120px] truncate">
-                              {click.button}
-                            </span>
-                          </td>
-                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-200 max-w-[150px] truncate">{click.page}</td>
-                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-400">
-                            {new Date(click.timestamp).toLocaleString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </td>
-                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell max-w-[100px] truncate">
-                            {click._id ? click._id.substring(0, 8) + '...' : 'No ID'}
-                          </td>
-                          <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => handleDeleteClick(click._id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
-                              title="Delete this entry"
-                              disabled={!click._id}
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                          No data available{selectedCategory !== 'all' ? ` for ${selectedCategory}` : ''}{timeFilter !== 'all' ? ` for this ${timeFilter}` : ''}
-                        </td>
-                      </tr>
+              {timeFilter === 'custom' && (
+                <div className="mt-3 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="analytics-start-date" className="block text-sm font-medium text-gray-300 mb-1">
+                        From Date
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          id="analytics-start-date"
+                          value={startDate}
+                          onChange={(e) => {
+                            setStartDate(e.target.value || '');
+                            if (e.target.value && endDate && new Date(e.target.value) > new Date(endDate)) {
+                              setEndDate('');
+                            }
+                          }}
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          max={endDate || new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="analytics-end-date" className="block text-sm font-medium text-gray-300 mb-1">
+                        To Date
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          id="analytics-end-date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value || '')}
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          min={startDate}
+                          max={new Date().toISOString().split('T')[0]}
+                          disabled={!startDate}
+                        />
+                      </div>
+                    </div>
+                    {startDate && endDate && new Date(startDate) > new Date(endDate) && (
+                      <p className="text-red-400 text-xs mt-1">End date must be after start date</p>
                     )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              <div className="px-4 sm:px-6 py-4 bg-gray-750 border-t border-gray-700 flex items-center justify-between">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setPage(page + 1)}
-                    disabled={page === totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">
-                      Showing <span className="font-medium text-white">{getFilteredClicks().length > 0 ? (page - 1) * limit + 1 : 0}</span> to{' '}
-                      <span className="font-medium text-white">{Math.min(page * limit, total)}</span> of{' '}
-                      <span className="font-medium text-white">{total}</span> results
-                      {(selectedCategory !== 'all' || timeFilter !== 'all') && (
-                        <span className="text-gray-500 ml-2">(filtered by 
-                          {selectedCategory !== 'all' ? ` ${selectedCategory}` : ''}
-                          {selectedCategory !== 'all' && timeFilter !== 'all' ? ' and ' : ''}
-                          {timeFilter !== 'all' ? ` this ${timeFilter}` : ''}
-                          )</span>
-                      )}
-                    </p>
                   </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                      <button
-                        onClick={() => setPage(Math.max(1, page - 1))}
-                        disabled={page === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-600 bg-gray-700 text-sm font-medium text-gray-400 hover:bg-gray-600 disabled:opacity-50 transition-colors"
-                      >
-                        <span className="sr-only">Previous</span>
-                        <FiChevronLeft className="h-5 w-5" />
-                      </button>
-                      <span className="relative inline-flex items-center px-4 py-2 border border-gray-600 bg-gray-700 text-sm font-medium text-gray-300">
-                        Page {page} of {totalPages}
-                      </span>
-                      <button
-                        onClick={() => setPage(page + 1)}
-                        disabled={page === totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-600 bg-gray-700 text-sm font-medium text-gray-400 hover:bg-gray-600 disabled:opacity-50 transition-colors"
-                      >
-                        <span className="sr-only">Next</span>
-                        <FiChevronRight className="h-5 w-5" />
-                      </button>
-                    </nav>
+                  <div className="mt-3 pt-3 border-t border-gray-700 flex justify-end space-x-2">
+                    <button
+                      onClick={() => {
+                        setTimeFilter('all');
+                        setStartDate('');
+                        setEndDate('');
+                      }}
+                      className="px-3 py-1.5 text-sm text-gray-300 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (startDate && endDate && new Date(startDate) <= new Date(endDate)) {
+                          fetchData();
+                          fetchAllClicksForAnalytics();
+                        }
+                      }}
+                      className={`px-3 py-1.5 text-sm rounded-md ${
+                        !startDate || !endDate || new Date(startDate) > new Date(endDate)
+                          ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                      disabled={!startDate || !endDate || new Date(startDate) > new Date(endDate)}
+                    >
+                      Apply
+                    </button>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="bg-gray-800 p-3 sm:p-4 rounded-lg border border-gray-700 min-w-[120px]">
+              <p className="text-sm text-gray-200">Filtered Clicks</p>
+              <p className="text-xl font-semibold text-white">{analyticsData.length}</p>
+            </div>
+            <div className="bg-gray-800 p-3 sm:p-4 rounded-lg border border-gray-700 min-w-[120px]">
+              <p className="text-sm text-gray-200">Total Clicks</p>
+              <p className="text-xl font-semibold text-white">{total}</p>
+            </div>
+          </div>
         </div>
+
+        {analyticsLoading ? (
+          <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-200">Loading analytics data...</p>
+          </div>
+        ) : analyticsData.length > 0 ? (
+          <div className="space-y-6">
+            <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
+              <h2 className="text-lg font-medium text-white mb-4">Engagements - Bar Chart</h2>
+              <div className="bg-gray-800 p-3 sm:p-4 rounded-lg h-64 sm:h-80">
+                <Bar
+                  data={getChartData()}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { 
+                        position: 'top',
+                        labels: { 
+                          color: 'white',
+                          font: {
+                            size: window.innerWidth < 640 ? 10 : 12
+                          }
+                        }
+                      },
+                      title: { 
+                        display: true, 
+                        text: 'Clicks per Button',
+                        color: 'white',
+                        font: {
+                          size: window.innerWidth < 640 ? 14 : 16
+                        }
+                      }
+                    },
+                    scales: {
+                      y: { 
+                        beginAtZero: true, 
+                        title: { 
+                          display: true, 
+                          text: 'Number of Clicks',
+                          color: 'white',
+                          font: {
+                            size: window.innerWidth < 640 ? 10 : 12
+                          }
+                        },
+                        ticks: { 
+                          color: 'white',
+                          font: {
+                            size: window.innerWidth < 640 ? 10 : 12
+                          }
+                        },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                      },
+                      x: { 
+                        title: { 
+                          display: true, 
+                          text: 'Button',
+                          color: 'white',
+                          font: {
+                            size: window.innerWidth < 640 ? 10 : 12
+                          }
+                        },
+                        ticks: { 
+                          color: 'white',
+                          font: {
+                            size: window.innerWidth < 640 ? 10 : 12
+                          },
+                          maxRotation: 45,
+                          minRotation: 45
+                        },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                      }
+                    }
+                  }}
+                  height={300}
+                />
+              </div>
+            </div>
+
+            <div className="bg-gray-800 p-4 sm:p-6 rounded-xl border border-gray-700">
+              <h2 className="text-lg font-medium text-white mb-4">Click Distribution - Pie Chart</h2>
+              <div className="bg-gray-800 p-3 sm:p-4 rounded-lg h-64 sm:h-80">
+                <Pie
+                  data={getChartData()}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { 
+                        position: window.innerWidth < 640 ? 'bottom' : 'right',
+                        labels: { 
+                          color: 'white',
+                          padding: 15,
+                          boxWidth: 12,
+                          font: {
+                            size: window.innerWidth < 640 ? 10 : 12
+                          }
+                        }
+                      },
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                          }
+                        }
+                      }
+                    }
+                  }}
+                  height={300}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 text-center">
+            <p className="text-gray-200">No data available for analytics{selectedCategory !== 'all' ? ` in ${selectedCategory}` : ''}{timeFilter !== 'all' ? ` for this ${timeFilter}` : ''}</p>
+            <p className="text-gray-400 text-sm mt-2">Total clicks in system: {total}</p>
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div className="min-h-screen bg-black text-gray-300 flex">
-      {/* Mobile Overlay */}
-      {isSidebarOpen && isMobile && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed md:static inset-y-0 left-0 z-50
-        w-64 bg-gray-900 shadow-lg flex flex-col border-r border-gray-800
-        transform transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
-        <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
-          <button 
-            onClick={() => setIsSidebarOpen(false)}
-            className="md:hidden text-gray-400 hover:text-white"
-          >
-            <FiX size={24} />
-          </button>
-        </div>
-        
-        <nav className="flex-1 p-4 space-y-2 pt-6 md:pt-4">
-          <button 
-            onClick={() => handleNavClick('analytics')}
-            className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-              activeNav === 'analytics' 
-                ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
-                : 'hover:bg-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <FiBarChart2 className="mr-3" />
-            <span>Analytics</span>
-          </button>
-          <button 
-            onClick={() => handleNavClick('guests')}
-            className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-              activeNav === 'guests' 
-                ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
-                : 'hover:bg-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <FiUsers className="mr-3" />
-            <span>Guest Activity</span>
-          </button>
-          <button 
-            onClick={() => handleNavClick('access-codes')}
-            className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-              activeNav === 'access-codes' 
-                ? 'bg-blue-900 bg-opacity-50 text-blue-300 border border-blue-700' 
-                : 'hover:bg-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <FiKey className="mr-3" />
-            <span>Access Codes</span>
-          </button>
-        </nav>
-        
-        <div className="p-4 border-t border-gray-800">
-          <div className="flex items-center p-3 bg-gray-800 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-blue-900 bg-opacity-50 flex items-center justify-center text-blue-300 font-semibold border border-blue-700">
-              {userData?.username?.charAt(0).toUpperCase() || 'A'}
-            </div>
-            <div className="ml-3 flex flex-col">
-              <p className="text-sm font-medium text-white">{userData?.username || 'Admin'}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Administrator</p>
-            </div>
-          </div>
-          
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 text-white font-semibold text-sm mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 hover:bg-red-700 rounded-lg transition-colors"
-          >
-            <FiLogOut size={16} />
-            Log out
-          </button>
-        </div>
-      </aside>
+      <Sidebar 
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        activeNav={activeNav}
+        handleNavClick={handleNavClick}
+        userData={userData}
+        handleLogout={handleLogout}
+        isMobile={isMobile}
+      />
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto bg-black p-4 sm:p-6 md:p-8 min-h-screen">
@@ -977,52 +700,49 @@ export default function AdminDashboard({ onLogout, userData }) {
           <h1 className="text-xl font-bold text-white">
             {activeNav === 'analytics' ? 'Analytics' : activeNav === 'guests' ? 'Guest Activity' : 'Access Codes'}
           </h1>
-          <div className="w-8"></div> {/* Spacer for balance */}
+          <div className="w-8"></div>
         </div>
 
         {activeNav === 'analytics' ? (
           <AnalyticsSection />
         ) : activeNav === 'guests' ? (
-          <GuestClicksSection />
+          <GuestClicksSection
+            isLoading={isLoading}
+            getFilteredClicks={getFilteredClicks}
+            total={total}
+            totalPages={totalPages}
+            page={page}
+            setPage={setPage}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            timeFilter={timeFilter}
+            setTimeFilter={setTimeFilter}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+            fetchData={fetchData}
+            handleDeleteClick={handleDeleteClick}
+            handleDeleteAll={handleDeleteAll}
+            handleExportCSV={handleExportCSV}
+            clicks={clicks}
+          />
         ) : (
           <AdminAccessCode />
         )}
 
         {/* Delete Confirmation Modal */}
-        {showDeleteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700">
-              <h3 className="text-lg font-medium text-white mb-4">
-                {deleteMode === 'all' ? 'Delete All Records' : 'Delete Click Record'}
-              </h3>
-              <p className="text-gray-400 mb-6">
-                {deleteMode === 'all'
-                  ? 'Are you sure you want to delete ALL click records? This action cannot be undone.'
-                  : 'Are you sure you want to delete this click record? This action cannot be undone.'}
-              </p>
-              <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setClickToDelete(null);
-                    setDeleteMode(null);
-                  }}
-                  className="px-4 py-2 rounded-md text-gray-300 hover:bg-gray-700 transition-colors order-2 sm:order-1"
-                  disabled={isDeleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-colors order-1 sm:order-2"
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <DeleteConfirmationModal
+          showModal={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setClickToDelete(null);
+            setDeleteMode(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          deleteMode={deleteMode}
+          isDeleting={isDeleting}
+        />
 
         {/* Toast Notification */}
         {showToast && (
