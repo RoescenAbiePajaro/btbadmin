@@ -291,15 +291,9 @@ export default function AdminAccessCode() {
           <button
             onClick={toggleAddForm}
             className={`${isAdding ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2 px-4 py-2 w-full sm:w-auto`}
-          >
-            {isAdding ? (
-              'Cancel'
-            ) : (
-              <>
-                <FiPlus className="mr-2" />
-                Add New Code
-              </>
-            )}
+          >           
+            {!isAdding && <FiPlus className="mr-2" />}
+            {isAdding ? 'Cancel' : 'Add New Code'}
           </button>
         </div>
       </div>

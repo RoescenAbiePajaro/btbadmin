@@ -1,3 +1,4 @@
+//src/components/AdminDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { FiChevronLeft, FiChevronRight, FiTrash2, FiMenu, FiDownload, FiCalendar } from 'react-icons/fi';
 import { Bar, Pie } from 'react-chartjs-2';
@@ -8,7 +9,6 @@ import AdminAccessCode from './AdminAccessCode';
 import GuestClicksSection from './GuestClicksSection';
 import clickCategories from '../config/clickCategories';
 import ChartJS from '../config/chartConfig';
-
 export default function AdminDashboard({ onLogout, userData }) {
   const [clicks, setClicks] = useState([]);
   const [page, setPage] = useState(1);
