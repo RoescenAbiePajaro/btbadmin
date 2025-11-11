@@ -1,9 +1,10 @@
+// backend/server.js
+
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const UAParser = require('ua-parser-js');
 
 // Toast notification utility
 const createToastResponse = (res, status, message, type = 'info', data = null) => {
@@ -29,111 +30,66 @@ const errorHandler = (err, req, res, next) => {
   return createToastResponse(res, status, message, 'error');
 };
 
-// Enhanced Device detection utility function with laptop support
+// Device detection utility function
 const detectDeviceInfo = (userAgent) => {
-  const parser = new UAParser(userAgent);
-  const result = parser.getResult();
+  const ua = userAgent.toLowerCase();
   
-  // Determine device type with improved detection including laptops
+  // Device detection
+  const isMobile = /mobile|android|iphone|ipod|blackberry|opera mini/i.test(ua);
+  const isTablet = /tablet|ipad|android(?!.*mobile)/i.test(ua);
+  const isDesktop = !isMobile && !isTablet;
+  
   let deviceType = 'Unknown';
+  if (isMobile) deviceType = 'Mobile';
+  if (isTablet) deviceType = 'Tablet';
+  if (isDesktop) deviceType = 'Desktop';
   
-  // Check for mobile devices first
-  if (result.device.type === 'mobile' || 
-      /android|iphone|ipod|mobile/i.test(userAgent)) {
-    deviceType = 'Mobile';
-  } 
-  // Then check for tablets
-  else if (result.device.type === 'tablet' || 
-           /ipad|tablet/i.test(userAgent)) {
-    deviceType = 'Tablet';
-  }
-  // Check for laptops
-  else if (isLaptopDevice(userAgent, result)) {
-    deviceType = 'Laptop';
-  }
-  // Default to desktop for other computers
-  else {
-    deviceType = 'Desktop';
-  }
-  
-  // Enhanced operating system detection
+  // OS detection - check mobile OS first
   let operatingSystem = 'Unknown';
-  const osName = result.os.name || '';
-  
-  if (/android/i.test(userAgent)) {
-    operatingSystem = 'Android';
-  } else if (/ios|iphone|ipad|ipod/i.test(userAgent)) {
-    operatingSystem = 'iOS';
-  } else if (/mac os x|macintosh/i.test(userAgent)) {
-    operatingSystem = 'macOS';
-  } else if (/windows/i.test(userAgent)) {
-    operatingSystem = 'Windows';
-  } else if (/linux/i.test(userAgent)) {
-    operatingSystem = 'Linux';
-  } else if (osName) {
-    operatingSystem = osName;
+  const androidMatch = ua.match(/android\s([0-9.]+)/i);
+  if (androidMatch) {
+    const version = androidMatch[1];
+    operatingSystem = `Android ${version}`;
+  } 
+  else if (/ios|iphone|ipad|ipod/i.test(ua)) {
+    const iosMatch = ua.match(/os (\d+_\d+_\d+)/i) || ua.match(/os (\d+_\d+)/i) || ua.match(/os (\d+)/i);
+    operatingSystem = iosMatch ? `iOS ${iosMatch[1].replace(/_/g, '.')}` : 'iOS';
   }
+  else if (/windows nt 10/i.test(ua)) operatingSystem = 'Windows 10/11';
+  else if (/windows nt 6.3/i.test(ua)) operatingSystem = 'Windows 8.1';
+  else if (/windows nt 6.2/i.test(ua)) operatingSystem = 'Windows 8';
+  else if (/windows nt 6.1/i.test(ua)) operatingSystem = 'Windows 7';
+  else if (/windows nt 6.0/i.test(ua)) operatingSystem = 'Windows Vista';
+  else if (/windows nt 5.1/i.test(ua)) operatingSystem = 'Windows XP';
+  else if (/windows nt 5.0/i.test(ua)) operatingSystem = 'Windows 2000';
+  else if (/windows|win32/i.test(ua)) operatingSystem = 'Windows';
+  else if (/mac os x 10[._]1[0-9][._]\d+/i.test(ua)) operatingSystem = 'macOS 10.10+'; // 10.10 through 10.15
+  else if (/mac os x 11[._]\d+/i.test(ua)) operatingSystem = 'macOS 11 (Big Sur)';
+  else if (/mac os x 12[._]\d+/i.test(ua)) operatingSystem = 'macOS 12 (Monterey)';
+  else if (/mac os x 13[._]\d+/i.test(ua)) operatingSystem = 'macOS 13 (Ventura)';
+  else if (/mac os x 14[._]\d+/i.test(ua)) operatingSystem = 'macOS 14 (Sonoma)';
+  else if (/mac os x 10[._]\d+/i.test(ua)) operatingSystem = 'macOS 10.x';
+  else if (/mac os x/i.test(ua)) operatingSystem = 'macOS';
+  else if (/ubuntu/i.test(ua)) operatingSystem = 'Ubuntu';
+  else if (/linux/i.test(ua)) operatingSystem = 'Linux';
   
-  // Format browser information
+  // Browser detection
   let browser = 'Unknown';
-  if (result.browser.name) {
-    browser = result.browser.version ? 
-      `${result.browser.name} ${result.browser.version}` : 
-      result.browser.name;
-  }
+  if (/chrome/i.test(ua)) browser = 'Chrome';
+  else if (/firefox/i.test(ua)) browser = 'Firefox';
+  else if (/safari/i.test(ua)) browser = 'Safari';
+  else if (/edge/i.test(ua)) browser = 'Edge';
+  else if (/opera/i.test(ua)) browser = 'Opera';
+  
   
   return {
     deviceType,
     operatingSystem,
     browser,
-    isMobile: deviceType === 'Mobile',
-    isTablet: deviceType === 'Tablet',
-    isDesktop: deviceType === 'Desktop',
-    isLaptop: deviceType === 'Laptop'
+    isMobile,
+    isTablet,
+    isDesktop
   };
-};
-
-// Helper function to detect laptop devices
-const isLaptopDevice = (userAgent, parserResult) => {
-  // Laptop detection heuristics
-  const ua = userAgent.toLowerCase();
-  
-  // Common laptop indicators
-  const laptopPatterns = [
-    // Windows laptops often have specific hardware identifiers
-    /\b(laptop|notebook|ultrabook|thinkpad|xps|spectre|envy|latitude|inspiron|ideapad|vivobook|zenbook|macbook)\b/i,
-    // macOS on MacBook devices
-    /macintosh.*mac os x/i,
-    // Chrome OS devices (Chromebooks)
-    /\b(cros|chromebook)\b/i,
-    // Specific laptop manufacturers
-    /\b(dell|hp|lenovo|asus|acer|msi|toshiba|samsung|lg|fujitsu|panasonic)\b.*\b(laptop|notebook|computer)\b/i
-  ];
-  
-  // Check if any laptop pattern matches
-  for (const pattern of laptopPatterns) {
-    if (pattern.test(userAgent)) {
-      return true;
-    }
-  }
-  
-  // Additional checks for common laptop scenarios
-  if (parserResult.os.name && !parserResult.device.type) {
-    // If we have an OS but no specific device type, and it's not mobile/tablet
-    const desktopOS = ['Windows', 'Mac OS', 'Linux', 'Chrome OS'];
-    if (desktopOS.includes(parserResult.os.name)) {
-      // Check screen resolution or other indicators (simplified)
-      // In a real implementation, you might have access to more client info
-      return true; // Assume laptop for desktop OS without specific device type
-    }
-  }
-  
-  // Check for touch capability without being a tablet (some laptops are touchscreen)
-  if (/\btouch\b/i.test(userAgent) && !/ipad|tablet/i.test(userAgent)) {
-    return true;
-  }
-  
-  return false;
 };
 
 require('dotenv').config();
@@ -178,7 +134,7 @@ const adminSchema = new mongoose.Schema({
 });
 const Admin = mongoose.model('Admin', adminSchema);
 
-// ✅ UPDATED: Click Schema with laptop support
+// ✅ NEW: Click Schema
 const clickSchema = new mongoose.Schema({
   button: String,
   page: String,
@@ -190,11 +146,20 @@ const clickSchema = new mongoose.Schema({
   isMobile: Boolean,
   isTablet: Boolean,
   isDesktop: Boolean,
-  isLaptop: Boolean, // NEW: Added laptop boolean
   location: Object,
   timestamp: { type: Date, default: Date.now },
 });
 const Click = mongoose.model('Click', clickSchema);
+
+// Root route to avoid default "Cannot GET /" and provide basic info
+app.get('/', (req, res) => {
+  res.json({
+    message: 'BTB Admin backend is running. See /api/test for a quick check.',
+    docs: '/api/test'
+  });
+});
+
+
 
 // =====================
 // ⚙️ TEST ENDPOINT
@@ -227,6 +192,8 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: 'Invalid token' });
   }
 };
+
+
 
 // =====================
 // 📋 ADMIN LIST ENDPOINT
@@ -346,7 +313,7 @@ app.post('/api/admin/register', async (req, res) => {
 // Click tracking endpoint
 app.post('/api/clicks', async (req, res) => {
   try {
-    const { button, page, device: deviceInfo = {} } = req.body;
+    const { button, page } = req.body;
     const userAgent = req.headers['user-agent'];
     const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
 
@@ -354,23 +321,11 @@ app.post('/api/clicks', async (req, res) => {
       return res.status(400).json({ message: 'Button and page are required' });
     }
 
-    // Log the user agent for debugging
-    console.log('User Agent:', userAgent);
-    
-    // Detect device information using enhanced function with laptop support
-    const detectedDeviceInfo = detectDeviceInfo(userAgent);
-    
-    // Merge provided device info with detected info
-    const combinedDeviceInfo = {
-      ...deviceInfo,
-      userAgent: userAgent,
-      ...detectedDeviceInfo
-    };
-    
-    // Log detected device info for debugging
-    console.log('Device Info:', combinedDeviceInfo);
+    // Detect device information
+    const deviceInfo = detectDeviceInfo(userAgent);
     
     // For location detection, you can use a service like ipapi.co
+    // This is a simplified version - you might want to use a proper IP geolocation service
     let location = {};
     try {
       // You can integrate with ipapi.co or similar service here
@@ -383,7 +338,9 @@ app.post('/api/clicks', async (req, res) => {
     const click = new Click({ 
       button, 
       page,
-      device: combinedDeviceInfo,
+      userAgent,
+      ipAddress,
+      ...deviceInfo,
       location
     });
     

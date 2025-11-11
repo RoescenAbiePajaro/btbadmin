@@ -1,3 +1,4 @@
+//src/components/GuestClicksSection.jsx
 import React, { useState } from 'react';
 import { FiChevronLeft, FiChevronRight, FiTrash2, FiDownload, FiCalendar, FiEye, FiX } from 'react-icons/fi';
 import clickCategories from '../config/clickCategories';
