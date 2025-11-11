@@ -346,7 +346,7 @@ app.post('/api/admin/register', async (req, res) => {
 // Click tracking endpoint
 app.post('/api/clicks', async (req, res) => {
   try {
-    const { button, page } = req.body;
+    const { button, page, device: deviceInfo = {} } = req.body;
     const userAgent = req.headers['user-agent'];
     const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
 
@@ -358,13 +358,19 @@ app.post('/api/clicks', async (req, res) => {
     console.log('User Agent:', userAgent);
     
     // Detect device information using enhanced function with laptop support
-    const deviceInfo = detectDeviceInfo(userAgent);
+    const detectedDeviceInfo = detectDeviceInfo(userAgent);
+    
+    // Merge provided device info with detected info
+    const combinedDeviceInfo = {
+      ...deviceInfo,
+      userAgent: userAgent,
+      ...detectedDeviceInfo
+    };
     
     // Log detected device info for debugging
-    console.log('Detected Device Info:', deviceInfo);
+    console.log('Device Info:', combinedDeviceInfo);
     
     // For location detection, you can use a service like ipapi.co
-    // This is a simplified version - you might want to use a proper IP geolocation service
     let location = {};
     try {
       // You can integrate with ipapi.co or similar service here
@@ -377,9 +383,7 @@ app.post('/api/clicks', async (req, res) => {
     const click = new Click({ 
       button, 
       page,
-      userAgent,
-      ipAddress,
-      ...deviceInfo,
+      device: combinedDeviceInfo,
       location
     });
     
