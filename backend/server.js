@@ -39,21 +39,29 @@ const detectDeviceInfo = (userAgent) => {
   const isTablet = /tablet|ipad|android(?!.*mobile)/i.test(ua);
   const isDesktop = !isMobile && !isTablet;
   
+  // Laptop detection - laptops are typically desktop devices with specific characteristics
+  // macOS devices are commonly laptops (MacBook series)
+  // For Windows/Linux, it's harder to distinguish, but we can use heuristics:
+  // - Non-touch devices are more likely laptops (touch screens are rare on laptops)
+  // - But we'll be conservative and primarily detect macOS as laptops
+  const isLaptop = isDesktop && (
+    /mac os x|macintosh/i.test(ua) || // macOS is typically laptop (MacBook)
+    (/windows/i.test(ua) && !/touch/i.test(ua) && !/tablet/i.test(ua)) // Windows non-touch, non-tablet (likely laptop)
+  );
+  
   let deviceType = 'Unknown';
   if (isMobile) deviceType = 'Mobile';
-  if (isTablet) deviceType = 'Tablet';
-  if (isDesktop) deviceType = 'Desktop';
+  else if (isTablet) deviceType = 'Tablet';
+  else if (isLaptop) deviceType = 'Laptop';
+  else if (isDesktop) deviceType = 'Desktop';
   
-  // OS detection - check mobile OS first
+  // OS detection - simplified (no version numbers for Android/iOS)
   let operatingSystem = 'Unknown';
-  const androidMatch = ua.match(/android\s([0-9.]+)/i);
-  if (androidMatch) {
-    const version = androidMatch[1];
-    operatingSystem = `Android ${version}`;
+  if (/android/i.test(ua)) {
+    operatingSystem = 'Android';
   } 
   else if (/ios|iphone|ipad|ipod/i.test(ua)) {
-    const iosMatch = ua.match(/os (\d+_\d+_\d+)/i) || ua.match(/os (\d+_\d+)/i) || ua.match(/os (\d+)/i);
-    operatingSystem = iosMatch ? `iOS ${iosMatch[1].replace(/_/g, '.')}` : 'iOS';
+    operatingSystem = 'iOS';
   }
   else if (/windows nt 10/i.test(ua)) operatingSystem = 'Windows 10/11';
   else if (/windows nt 6.3/i.test(ua)) operatingSystem = 'Windows 8.1';
@@ -63,12 +71,6 @@ const detectDeviceInfo = (userAgent) => {
   else if (/windows nt 5.1/i.test(ua)) operatingSystem = 'Windows XP';
   else if (/windows nt 5.0/i.test(ua)) operatingSystem = 'Windows 2000';
   else if (/windows|win32/i.test(ua)) operatingSystem = 'Windows';
-  else if (/mac os x 10[._]1[0-9][._]\d+/i.test(ua)) operatingSystem = 'macOS 10.10+'; // 10.10 through 10.15
-  else if (/mac os x 11[._]\d+/i.test(ua)) operatingSystem = 'macOS 11 (Big Sur)';
-  else if (/mac os x 12[._]\d+/i.test(ua)) operatingSystem = 'macOS 12 (Monterey)';
-  else if (/mac os x 13[._]\d+/i.test(ua)) operatingSystem = 'macOS 13 (Ventura)';
-  else if (/mac os x 14[._]\d+/i.test(ua)) operatingSystem = 'macOS 14 (Sonoma)';
-  else if (/mac os x 10[._]\d+/i.test(ua)) operatingSystem = 'macOS 10.x';
   else if (/mac os x/i.test(ua)) operatingSystem = 'macOS';
   else if (/ubuntu/i.test(ua)) operatingSystem = 'Ubuntu';
   else if (/linux/i.test(ua)) operatingSystem = 'Linux';
@@ -88,7 +90,8 @@ const detectDeviceInfo = (userAgent) => {
     browser,
     isMobile,
     isTablet,
-    isDesktop
+    isDesktop,
+    isLaptop
   };
 };
 
@@ -146,6 +149,7 @@ const clickSchema = new mongoose.Schema({
   isMobile: Boolean,
   isTablet: Boolean,
   isDesktop: Boolean,
+  isLaptop: Boolean,
   location: Object,
   timestamp: { type: Date, default: Date.now },
 });

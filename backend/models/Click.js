@@ -1,3 +1,4 @@
+// Click.js
 import mongoose from "mongoose";
 
 const clickSchema = new mongoose.Schema({
@@ -18,7 +19,8 @@ const clickSchema = new mongoose.Schema({
   },
   isMobile: Boolean,
   isTablet: Boolean,
-  isDesktop: Boolean
+  isDesktop: Boolean,
+  isLaptop: Boolean
 });
 
 export default mongoose.model("Click", clickSchema);

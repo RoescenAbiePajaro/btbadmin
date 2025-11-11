@@ -45,7 +45,8 @@ const GuestActivitySection = ({
     switch (deviceType.toLowerCase()) {
       case 'mobile': return '📱';
       case 'tablet': return '📟';
-      case 'desktop': return '💻';
+      case 'laptop': return '💻';
+      case 'desktop': return '🖥️';
       default: return '❓';
     }
   };
@@ -62,14 +63,12 @@ const GuestActivitySection = ({
     return '💻';
   };
 
-  // Format OS name for better display
+  // Format OS name for better display (simplified - no version numbers for Android/iOS)
   const formatOSName = (os) => {
     if (!os || os === 'Unknown') return 'Unknown OS';
     
-    // Capitalize first letter of each word
-    return os.split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ');
+    // Return OS name as-is (already simplified in backend)
+    return os;
   };
 
   return (
@@ -123,7 +122,8 @@ const GuestActivitySection = ({
                           {selectedClick.deviceType || 'Unknown'}
                           {selectedClick.isMobile && ' (Mobile)'}
                           {selectedClick.isTablet && ' (Tablet)'}
-                          {selectedClick.isDesktop && ' (Desktop/Laptop)'}
+                          {selectedClick.isLaptop && ' (Laptop)'}
+                          {selectedClick.isDesktop && !selectedClick.isLaptop && ' (Desktop)'}
                         </p>
                       </div>
                     </div>
