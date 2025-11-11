@@ -44,14 +44,34 @@ const detectDeviceInfo = (userAgent) => {
   if (isTablet) deviceType = 'Tablet';
   if (isDesktop) deviceType = 'Desktop';
   
-  // OS detection
+  // OS detection - check mobile OS first
   let operatingSystem = 'Unknown';
-  if (/windows/i.test(ua)) operatingSystem = 'Windows';
-  else if (/mac os/i.test(ua)) operatingSystem = 'macOS';
-  else if (/linux/i.test(ua)) operatingSystem = 'Linux';
+  const androidMatch = ua.match(/android\s([0-9.]+)/i);
+  if (androidMatch) {
+    const version = androidMatch[1];
+    operatingSystem = `Android ${version}`;
+  } 
+  else if (/ios|iphone|ipad|ipod/i.test(ua)) {
+    const iosMatch = ua.match(/os (\d+_\d+_\d+)/i) || ua.match(/os (\d+_\d+)/i) || ua.match(/os (\d+)/i);
+    operatingSystem = iosMatch ? `iOS ${iosMatch[1].replace(/_/g, '.')}` : 'iOS';
+  }
+  else if (/windows nt 10/i.test(ua)) operatingSystem = 'Windows 10/11';
+  else if (/windows nt 6.3/i.test(ua)) operatingSystem = 'Windows 8.1';
+  else if (/windows nt 6.2/i.test(ua)) operatingSystem = 'Windows 8';
+  else if (/windows nt 6.1/i.test(ua)) operatingSystem = 'Windows 7';
+  else if (/windows nt 6.0/i.test(ua)) operatingSystem = 'Windows Vista';
+  else if (/windows nt 5.1/i.test(ua)) operatingSystem = 'Windows XP';
+  else if (/windows nt 5.0/i.test(ua)) operatingSystem = 'Windows 2000';
+  else if (/windows|win32/i.test(ua)) operatingSystem = 'Windows';
+  else if (/mac os x 10[._]1[0-9][._]\d+/i.test(ua)) operatingSystem = 'macOS 10.10+'; // 10.10 through 10.15
+  else if (/mac os x 11[._]\d+/i.test(ua)) operatingSystem = 'macOS 11 (Big Sur)';
+  else if (/mac os x 12[._]\d+/i.test(ua)) operatingSystem = 'macOS 12 (Monterey)';
+  else if (/mac os x 13[._]\d+/i.test(ua)) operatingSystem = 'macOS 13 (Ventura)';
+  else if (/mac os x 14[._]\d+/i.test(ua)) operatingSystem = 'macOS 14 (Sonoma)';
+  else if (/mac os x 10[._]\d+/i.test(ua)) operatingSystem = 'macOS 10.x';
+  else if (/mac os x/i.test(ua)) operatingSystem = 'macOS';
   else if (/ubuntu/i.test(ua)) operatingSystem = 'Ubuntu';
-  else if (/android/i.test(ua)) operatingSystem = 'Android';
-  else if (/ios|iphone|ipad|ipod/i.test(ua)) operatingSystem = 'iOS';
+  else if (/linux/i.test(ua)) operatingSystem = 'Linux';
   
   // Browser detection
   let browser = 'Unknown';
@@ -60,6 +80,7 @@ const detectDeviceInfo = (userAgent) => {
   else if (/safari/i.test(ua)) browser = 'Safari';
   else if (/edge/i.test(ua)) browser = 'Edge';
   else if (/opera/i.test(ua)) browser = 'Opera';
+  
   
   return {
     deviceType,

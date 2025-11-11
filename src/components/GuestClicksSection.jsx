@@ -129,30 +129,12 @@ const GuestActivitySection = ({
                 </div>
               </div>
 
-              {/* Location Information */}
+              {/* Network Information */}
               <div className="bg-gray-750 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-400 mb-2">Location & Network</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-gray-400 text-sm">IP Address:</span>
-                    <p className="text-white font-mono text-sm">{selectedClick.ipAddress || 'Not available'}</p>
-                  </div>
-                  {selectedClick.location && (
-                    <>
-                      <div>
-                        <span className="text-gray-400 text-sm">Country:</span>
-                        <p className="text-white">{selectedClick.location.country || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-400 text-sm">Region:</span>
-                        <p className="text-white">{selectedClick.location.region || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-400 text-sm">City:</span>
-                        <p className="text-white">{selectedClick.location.city || 'Unknown'}</p>
-                      </div>
-                    </>
-                  )}
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Network Information</h4>
+                <div>
+                  <span className="text-gray-400 text-sm">IP Address:</span>
+                  <p className="text-white font-mono text-sm">{selectedClick.ipAddress || 'Not available'}</p>
                 </div>
               </div>
 
