@@ -1,4 +1,5 @@
-// backend/server.js
+// server.js
+
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
@@ -58,10 +59,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// Import models and utilities
+// Import AccessCode model
 const AccessCode = require('./models/AccessCode');
-const DeviceDetector = require('./utils/deviceDetector');
-const DeviceDetector = require('./utils/deviceDetector');
 
 // Admin Schema (untouched)
 const adminSchema = new mongoose.Schema({
@@ -73,22 +72,11 @@ const adminSchema = new mongoose.Schema({
 });
 const Admin = mongoose.model('Admin', adminSchema);
 
-// Click Schema with device and location info
+// ✅ NEW: Click Schema
 const clickSchema = new mongoose.Schema({
   button: String,
   page: String,
   timestamp: { type: Date, default: Date.now },
-  deviceInfo: {
-    deviceType: String,
-    browser: String,
-    browserVersion: String,
-    os: String,
-    osVersion: String
-  },
-  ipAddress: String,
-  country: String,
-  region: String,
-  city: String
 });
 const Click = mongoose.model('Click', clickSchema);
 
@@ -99,6 +87,8 @@ app.get('/', (req, res) => {
     docs: '/api/test'
   });
 });
+
+
 
 // =====================
 // ⚙️ TEST ENDPOINT
@@ -131,6 +121,8 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: 'Invalid token' });
   }
 };
+
+
 
 // =====================
 // 📋 ADMIN LIST ENDPOINT
@@ -242,92 +234,6 @@ app.post('/api/admin/register', async (req, res) => {
     res.status(500).json({ message: 'Server error during admin registration' });
   }
 });
-
-// =====================
-// 🖱️ CLICK TRACKING ENDPOINTS
-// =====================
-
-// Log a click with device info
-app.post('/api/clicks', async (req, res) => {
-  try {
-    const { button, page } = req.body;
-
-    if (!button || !page) {
-      return res.status(400).json({ message: 'Button and page are required' });
-    }
-
-    const deviceInfo = DeviceDetector.detectDeviceInfo(req);
-    const locationInfo = DeviceDetector.getLocationInfo(req);
-
-    const click = new Click({ 
-      button, 
-      page,
-      deviceInfo,
-      ...locationInfo
-    });
-    
-    await click.save();
-    res.status(201).json({ message: 'Click logged successfully' });
-  } catch (error) {
-    console.error('Error logging click:', error);
-    res.status(500).json({ message: 'Server error logging click' });
-  }
-});
-
-// Get device statistics
-app.get('/api/clicks/devices/stats', verifyToken, async (req, res) => {
-  try {
-    const deviceStats = await Click.aggregate([
-      {
-        $group: {
-          _id: '$deviceInfo.deviceType',
-          count: { $sum: 1 },
-          browsers: { 
-            $push: {
-              name: '$deviceInfo.browser',
-              version: '$deviceInfo.browserVersion'
-            }
-          },
-          os: {
-            $push: {
-              name: '$deviceInfo.os',
-              version: '$deviceInfo.osVersion'
-            }
-          }
-        }
-      }
-    ]);
-
-    // Process the stats for better formatting
-    const processedStats = deviceStats.map(stat => ({
-      deviceType: stat._id || 'unknown',
-      count: stat.count,
-      topBrowsers: getTopItems(stat.browsers),
-      topOS: getTopItems(stat.os)
-    }));
-
-    res.json(processedStats);
-  } catch (error) {
-    console.error('Error fetching device stats:', error);
-    res.status(500).json({ message: 'Server error fetching device stats' });
-  }
-});
-
-// Helper function to get top items
-function getTopItems(items, limit = 5) {
-  const countMap = {};
-  items.forEach(item => {
-    if (item && item.name) {
-      const key = `${item.name} ${item.version || ''}`.trim();
-      countMap[key] = (countMap[key] || 0) + 1;
-    }
-  });
-
-  return Object.entries(countMap)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, limit)
-    .map(([name, count]) => ({ name, count }));
-}
 
 // =====================
 // 📊 GUEST CLICK TRACKING ENDPOINTS
