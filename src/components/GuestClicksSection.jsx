@@ -122,7 +122,7 @@ const GuestActivitySection = ({
                           {selectedClick.deviceType || 'Unknown'}
                           {selectedClick.isMobile && ' (Mobile)'}
                           {selectedClick.isTablet && ' (Tablet)'}
-                          {selectedClick.isDesktop && ' (Desktop)'}
+                          {selectedClick.isDesktop && ' (Desktop/Laptop)'}
                         </p>
                       </div>
                     </div>
