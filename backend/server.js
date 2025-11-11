@@ -44,17 +44,24 @@ const detectDeviceInfo = (userAgent) => {
   if (isTablet) deviceType = 'Tablet';
   if (isDesktop) deviceType = 'Desktop';
   
-  // OS detection - check mobile OS first
+  // OS detection - prioritize mobile OS detection first
   let operatingSystem = 'Unknown';
-  const androidMatch = ua.match(/android\s([0-9.]+)/i);
-  if (androidMatch) {
-    const version = androidMatch[1];
-    operatingSystem = `Android ${version}`;
-  } 
-  else if (/ios|iphone|ipad|ipod/i.test(ua)) {
-    const iosMatch = ua.match(/os (\d+_\d+_\d+)/i) || ua.match(/os (\d+_\d+)/i) || ua.match(/os (\d+)/i);
+  
+  // Android detection - check for both 'android' and version number
+  const androidMatch = ua.match(/android[\s-]?([0-9.]+)?/i);
+  if (androidMatch && androidMatch[1]) {
+    operatingSystem = `Android ${androidMatch[1]}`;
+  } else if (/android/i.test(ua)) {
+    operatingSystem = 'Android';
+  }
+  // iOS detection - check for iOS devices (iPhone, iPad, iPod)
+  else if (/iphone|ipad|ipod/i.test(ua)) {
+    const iosMatch = ua.match(/os (\d+_\d+_\d+)/i) || 
+                    ua.match(/os (\d+_\d+)/i) || 
+                    ua.match(/os (\d+)/i);
     operatingSystem = iosMatch ? `iOS ${iosMatch[1].replace(/_/g, '.')}` : 'iOS';
   }
+  // Windows detection
   else if (/windows nt 10/i.test(ua)) operatingSystem = 'Windows 10/11';
   else if (/windows nt 6.3/i.test(ua)) operatingSystem = 'Windows 8.1';
   else if (/windows nt 6.2/i.test(ua)) operatingSystem = 'Windows 8';
