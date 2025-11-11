@@ -39,7 +39,9 @@ const GuestActivitySection = ({
   };
 
   const getDeviceIcon = (deviceType) => {
-    switch (deviceType?.toLowerCase()) {
+    if (!deviceType) return '❓';
+    
+    switch (deviceType.toLowerCase()) {
       case 'mobile': return '📱';
       case 'tablet': return '📟';
       case 'desktop': return '💻';
@@ -48,15 +50,25 @@ const GuestActivitySection = ({
   };
 
   const getOSIcon = (os) => {
-    switch (os?.toLowerCase()) {
-      case 'windows': return '🪟';
-      case 'macos': return '🍎';
-      case 'linux': return '🐧';
-      case 'ubuntu': return '🐧';
-      case 'android': return '🤖';
-      case 'ios': return '📱';
-      default: return '💻';
-    }
+    if (!os || os === 'Unknown') return '💻';
+    
+    const osLower = os.toLowerCase();
+    if (osLower.includes('android')) return '🤖';
+    if (osLower.includes('ios')) return '📱';
+    if (osLower.includes('windows')) return '🪟';
+    if (osLower.includes('macos') || osLower.includes('mac os')) return '🍎';
+    if (osLower.includes('linux') || osLower.includes('ubuntu')) return '🐧';
+    return '💻';
+  };
+
+  // Format OS name for better display
+  const formatOSName = (os) => {
+    if (!os || os === 'Unknown') return 'Unknown OS';
+    
+    // Capitalize first letter of each word
+    return os.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
   };
 
   return (
@@ -118,7 +130,7 @@ const GuestActivitySection = ({
                       <span className="text-2xl">{getOSIcon(selectedClick.operatingSystem)}</span>
                       <div>
                         <span className="text-gray-400 text-sm">OS:</span>
-                        <p className="text-white">{selectedClick.operatingSystem || 'Unknown'}</p>
+                        <p className="text-white">{formatOSName(selectedClick.operatingSystem)}</p>
                       </div>
                     </div>
                     <div>
@@ -339,7 +351,6 @@ const GuestActivitySection = ({
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Page</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Device & OS</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Date & Time</th>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">Location</th>
                     <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
@@ -359,7 +370,7 @@ const GuestActivitySection = ({
                             <span className="text-lg">{getOSIcon(click.operatingSystem)}</span>
                             <div className="text-sm">
                               <div className="text-gray-200">{click.deviceType || 'Unknown'}</div>
-                              <div className="text-gray-400 text-xs">{click.operatingSystem || 'Unknown OS'}</div>
+                              <div className="text-gray-400 text-xs">{formatOSName(click.operatingSystem)}</div>
                             </div>
                           </div>
                         </td>
@@ -371,10 +382,6 @@ const GuestActivitySection = ({
                             hour: '2-digit',
                             minute: '2-digit'
                           })}
-                        </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell">
-                          {click.location?.country || 'Unknown'}
-                          {click.location?.city ? `, ${click.location.city}` : ''}
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
