@@ -1,4 +1,4 @@
-// server.js
+// backend/server.js
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -28,6 +28,47 @@ const errorHandler = (err, req, res, next) => {
   
   // Send error response with toast
   return createToastResponse(res, status, message, 'error');
+};
+
+// Device detection utility function
+const detectDeviceInfo = (userAgent) => {
+  const ua = userAgent.toLowerCase();
+  
+  // Device detection
+  const isMobile = /mobile|android|iphone|ipod|blackberry|opera mini/i.test(ua);
+  const isTablet = /tablet|ipad|android(?!.*mobile)/i.test(ua);
+  const isDesktop = !isMobile && !isTablet;
+  
+  let deviceType = 'Unknown';
+  if (isMobile) deviceType = 'Mobile';
+  if (isTablet) deviceType = 'Tablet';
+  if (isDesktop) deviceType = 'Desktop';
+  
+  // OS detection
+  let operatingSystem = 'Unknown';
+  if (/windows/i.test(ua)) operatingSystem = 'Windows';
+  else if (/mac os/i.test(ua)) operatingSystem = 'macOS';
+  else if (/linux/i.test(ua)) operatingSystem = 'Linux';
+  else if (/ubuntu/i.test(ua)) operatingSystem = 'Ubuntu';
+  else if (/android/i.test(ua)) operatingSystem = 'Android';
+  else if (/ios|iphone|ipad|ipod/i.test(ua)) operatingSystem = 'iOS';
+  
+  // Browser detection
+  let browser = 'Unknown';
+  if (/chrome/i.test(ua)) browser = 'Chrome';
+  else if (/firefox/i.test(ua)) browser = 'Firefox';
+  else if (/safari/i.test(ua)) browser = 'Safari';
+  else if (/edge/i.test(ua)) browser = 'Edge';
+  else if (/opera/i.test(ua)) browser = 'Opera';
+  
+  return {
+    deviceType,
+    operatingSystem,
+    browser,
+    isMobile,
+    isTablet,
+    isDesktop
+  };
 };
 
 require('dotenv').config();
@@ -76,6 +117,15 @@ const Admin = mongoose.model('Admin', adminSchema);
 const clickSchema = new mongoose.Schema({
   button: String,
   page: String,
+  userAgent: String,
+  ipAddress: String,
+  deviceType: String,
+  operatingSystem: String,
+  browser: String,
+  isMobile: Boolean,
+  isTablet: Boolean,
+  isDesktop: Boolean,
+  location: Object,
   timestamp: { type: Date, default: Date.now },
 });
 const Click = mongoose.model('Click', clickSchema);
@@ -239,16 +289,40 @@ app.post('/api/admin/register', async (req, res) => {
 // 📊 GUEST CLICK TRACKING ENDPOINTS
 // =====================
 
-// Log a click
+// Click tracking endpoint
 app.post('/api/clicks', async (req, res) => {
   try {
     const { button, page } = req.body;
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
 
     if (!button || !page) {
       return res.status(400).json({ message: 'Button and page are required' });
     }
 
-    const click = new Click({ button, page });
+    // Detect device information
+    const deviceInfo = detectDeviceInfo(userAgent);
+    
+    // For location detection, you can use a service like ipapi.co
+    // This is a simplified version - you might want to use a proper IP geolocation service
+    let location = {};
+    try {
+      // You can integrate with ipapi.co or similar service here
+      // const locationResponse = await fetch(`https://ipapi.co/${ipAddress}/json/`);
+      // location = await locationResponse.json();
+    } catch (locationError) {
+      console.log('Location detection failed:', locationError);
+    }
+
+    const click = new Click({ 
+      button, 
+      page,
+      userAgent,
+      ipAddress,
+      ...deviceInfo,
+      location
+    });
+    
     await click.save();
     res.status(201).json({ message: 'Click logged successfully' });
   } catch (error) {
@@ -533,6 +607,8 @@ if (fs.existsSync(frontendDistPath)) {
     return res.status(404).send('Not found');
   });
 }
+
+app.use(errorHandler);
 
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Admin server running on ${HOST}:${PORT}`);

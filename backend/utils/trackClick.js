@@ -10,6 +10,7 @@
 //     }
 //   };
 
+//backend/utils/trackClick.js
 export const trackClick = async (button, page) => {
     try {
       await fetch("http://localhost:3000/api/clicks", {

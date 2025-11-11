@@ -1,9 +1,8 @@
-//src/components/GuestClicksSection.jsx
-import React from 'react';
-import { FiChevronLeft, FiChevronRight, FiTrash2, FiDownload, FiCalendar } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiChevronLeft, FiChevronRight, FiTrash2, FiDownload, FiCalendar, FiEye, FiX } from 'react-icons/fi';
 import clickCategories from '../config/clickCategories';
 
-const GuestClicksSection = ({
+const GuestActivitySection = ({
   isLoading,
   getFilteredClicks,
   total,
@@ -22,12 +21,165 @@ const GuestClicksSection = ({
   handleDeleteClick,
   handleDeleteAll,
   handleExportCSV,
-  clicks // Add this prop
+  clicks
 }) => {
+  const [selectedClick, setSelectedClick] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
   const filteredClicks = getFilteredClicks ? getFilteredClicks() : [];
+
+  const openDetails = (click) => {
+    setSelectedClick(click);
+    setShowModal(true);
+  };
+
+  const closeDetails = () => {
+    setShowModal(false);
+    setSelectedClick(null);
+  };
+
+  const getDeviceIcon = (deviceType) => {
+    switch (deviceType?.toLowerCase()) {
+      case 'mobile': return '📱';
+      case 'tablet': return '📟';
+      case 'desktop': return '💻';
+      default: return '❓';
+    }
+  };
+
+  const getOSIcon = (os) => {
+    switch (os?.toLowerCase()) {
+      case 'windows': return '🪟';
+      case 'macos': return '🍎';
+      case 'linux': return '🐧';
+      case 'ubuntu': return '🐧';
+      case 'android': return '🤖';
+      case 'ios': return '📱';
+      default: return '💻';
+    }
+  };
 
   return (
     <div className="space-y-6">
+      {/* Modal for detailed view */}
+      {showModal && selectedClick && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b border-gray-700">
+              <h3 className="text-xl font-bold text-white">Guest Activity Details</h3>
+              <button
+                onClick={closeDetails}
+                className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-750 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-400 mb-2">Basic Information</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-gray-400 text-sm">Button:</span>
+                      <p className="text-white font-medium">{selectedClick.button}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Page:</span>
+                      <p className="text-white">{selectedClick.page}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Date & Time:</span>
+                      <p className="text-white">
+                        {new Date(selectedClick.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Device Information */}
+                <div className="bg-gray-750 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-400 mb-2">Device Information</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{getDeviceIcon(selectedClick.deviceType)}</span>
+                      <div>
+                        <span className="text-gray-400 text-sm">Device:</span>
+                        <p className="text-white font-medium">
+                          {selectedClick.deviceType || 'Unknown'}
+                          {selectedClick.isMobile && ' (Mobile)'}
+                          {selectedClick.isTablet && ' (Tablet)'}
+                          {selectedClick.isDesktop && ' (Desktop)'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{getOSIcon(selectedClick.operatingSystem)}</span>
+                      <div>
+                        <span className="text-gray-400 text-sm">OS:</span>
+                        <p className="text-white">{selectedClick.operatingSystem || 'Unknown'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Browser:</span>
+                      <p className="text-white">{selectedClick.browser || 'Unknown'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Information */}
+              <div className="bg-gray-750 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Location & Network</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-gray-400 text-sm">IP Address:</span>
+                    <p className="text-white font-mono text-sm">{selectedClick.ipAddress || 'Not available'}</p>
+                  </div>
+                  {selectedClick.location && (
+                    <>
+                      <div>
+                        <span className="text-gray-400 text-sm">Country:</span>
+                        <p className="text-white">{selectedClick.location.country || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-sm">Region:</span>
+                        <p className="text-white">{selectedClick.location.region || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-sm">City:</span>
+                        <p className="text-white">{selectedClick.location.city || 'Unknown'}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Raw User Agent */}
+              <div className="bg-gray-750 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Raw User Agent</h4>
+                <div className="bg-gray-900 p-3 rounded border border-gray-700">
+                  <code className="text-xs text-gray-300 break-all">
+                    {selectedClick.userAgent || 'No user agent data available'}
+                  </code>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end p-6 border-t border-gray-700">
+              <button
+                onClick={closeDetails}
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rest of the existing component */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
         <div className="flex-1">
           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 gap-2 mb-4">
@@ -43,7 +195,7 @@ const GuestClicksSection = ({
               </svg>
             </button>
           </div>
-          <p className="text-gray-200 mb-4">Detailed log of all guest interactions</p>
+          <p className="text-gray-200 mb-4">Detailed log of all guest interactions with device information</p>
           
           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
             <div className="w-full sm:w-1/2">
@@ -203,8 +355,9 @@ const GuestClicksSection = ({
                   <tr>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Button</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Page</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Device & OS</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Date & Time</th>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">ID</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">Location</th>
                     <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
@@ -218,6 +371,16 @@ const GuestClicksSection = ({
                           </span>
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-200 max-w-[150px] truncate">{click.page}</td>
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{getDeviceIcon(click.deviceType)}</span>
+                            <span className="text-lg">{getOSIcon(click.operatingSystem)}</span>
+                            <div className="text-sm">
+                              <div className="text-gray-200">{click.deviceType || 'Unknown'}</div>
+                              <div className="text-gray-400 text-xs">{click.operatingSystem || 'Unknown OS'}</div>
+                            </div>
+                          </div>
+                        </td>
                         <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-400">
                           {new Date(click.timestamp).toLocaleString(undefined, {
                             year: 'numeric',
@@ -227,24 +390,34 @@ const GuestClicksSection = ({
                             minute: '2-digit'
                           })}
                         </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell max-w-[100px] truncate">
-                          {click._id ? click._id.substring(0, 8) + '...' : 'No ID'}
+                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell">
+                          {click.location?.country || 'Unknown'}
+                          {click.location?.city ? `, ${click.location.city}` : ''}
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleDeleteClick(click._id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
-                            title="Delete this entry"
-                            disabled={!click._id}
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => openDetails(click)}
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
+                              title="View details"
+                            >
+                              <FiEye size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(click._id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-20 p-2 rounded-full transition-colors"
+                              title="Delete this entry"
+                              disabled={!click._id}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
                         No data available{selectedCategory !== 'all' ? ` for ${selectedCategory}` : ''}{timeFilter !== 'all' ? ` for this ${timeFilter}` : ''}
                       </td>
                     </tr>
@@ -318,4 +491,4 @@ const GuestClicksSection = ({
   );
 };
 
-export default GuestClicksSection;
+export default GuestActivitySection;
