@@ -325,37 +325,101 @@ export default function AdminDashboard({ onLogout, userData }) {
     onLogout();
   };
 
-  const handleExportCSV = () => {
-    const filteredClicks = getFilteredClicks();
-    if (filteredClicks.length === 0) {
-      showToastMessage('No data to export', 'info');
-      return;
+  const handleExportCSV = async () => {
+    try {
+      showToastMessage('Preparing CSV export...', 'info');
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showToastMessage('Your session has expired. Please log in again.', 'error');
+        setTimeout(() => onLogout(), 2000);
+        return;
+      }
+
+      // Fetch all data with current filters
+      let url = 'https://btbsitess.onrender.com/api/clicks?page=1&limit=10000';
+      if (selectedCategory !== 'all') {
+        const categoryButtons = clickCategories[selectedCategory]?.map(item => item.button) || [];
+        url += `&buttons=${categoryButtons.join(',')}`;
+      }
+      
+      if (timeFilter === 'custom' && startDate && endDate) {
+        url += `&startDate=${new Date(startDate).toISOString()}&endDate=${new Date(endDate).toISOString()}`;
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to fetch data for export');
+      }
+
+      const data = await res.json();
+      let allClicksData = data.clicks || [];
+
+      // Apply time filter client-side if needed (for today, week, month, year)
+      if (timeFilter !== 'all' && timeFilter !== 'custom') {
+        allClicksData = filterByTime(allClicksData);
+      }
+
+      if (allClicksData.length === 0) {
+        showToastMessage('No data to export', 'info');
+        return;
+      }
+
+      // Export with all available fields
+      const headers = [
+        'Button',
+        'Page',
+        'Device Type',
+        'Operating System',
+        'Browser',
+        'IP Address',
+        'Timestamp',
+        'Date & Time',
+        'User Agent',
+        'ID'
+      ];
+
+      const csvContent = [
+        headers.join(','),
+        ...allClicksData.map(click => [
+          `"${(click.button || '').replace(/"/g, '""')}"`,
+          `"${(click.page || '').replace(/"/g, '""')}"`,
+          `"${(click.deviceType || 'Unknown').replace(/"/g, '""')}"`,
+          `"${(click.operatingSystem || 'Unknown').replace(/"/g, '""')}"`,
+          `"${(click.browser || 'Unknown').replace(/"/g, '""')}"`,
+          `"${(click.ipAddress || 'Not available').replace(/"/g, '""')}"`,
+          `"${new Date(click.timestamp).toISOString()}"`,
+          `"${new Date(click.timestamp).toLocaleString()}"`,
+          `"${(click.userAgent || 'Not available').replace(/"/g, '""')}"`,
+          `"${click._id || ''}"`
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const urlBlob = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+      link.setAttribute('href', urlBlob);
+      link.setAttribute('download', `guest_activity_data_${timestamp}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(urlBlob);
+      
+      showToastMessage(`CSV exported successfully with ${allClicksData.length} records`, 'success');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      showToastMessage(error.message || 'Failed to export CSV', 'error');
     }
-
-    const headers = ['Button', 'Page', 'Timestamp', 'ID'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredClicks.map(click => [
-        `"${click.button}"`,
-        `"${click.page}"`,
-        `"${new Date(click.timestamp).toISOString()}"`,
-        `"${click._id}"`
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')
-    link.setAttribute('href', url);
-    link.setAttribute('download', `click_data_${timestamp}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToastMessage('CSV export started', 'success');
   };
 
   // Analytics Component (Integrated back into AdminDashboard)
