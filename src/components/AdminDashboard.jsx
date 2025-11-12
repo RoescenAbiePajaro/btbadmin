@@ -402,18 +402,25 @@ export default function AdminDashboard({ onLogout, userData }) {
         ].join(','))
       ].join('\n');
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const urlBlob = URL.createObjectURL(blob);
-      const link = document.createElement('a');
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-      link.setAttribute('href', urlBlob);
-      link.setAttribute('download', `guest_activity_data_${timestamp}.csv`);
-      link.style.visibility = 'hidden';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(urlBlob);
+      const filename = `guest_activity_data_${timestamp}.csv`;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+      if (window.navigator && typeof window.navigator.msSaveOrOpenBlob === 'function') {
+        // Fallback for legacy browsers (IE, old Edge)
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        const urlBlob = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = urlBlob;
+        link.download = filename;
+        link.style.visibility = 'hidden';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(urlBlob);
+      }
       
       showToastMessage(`CSV exported successfully with ${allClicksData.length} records`, 'success');
     } catch (error) {
