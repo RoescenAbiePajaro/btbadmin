@@ -51,6 +51,13 @@ const GuestActivitySection = ({
     }
   };
 
+  // Check if device is recognized
+  const isDeviceRecognized = (deviceType) => {
+    if (!deviceType) return false;
+    const deviceLower = deviceType.toLowerCase();
+    return ['mobile', 'tablet', 'laptop', 'desktop'].includes(deviceLower);
+  };
+
   const getOSIcon = (os) => {
     if (!os || os === 'Unknown') return '💻';
     
@@ -127,13 +134,15 @@ const GuestActivitySection = ({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{getOSIcon(selectedClick.operatingSystem)}</span>
-                      <div>
-                        <span className="text-gray-400 text-sm">OS:</span>
-                        <p className="text-white">{formatOSName(selectedClick.operatingSystem)}</p>
+                    {isDeviceRecognized(selectedClick.deviceType) && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{getOSIcon(selectedClick.operatingSystem)}</span>
+                        <div>
+                          <span className="text-gray-400 text-sm">OS:</span>
+                          <p className="text-white">{formatOSName(selectedClick.operatingSystem)}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div>
                       <span className="text-gray-400 text-sm">Browser:</span>
                       <p className="text-white">{selectedClick.browser || 'Unknown'}</p>
@@ -368,10 +377,14 @@ const GuestActivitySection = ({
                         <td className="px-3 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <span className="text-lg">{getDeviceIcon(click.deviceType)}</span>
-                            <span className="text-lg">{getOSIcon(click.operatingSystem)}</span>
+                            {isDeviceRecognized(click.deviceType) && (
+                              <span className="text-lg">{getOSIcon(click.operatingSystem)}</span>
+                            )}
                             <div className="text-sm">
                               <div className="text-gray-200">{click.deviceType || 'Unknown'}</div>
-                              <div className="text-gray-400 text-xs">{formatOSName(click.operatingSystem)}</div>
+                              {isDeviceRecognized(click.deviceType) && (
+                                <div className="text-gray-400 text-xs">{formatOSName(click.operatingSystem)}</div>
+                              )}
                             </div>
                           </div>
                         </td>
