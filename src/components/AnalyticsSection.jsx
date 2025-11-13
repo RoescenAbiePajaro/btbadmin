@@ -1,3 +1,4 @@
+//src/components/AnalyticsSection.jsx
 import React from 'react';
 import { FiCalendar } from 'react-icons/fi';
 import { Bar, Pie } from 'react-chartjs-2';
