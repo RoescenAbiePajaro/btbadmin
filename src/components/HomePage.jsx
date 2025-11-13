@@ -38,7 +38,7 @@ export default function HomePage() {
   // Updated: Opens in same browser tab
   const handleDownload = async (e) => {
     e.preventDefault();
-    const url = "https://mega.nz/folder/NFVAnJSL#xdiixtFhQvP7t-McXYN_kw";
+    const url = "https://mega.nz/file/9FlzALQa#eHujAF53dNZZAhozZON_F2dAN5E3HUVGkJ48g_Y5d78";
     
     setIsDownloadLoading(true);
     
