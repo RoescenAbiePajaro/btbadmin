@@ -219,6 +219,13 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      
+      {/* Footer */}
+      <footer className="w-full py-6 text-center text-white text-sm mt-12 bg-gradient-to-r from-pink-600 via-blue-600 to-black">
+        <div className="container mx-auto px-4">
+          @2025 Beyond The Brush
+        </div>
+      </footer>
     </div>
   );
 }
