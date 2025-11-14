@@ -16,21 +16,23 @@ export default function HomePage() {
 
   const closeModal = () => setSelectedImage(null);
 
-  // Updated: Opens in same browser tab
-  const handleVisitLink = async (e) => {
+  const handleVisitLink = (e) => {
     e.preventDefault();
     const url = "https://btblite.vercel.app";
     
+    // Set loading state
     setIsLinkLoading(true);
     
-    // Track click first, then navigate
-    try {
-      await trackClick("visit_link", "home_page");
-    } catch (error) {
-      console.error("Error tracking click:", error);
-    } finally {
-      setIsLinkLoading(false);
-      // Navigate to the URL in the same tab
+    // Track click in the background without waiting
+    trackClick("visit_link", "home_page")
+      .catch(error => console.error("Error tracking click:", error))
+      .finally(() => setIsLinkLoading(false));
+    
+    // Open in a new tab for better perceived performance
+    const newWindow = window.open(url, '_blank');
+    
+    // Fallback if popup is blocked
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
       window.location.href = url;
     }
   };
