@@ -16,48 +16,59 @@ export default function HomePage() {
 
   const closeModal = () => setSelectedImage(null);
 
-  // Updated: Opens in same browser tab
+  // Fixed: Direct navigation without tracking dependency
   const handleVisitLink = async (e) => {
     e.preventDefault();
     const url = "https://btblite.vercel.app";
     
     setIsLinkLoading(true);
     
-    // Track click first, then navigate
+    // Track click with error handling - don't block navigation
     try {
       await trackClick("visit_link", "home_page");
     } catch (error) {
       console.error("Error tracking click:", error);
-    } finally {
-      setIsLinkLoading(false);
-      // Navigate to the URL in the same tab
-      window.location.href = url;
+      // Continue navigation even if tracking fails
     }
+    
+    // Navigate immediately after starting the tracking
+    window.location.href = url;
+    
+    // Fallback: reset loading state after 3 seconds if still on page
+    setTimeout(() => {
+      setIsLinkLoading(false);
+    }, 3000);
   };
 
-  // Updated: Opens in same browser tab
+  // Fixed: Direct navigation without tracking dependency
   const handleDownload = async (e) => {
     e.preventDefault();
     const url = "https://mega.nz/file/9FlzALQa#eHujAF53dNZZAhozZON_F2dAN5E3HUVGkJ48g_Y5d78";
     
     setIsDownloadLoading(true);
     
+    // Track click with error handling - don't block navigation
     try {
       await trackClick("download", "home_page");
     } catch (error) {
       console.error("Error tracking download:", error);
-    } finally {
-      setIsDownloadLoading(false);
-      // Navigate to the URL in the same tab
-      window.location.href = url;
+      // Continue navigation even if tracking fails
     }
+    
+    // Navigate immediately after starting the tracking
+    window.location.href = url;
+    
+    // Fallback: reset loading state after 3 seconds if still on page
+    setTimeout(() => {
+      setIsDownloadLoading(false);
+    }, 3000);
   };
 
   return (
     <div className="min-h-screen bg-black flex flex-col relative">
       <AnimatedBackground />
       
-      {/* Header Navigation - Logo removed */}
+      {/* Header Navigation */}
       <header className="w-full bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           {/* Empty div for spacing - logo removed */}
@@ -79,22 +90,47 @@ export default function HomePage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md text-center">
-          {/* Main Logo - Responsive */}
+          {/* Fixed Logo Section - PNG only */}
           <div className="w-28 h-28 mx-auto mb-4 flex items-center justify-center">
             <img
-              src="/icon/logo.webp"
-              srcSet="/icon/logo.png 1x, /icon/logo@2x.webp 2x"
+              src="/icon/logo.png"
               alt="Beyond The Brush"
               className="w-full h-full object-contain max-w-full max-h-full"
               width="112"
               height="112"
               loading="eager"
               onError={(e) => {
-                // Fallback if webp not supported
-                if (e.target.src.includes('.webp')) {
-                  e.target.src = '/icon/logo.png';
+                console.log("Logo failed to load, trying fallbacks");
+                // Comprehensive fallback strategy for PNG
+                const fallbackPaths = [
+                  "/images/logo.png",
+                  "/logo.png", 
+                  "/public/icon/logo.png",
+                  "./icon/logo.png"
+                ];
+                
+                let currentSrc = e.target.src;
+                let triedPaths = [currentSrc];
+                
+                // Try next fallback path
+                for (let path of fallbackPaths) {
+                  if (!triedPaths.includes(path)) {
+                    e.target.src = path;
+                    break;
+                  }
+                }
+                
+                // If all fail, show placeholder
+                if (triedPaths.length >= fallbackPaths.length + 1) {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = `
+                    <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-500 to-blue-500 rounded-2xl">
+                      <span class="text-white font-bold text-lg">BTB</span>
+                    </div>
+                  `;
                 }
               }}
+              onLoad={() => console.log("Logo loaded successfully")}
             />
           </div>
 
