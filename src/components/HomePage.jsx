@@ -16,59 +16,48 @@ export default function HomePage() {
 
   const closeModal = () => setSelectedImage(null);
 
-  // Fixed: Direct navigation without tracking dependency
+  // Updated: Opens in same browser tab
   const handleVisitLink = async (e) => {
     e.preventDefault();
     const url = "https://btblite.vercel.app";
     
     setIsLinkLoading(true);
     
-    // Track click with error handling - don't block navigation
+    // Track click first, then navigate
     try {
       await trackClick("visit_link", "home_page");
     } catch (error) {
       console.error("Error tracking click:", error);
-      // Continue navigation even if tracking fails
-    }
-    
-    // Navigate immediately after starting the tracking
-    window.location.href = url;
-    
-    // Fallback: reset loading state after 3 seconds if still on page
-    setTimeout(() => {
+    } finally {
       setIsLinkLoading(false);
-    }, 3000);
+      // Navigate to the URL in the same tab
+      window.location.href = url;
+    }
   };
 
-  // Fixed: Direct navigation without tracking dependency
+  // Updated: Opens in same browser tab
   const handleDownload = async (e) => {
     e.preventDefault();
     const url = "https://mega.nz/file/9FlzALQa#eHujAF53dNZZAhozZON_F2dAN5E3HUVGkJ48g_Y5d78";
     
     setIsDownloadLoading(true);
     
-    // Track click with error handling - don't block navigation
     try {
       await trackClick("download", "home_page");
     } catch (error) {
       console.error("Error tracking download:", error);
-      // Continue navigation even if tracking fails
-    }
-    
-    // Navigate immediately after starting the tracking
-    window.location.href = url;
-    
-    // Fallback: reset loading state after 3 seconds if still on page
-    setTimeout(() => {
+    } finally {
       setIsDownloadLoading(false);
-    }, 3000);
+      // Navigate to the URL in the same tab
+      window.location.href = url;
+    }
   };
 
   return (
     <div className="min-h-screen bg-black flex flex-col relative">
       <AnimatedBackground />
       
-      {/* Header Navigation */}
+      {/* Header Navigation - Logo removed */}
       <header className="w-full bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           {/* Empty div for spacing - logo removed */}
@@ -90,7 +79,7 @@ export default function HomePage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md text-center">
-          {/* Fixed Logo Section - PNG only */}
+          {/* Main Logo - Responsive */}
           <div className="w-28 h-28 mx-auto mb-4 flex items-center justify-center">
             <img
               src="/icon/logo.png"
@@ -99,38 +88,6 @@ export default function HomePage() {
               width="112"
               height="112"
               loading="eager"
-              onError={(e) => {
-                console.log("Logo failed to load, trying fallbacks");
-                // Comprehensive fallback strategy for PNG
-                const fallbackPaths = [
-                  "/images/logo.png",
-                  "/logo.png", 
-                  "/public/icon/logo.png",
-                  "./icon/logo.png"
-                ];
-                
-                let currentSrc = e.target.src;
-                let triedPaths = [currentSrc];
-                
-                // Try next fallback path
-                for (let path of fallbackPaths) {
-                  if (!triedPaths.includes(path)) {
-                    e.target.src = path;
-                    break;
-                  }
-                }
-                
-                // If all fail, show placeholder
-                if (triedPaths.length >= fallbackPaths.length + 1) {
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-500 to-blue-500 rounded-2xl">
-                      <span class="text-white font-bold text-lg">BTB</span>
-                    </div>
-                  `;
-                }
-              }}
-              onLoad={() => console.log("Logo loaded successfully")}
             />
           </div>
 
