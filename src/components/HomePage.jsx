@@ -40,7 +40,7 @@ export default function HomePage() {
   // Updated: Opens in same browser tab
   const handleDownload = async (e) => {
     e.preventDefault();
-    const url = "https://mega.nz/file/wR0xVKRY#pR1SjU97zpQHeMNrC_MLm7Muw2QanMwf_dUzQgmo-lo";
+    const url = "https://mega.nz/file/ZAcAzBQB#l2K2jNJpj8Vhlom_U_BybDLwzC7iRMBoVdlO4BrEkWg";
     
     setIsDownloadLoading(true);
     
