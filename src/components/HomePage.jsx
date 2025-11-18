@@ -1,4 +1,4 @@
-//src/components/HomePage.jsx
+// src/components/HomePage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { trackClick } from "../../backend/utils/trackClick";
@@ -9,12 +9,14 @@ export default function HomePage() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLinkLoading, setIsLinkLoading] = useState(false);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
+  const [showPrivacyNotice, setShowPrivacyNotice] = useState(true);
 
   const handleMenuClick = () => {
     navigate("/admin");
   };
 
   const closeModal = () => setSelectedImage(null);
+  const closePrivacyNotice = () => setShowPrivacyNotice(false);
 
   const handleVisitLink = (e) => {
     e.preventDefault();
@@ -192,6 +194,75 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Data Privacy Act Popup */}
+      {showPrivacyNotice && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-pink-600 to-blue-600 p-4">
+              <h2 className="text-2xl font-bold text-white text-center">
+                Important Notice: Data Privacy Act
+              </h2>
+            </div>
+            
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="text-white space-y-4">
+                <p className="font-semibold text-lg text-pink-400">
+                  Your Privacy Matters
+                </p>
+                
+                <p>
+                  In compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>, 
+                  Beyond The Brush is committed to protecting your personal information and privacy.
+                </p>
+
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <h3 className="font-semibold text-blue-400 mb-2">What We Collect:</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Click interactions (button clicks using the app, link visits,installing app 
+                      and downloads)</li>
+                    <li>Timestamp of your interactions</li>
+                    <li>Anonymous usage statistics</li>
+                  </ul>
+                </div>
+
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <h3 className="font-semibold text-green-400 mb-2">Why We Collect This Information:</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>To improve user experience and what most devices people use to run such pc or web-app</li>
+                    <li>To understand how users interact with platform</li>
+                    <li>To enhance security and prevent misuse</li>
+                    <li>To gather insights for future development</li>
+                  </ul>
+                </div>
+
+                <p className="text-sm text-gray-300">
+                  <strong>Note:</strong> We do not collect sensitive personal information. All collected data 
+                  is anonymized and used solely for improving services. By continuing to use Beyond The Brush, 
+                  you acknowledge and consent to this data collection in accordance with the Data Privacy Act.
+                </p>
+              </div>
+            </div>
+            
+            {/* Footer with Close Button */}
+            <div className="border-t border-gray-700 p-4 bg-gray-800">
+              <div className="flex justify-center">
+                <button
+                  onClick={closePrivacyNotice}
+                  className="bg-gradient-to-r from-pink-500 to-blue-500 text-white py-3 px-8 rounded-lg font-semibold hover:from-pink-600 hover:to-blue-600 transition duration-200"
+                >
+                  I Understand
+                </button>
+              </div>
+              <p className="text-center text-gray-400 text-xs mt-2">
+                Beyond The Brush complies with RA 10173 - Data Privacy Act of 2012
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal for image preview */}
       {selectedImage && (
