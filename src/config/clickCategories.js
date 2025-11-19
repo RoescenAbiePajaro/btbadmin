@@ -12,9 +12,9 @@ const clickCategories = {
     
   ],
   'Beyond The Brush App_PC ': [
-    { button: 'btb_enter', page: 'beyondthebrush_app_pc' },
-    { button: 'btb_exit', page: 'beyondthebrush_app_pc' },
-    { button: 'btb_saved_canvas', page: 'beyondthebrush_app_pc' }
+    { button: 'btb_enter', page: 'beyondthebrush_app' },
+    { button: 'btb_exit', page: 'beyondthebrush_app' },
+    { button: 'btb_saved_canvas', page: 'beyondthebrush_app' }
   ]
 };
 
