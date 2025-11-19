@@ -1,9 +1,9 @@
-//src/components/GuestClicksSection.jsx
+// src/components/GuestClicksSection.jsx
 import React, { useState } from 'react';
 import { FiChevronLeft, FiChevronRight, FiTrash2, FiDownload, FiCalendar, FiEye, FiX } from 'react-icons/fi';
 import clickCategories from '../config/clickCategories';
 
-const GuestActivitySection = ({
+const GuestClicksSection = ({
   isLoading,
   getFilteredClicks,
   total,
@@ -42,33 +42,22 @@ const GuestActivitySection = ({
   const getDeviceIcon = (deviceType) => {
     if (!deviceType) return '❓';
     
-    switch (deviceType.toLowerCase()) {
-      case 'mobile': return '📱';
-      case 'tablet': return '📟';
-      case 'laptop': return '💻';
-      case 'desktop': return '🖥️';
-      default: return '❓';
-    }
+    const deviceLower = deviceType.toLowerCase();
+    if (deviceLower.includes('mobile')) return '📱';
+    if (deviceLower.includes('tablet')) return '📟';
+    if (deviceLower.includes('laptop') || deviceLower.includes('desktop')) return '💻';
+    return '❓';
   };
 
-  const getOSIcon = (os) => {
-    if (!os || os === 'Unknown') return '💻';
+  const getDeviceDisplayName = (deviceType) => {
+    if (!deviceType) return 'Unknown';
     
-    const osLower = os.toLowerCase();
-    if (osLower.includes('android')) return '🤖';
-    if (osLower.includes('ios')) return '📱';
-    if (osLower.includes('windows')) return '🪟';
-    if (osLower.includes('macos') || osLower.includes('mac os')) return '🍎';
-    if (osLower.includes('linux') || osLower.includes('ubuntu')) return '🐧';
-    return '💻';
-  };
-
-  // Format OS name for better display (simplified - no version numbers for Android/iOS)
-  const formatOSName = (os) => {
-    if (!os || os === 'Unknown') return 'Unknown OS';
-    
-    // Return OS name as-is (already simplified in backend)
-    return os;
+    const deviceLower = deviceType.toLowerCase();
+    if (deviceLower.includes('mobile')) return 'Mobile';
+    if (deviceLower.includes('tablet')) return 'Tablet';
+    if (deviceLower.includes('laptop')) return 'Laptop';
+    if (deviceLower.includes('desktop')) return 'Desktop';
+    return deviceType;
   };
 
   return (
@@ -93,6 +82,10 @@ const GuestActivitySection = ({
                 <div className="bg-gray-750 p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-gray-400 mb-2">Basic Information</h4>
                   <div className="space-y-2">
+                    <div>
+                      <span className="text-gray-400 text-sm">ID:</span>
+                      <p className="text-white font-mono text-sm">{selectedClick._id || 'N/A'}</p>
+                    </div>
                     <div>
                       <span className="text-gray-400 text-sm">Button:</span>
                       <p className="text-white font-medium">{selectedClick.button}</p>
@@ -119,25 +112,11 @@ const GuestActivitySection = ({
                       <div>
                         <span className="text-gray-400 text-sm">Device:</span>
                         <p className="text-white font-medium">
-                          {selectedClick.deviceType || 'Unknown'}
-                          {selectedClick.isMobile && ' (Mobile)'}
-                          {selectedClick.isTablet && ' (Tablet)'}
-                          {selectedClick.isLaptop && ' (Laptop)'}
-                          {selectedClick.isDesktop && !selectedClick.isLaptop && ' (Desktop)'}
+                          {getDeviceDisplayName(selectedClick.deviceType)}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{getOSIcon(selectedClick.operatingSystem)}</span>
-                      <div>
-                        <span className="text-gray-400 text-sm">OS:</span>
-                        <p className="text-white">{formatOSName(selectedClick.operatingSystem)}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 text-sm">Browser:</span>
-                      <p className="text-white">{selectedClick.browser || 'Unknown'}</p>
-                    </div>
+                    
                   </div>
                 </div>
               </div>
@@ -348,9 +327,10 @@ const GuestActivitySection = ({
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800">
                   <tr>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">ID</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Button</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Page</th>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Device & OS</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Device</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Date & Time</th>
                     <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Actions</th>
                   </tr>
@@ -359,6 +339,9 @@ const GuestActivitySection = ({
                   {filteredClicks.length > 0 ? (
                     filteredClicks.map((click, idx) => (
                       <tr key={click._id || idx} className="hover:bg-gray-750 transition-colors">
+                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
+                          {click._id ? click._id.substring(0, 8) + '...' : 'N/A'}
+                        </td>
                         <td className="px-3 py-4 whitespace-nowrap">
                           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-200 max-w-[120px] truncate">
                             {click.button}
@@ -368,10 +351,9 @@ const GuestActivitySection = ({
                         <td className="px-3 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <span className="text-lg">{getDeviceIcon(click.deviceType)}</span>
-                            <span className="text-lg">{getOSIcon(click.operatingSystem)}</span>
                             <div className="text-sm">
-                              <div className="text-gray-200">{click.deviceType || 'Unknown'}</div>
-                              <div className="text-gray-400 text-xs">{formatOSName(click.operatingSystem)}</div>
+                              <div className="text-gray-200">{getDeviceDisplayName(click.deviceType)}</div>
+                              <div className="text-gray-400 text-xs">{click.browser || 'Unknown Browser'}</div>
                             </div>
                           </div>
                         </td>
@@ -481,4 +463,4 @@ const GuestActivitySection = ({
   );
 };
 
-export default GuestActivitySection;
+export default GuestClicksSection;
