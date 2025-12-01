@@ -28,10 +28,34 @@ export default function StudentDashboard() {
     }
   }, [navigate]);
 
+  // Prevent caching of dashboard page
+  useEffect(() => {
+    window.onpageshow = function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+    
+    // Clear browser history and replace current entry
+    window.history.pushState(null, document.title, window.location.href);
+    window.onpopstate = function() {
+      window.history.pushState(null, document.title, window.location.href);
+      if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
+        navigate('/login');
+      }
+    };
+
+    return () => {
+      window.onpopstate = null;
+    };
+  }, [navigate]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/login');
+    // Clear browser history and navigate to login
+    window.history.replaceState(null, '', '/login');
+    navigate('/login', { replace: true });
   };
 
   if (!user) {
@@ -53,12 +77,6 @@ export default function StudentDashboard() {
               <p className="text-gray-400">Welcome, {user.fullName}</p>
             </div>
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/')}
-                className="text-gray-400 hover:text-white transition duration-200"
-              >
-                Home
-              </button>
               <button
                 onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200"
