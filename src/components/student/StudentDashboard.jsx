@@ -154,12 +154,14 @@ export default function StudentDashboard() {
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button
-                onClick={() => navigate('/')}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white py-3 rounded-lg transition duration-200"
+              <a
+                href="https://mega.nz/file/8Ndx0Qpb#O-1yE6KF8KdndwiOiOuQTLGvDuKKviplPToqwy-sa1w"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white py-3 rounded-lg transition duration-200 text-center"
               >
-                Launch Drawing App
-              </button>
+                Download PC
+              </a>
               <button
                 onClick={() => {/* View assignments */}}
                 className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition duration-200"
