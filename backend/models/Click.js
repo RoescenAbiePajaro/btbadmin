@@ -1,11 +1,18 @@
-// Click.js
-import mongoose from "mongoose";
+const mongoose = require('mongoose');
 
 const clickSchema = new mongoose.Schema({
-  button: String,
-  page: String,
-  timestamp: { type: Date, default: Date.now },
-  // Add new fields for device and location info
+  button: {
+    type: String,
+    required: true
+  },
+  page: {
+    type: String,
+    required: true
+  },
+  timestamp: { 
+    type: Date, 
+    default: Date.now 
+  },
   userAgent: String,
   deviceType: String,
   operatingSystem: String,
@@ -21,6 +28,16 @@ const clickSchema = new mongoose.Schema({
   isTablet: Boolean,
   isDesktop: Boolean,
   isLaptop: Boolean
+}, {
+  timestamps: true
 });
 
-export default mongoose.model("Click", clickSchema);
+// Indexes for faster queries
+clickSchema.index({ timestamp: -1 });
+clickSchema.index({ button: 1 });
+clickSchema.index({ page: 1 });
+clickSchema.index({ deviceType: 1 });
+
+const Click = mongoose.model('Click', clickSchema);
+
+module.exports = Click;

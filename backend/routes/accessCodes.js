@@ -1,4 +1,4 @@
-// /routes/accessCodes.js
+// backend/routes/accessCodes.js
 const express = require('express');
 const router = express.Router();
 const AccessCode = require('../models/AccessCode');

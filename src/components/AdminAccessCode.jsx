@@ -1,4 +1,4 @@
-
+//src/components/AdminAccessCode.jsx
 import React, { useState, useEffect } from 'react';
 import { FiKey, FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
 import Toast from './Toast';

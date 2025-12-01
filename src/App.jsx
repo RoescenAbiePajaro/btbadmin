@@ -1,76 +1,157 @@
-// App.jsx
+// src/App.jsx
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import HomePage from './components/HomePage';
+import RoleSelection from './components/auth/RoleSelection';
+import StudentRegistration from './components/auth/StudentRegistration';
+import EducatorRegistration from './components/auth/EducatorRegistration';
+import Login from './components/auth/Login';
+import EducatorDashboard from './components/educator/EducatorDashboard';
+import StudentDashboard from './components/student/StudentDashboard';
+import EmailVerification from './components/auth/EmailVerification';
+import AdminLogin from './components/AdminLogin';
+import AdminRegistration from './components/AdminRegistration';
+import AdminDashboard from './components/AdminDashboard';
+import Toast from './components/Toast';
+import NotFound from './components/NotFound';
 
-import React, { useState, useEffect } from "react";
-import { HashRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
-import HomePage from "./components/HomePage";
-import AdminPage from "./components/AdminLogin";
-import AdminRegistration from "./components/AdminRegistration";
-import AdminDashboard from "./components/AdminDashboard";
-
-// Wrapper so we can use useNavigate inside
-function AdminDashboardWrapper() {
-  const navigate = useNavigate();
-  const [userData, setUserData] = useState({ username: "Admin" });
-
-  // Redirect if not logged in
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/"); // go to HomePage if no token
-    }
-  }, [navigate]);
-
-  // Logout handler
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userData");
-    navigate("/"); // redirect to HomePage
-  };
-
-  return <AdminDashboard onLogout={handleLogout} userData={userData} />;
-}
-
-export default function App() {
-  const [showLogin, setShowLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [userData, setUserData] = useState(null);
-
-  const handleLogin = (userType, username) => {
-    setUserData({ userType, username });
-    localStorage.setItem("userData", JSON.stringify({ userType, username }));
-    setLoading(true);
-  };
-
-  const handleLoadingComplete = () => {
-    setLoading(false);
-    setShowLogin(false);
-  };
-
-  // Optional: your loading screen logic (if you have one)
-  if (loading) {
-    return (
-      <LoadingScreen
-        progress={loadingProgress}
-        setProgress={setLoadingProgress}
-        onComplete={handleLoadingComplete}
-      />
-    );
+// Protected Route Component
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const token = localStorage.getItem('token');
+  const userData = localStorage.getItem('user');
+  
+  if (!token || !userData) {
+    return <Navigate to="/login" replace />;
   }
+  
+  try {
+    const user = JSON.parse(userData);
+    
+    // Check if user role is allowed
+    if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+      return <Navigate to="/" replace />;
+    }
+    
+    return children;
+  } catch (error) {
+    console.error('Error parsing user data:', error);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return <Navigate to="/login" replace />;
+  }
+};
+
+// Public Only Route Component (for login/register pages when already logged in)
+const PublicOnlyRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const userData = localStorage.getItem('user');
+  
+  if (token && userData) {
+    try {
+      const user = JSON.parse(userData);
+      // Redirect to appropriate dashboard
+      if (user.role === 'student') {
+        return <Navigate to="/student/dashboard" replace />;
+      } else if (user.role === 'educator') {
+        return <Navigate to="/educator/dashboard" replace />;
+      } else if (user.role === 'admin') {
+        return <Navigate to="/admin-dashboard" replace />;
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+  }
+  
+  return children;
+};
+
+// Scroll to top on route change
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  
+  return null;
+};
+
+function App() {
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
 
   return (
     <Router>
+      <ScrollToTop />
+      
+      {/* Toast Notification */}
+      {toast.show && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={hideToast} 
+        />
+      )}
+      
       <Routes>
-        {/* HomePage */}
-        <Route path="/" element={<HomePage onLogin={handleLogin} />} />
-
-        {/* Admin Login & Registration */}
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin-registration" element={<AdminRegistration />} />
-
-        {/* Admin Dashboard with logout redirection */}
-        <Route path="/admin-dashboard" element={<AdminDashboardWrapper />} />
+        {/* Public Routes */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/select-role" element={<PublicOnlyRoute><RoleSelection /></PublicOnlyRoute>} />
+        
+        {/* Registration Routes */}
+        <Route path="/register/student" element={<PublicOnlyRoute><StudentRegistration /></PublicOnlyRoute>} />
+        <Route path="/register/educator" element={<PublicOnlyRoute><EducatorRegistration /></PublicOnlyRoute>} />
+        
+        {/* Login Routes */}
+        <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+        <Route path="/verify-email" element={<EmailVerification />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin-login" element={<PublicOnlyRoute><AdminLogin /></PublicOnlyRoute>} />
+        <Route path="/admin-register" element={<PublicOnlyRoute><AdminRegistration /></PublicOnlyRoute>} />
+        
+        {/* Protected Routes - Student */}
+        <Route 
+          path="/student/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Protected Routes - Educator */}
+        <Route 
+          path="/educator/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['educator']}>
+              <EducatorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Protected Routes - Admin */}
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* 404 Not Found */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );
 }
+
+export default App;

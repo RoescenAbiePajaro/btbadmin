@@ -1,3 +1,5 @@
+// src/components/AdminLogin.jsx
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from './Toast';
@@ -51,7 +53,7 @@ const AdminLogin = () => {
       localStorage.setItem('admin', JSON.stringify(data.admin));
       
       // Redirect to admin dashboard
-      navigate('/admin-dashboard');
+      navigate('/admin');
     } catch (error) {
       console.error('Login error:', error);
       showErrorToast(error.message || 'An error occurred during login. Please try again.');

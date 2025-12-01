@@ -1,431 +1,1008 @@
 // backend/server.js
 
 const express = require('express');
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
-// Toast notification utility
-const createToastResponse = (res, status, message, type = 'info', data = null) => {
-  return res.status(status).json({
-    toast: {
-      message,
-      type,
-      show: true
-    },
-    ...(data && { data })
-  });
-};
+const User = require('./models/User');
+const Class = require('./models/Class');
+const AcademicSetting = require('./models/AcademicSetting');
+const AccessCode = require('./models/AccessCode');
+const Click = require('./models/Click');
 
-// Error handler middleware with toast notifications
-const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
-  
-  // Default error message and status
-  const status = err.status || 500;
-  const message = err.message || 'An unexpected error occurred';
-  
-  // Send error response with toast
-  return createToastResponse(res, status, message, 'error');
-};
+// Load environment variables
+dotenv.config();
 
-// Device detection utility function
-const detectDeviceInfo = (userAgent) => {
-  const ua = userAgent.toLowerCase();
-  
-  // Device detection
-  const isMobile = /mobile|android|iphone|ipod|blackberry|opera mini/i.test(ua);
-  const isTablet = /tablet|ipad|android(?!.*mobile)/i.test(ua);
-  const isDesktop = !isMobile && !isTablet;
-  
-  // Laptop detection - laptops are typically desktop devices with specific characteristics
-  // macOS devices are commonly laptops (MacBook series)
-  // For Windows/Linux, it's harder to distinguish, but we can use heuristics:
-  // - Non-touch devices are more likely laptops (touch screens are rare on laptops)
-  // - But we'll be conservative and primarily detect macOS as laptops
-  const isLaptop = isDesktop && (
-    /mac os x|macintosh/i.test(ua) || // macOS is typically laptop (MacBook)
-    (/windows/i.test(ua) && !/touch/i.test(ua) && !/tablet/i.test(ua)) // Windows non-touch, non-tablet (likely laptop)
-  );
-  
-  let deviceType = 'Unknown';
-  if (isMobile) deviceType = 'Mobile';
-  else if (isTablet) deviceType = 'Tablet';
-  else if (isLaptop) deviceType = 'Laptop';
-  else if (isDesktop) deviceType = 'Desktop';
-  
-  // OS detection - simplified (no version numbers for Android/iOS)
-  let operatingSystem = 'Unknown';
-  if (/android/i.test(ua)) {
-    operatingSystem = 'Android';
-  } 
-  else if (/ios|iphone|ipad|ipod/i.test(ua)) {
-    operatingSystem = 'iOS';
-  }
-  else if (/windows nt 10/i.test(ua)) operatingSystem = 'Windows 10/11';
-  else if (/windows nt 6.3/i.test(ua)) operatingSystem = 'Windows 8.1';
-  else if (/windows nt 6.2/i.test(ua)) operatingSystem = 'Windows 8';
-  else if (/windows nt 6.1/i.test(ua)) operatingSystem = 'Windows 7';
-  else if (/windows nt 6.0/i.test(ua)) operatingSystem = 'Windows Vista';
-  else if (/windows nt 5.1/i.test(ua)) operatingSystem = 'Windows XP';
-  else if (/windows nt 5.0/i.test(ua)) operatingSystem = 'Windows 2000';
-  else if (/windows|win32/i.test(ua)) operatingSystem = 'Windows';
-  else if (/mac os x/i.test(ua)) operatingSystem = 'macOS';
-  else if (/ubuntu/i.test(ua)) operatingSystem = 'Ubuntu';
-  else if (/linux/i.test(ua)) operatingSystem = 'Linux';
-  
-  // Browser detection
-  let browser = 'Unknown';
-  if (/chrome/i.test(ua)) browser = 'Chrome';
-  else if (/firefox/i.test(ua)) browser = 'Firefox';
-  else if (/safari/i.test(ua)) browser = 'Safari';
-  else if (/edge/i.test(ua)) browser = 'Edge';
-  else if (/opera/i.test(ua)) browser = 'Opera';
-  
-  
-  return {
-    deviceType,
-    operatingSystem,
-    browser,
-    isMobile,
-    isTablet,
-    isDesktop,
-    isLaptop
-  };
-};
-
-require('dotenv').config();
-
+// Initialize Express app
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
-const path = require('path');
-const fs = require('fs');
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:4173'
+];
 
-// MongoDB Connection
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+app.use(express.json());
+
+// Connect to MongoDB
+if (!process.env.MONGODB_URI) {
+  throw new Error('MONGODB_URI environment variable is not set');
+}
+
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true,
+  useUnifiedTopology: true
 })
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
-
-// =====================
-// 🧱 SCHEMAS & MODELS
-// =====================
-// Root route to avoid default "Cannot GET /" and provide basic info
-app.get('/', (req, res) => {
-  res.json({
-    message: 'BTB Admin backend is running. See /api/test for a quick check.',
-    docs: '/api/test'
-  });
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
 });
 
-// Import AccessCode model
-const AccessCode = require('./models/AccessCode');
-
-// Admin Schema (untouched)
-const adminSchema = new mongoose.Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  accessCode: { type: String, required: true }
-});
-const Admin = mongoose.model('Admin', adminSchema);
-
-// ✅ NEW: Click Schema
-const clickSchema = new mongoose.Schema({
-  button: String,
-  page: String,
-  userAgent: String,
-  ipAddress: String,
-  deviceType: String,
-  operatingSystem: String,
-  browser: String,
-  isMobile: Boolean,
-  isTablet: Boolean,
-  isDesktop: Boolean,
-  isLaptop: Boolean,
-  location: Object,
-  timestamp: { type: Date, default: Date.now },
-});
-const Click = mongoose.model('Click', clickSchema);
-
-// Root route to avoid default "Cannot GET /" and provide basic info
-app.get('/', (req, res) => {
-  res.json({
-    message: 'BTB Admin backend is running. See /api/test for a quick check.',
-    docs: '/api/test'
-  });
-});
-
-
+// Models are already imported at the top of the file
 
 // =====================
-// ⚙️ TEST ENDPOINT
+// 🔧 HELPER FUNCTIONS
 // =====================
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'Admin server is running' });
-});
 
-// =====================
-// 🔐 JWT TOKEN UTILS
-// =====================
-const generateToken = (admin) => {
+// Generate JWT token
+const generateToken = (user) => {
   return jwt.sign(
-    { id: admin._id, username: admin.username },
-    process.env.JWT_SECRET,
+    { 
+      id: user._id, 
+      username: user.username,
+      email: user.email,
+      role: user.role 
+    },
+    process.env.JWT_SECRET || 'your-secret-key-change-this',
     { expiresIn: '24h' }
   );
 };
 
-// JWT Verification Middleware
+// Toast response helper
+const createToastResponse = (res, statusCode, message, type = 'success', data = {}) => {
+  return res.status(statusCode).json({
+    toast: {
+      show: true,
+      message,
+      type
+    },
+    data
+  });
+};
+
+// Authentication middleware
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'No token provided' });
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return createToastResponse(res, 401, 'No token provided', 'error');
+  }
+
+  const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this');
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid token' });
+    console.error('Token verification error:', error);
+    return createToastResponse(res, 401, 'Invalid or expired token', 'error');
   }
 };
 
+// Admin middleware
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return createToastResponse(res, 403, 'Admin access required', 'error');
+  }
+  next();
+};
 
+// Educator middleware
+const requireEducator = (req, res, next) => {
+  if (req.user.role !== 'educator') {
+    return createToastResponse(res, 403, 'Educator access required', 'error');
+  }
+  next();
+};
 
-// =====================
-// 📋 ADMIN LIST ENDPOINT
-// =====================
+// Student middleware
+const requireStudent = (req, res, next) => {
+  if (req.user.role !== 'student') {
+    return createToastResponse(res, 403, 'Student access required', 'error');
+  }
+  next();
+};
 
-// Get all admins (for admin list display)
-app.get('/api/admins', verifyToken, async (req, res) => {
-  try {
-    const admins = await Admin.find()
-      .select('-password -accessCode -__v') // Exclude sensitive fields
-      .sort({ username: 1 });
-    
-    res.json(admins);
-  } catch (error) {
-    console.error('Error fetching admin list:', error);
-    res.status(500).json({ message: 'Server error fetching admin list' });
+// Configure email transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: process.env.EMAIL_PORT || 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
 // =====================
-// 👤 ADMIN AUTH ENDPOINTS
+// 📊 HEALTH CHECK
 // =====================
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
 
-// Admin Login
-app.post('/api/admin/login', async (req, res) => {
-  const { username, password } = req.body;
+// =====================
+// 🎯 ROLE SELECTION
+// =====================
+app.get('/api/auth/roles', (req, res) => {
+  res.json({
+    roles: [
+      { id: 'student', name: 'Student', description: 'Join classes and participate in activities' },
+      { id: 'educator', name: 'Educator', description: 'Create and manage classes' },
+      { id: 'admin', name: 'Administrator', description: 'Manage system and users' }
+    ]
+  });
+});
 
-  if (!username || !password)
-    return res.status(400).json({ message: 'Username and password are required' });
-
+// =====================
+// 📝 STUDENT REGISTRATION
+// =====================
+app.post('/api/auth/register/student', async (req, res) => {
   try {
-    const admin = await Admin.findOne({ username });
-    if (!admin) return res.status(401).json({ message: 'Invalid username or password' });
+    const { fullName, email, username, password, department, year, block, classCode } = req.body;
 
-    const isPasswordValid = await bcrypt.compare(password, admin.password);
-    if (!isPasswordValid)
-      return res.status(401).json({ message: 'Invalid username or password' });
+    // Validate required fields
+    if (!fullName || !email || !username || !password || !classCode) {
+      return createToastResponse(res, 400, 'Please fill all required fields', 'error');
+    }
 
-    const token = generateToken(admin);
-
-    const adminData = admin.toObject();
-    delete adminData.password;
-    delete adminData.__v;
-
-    res.json({
-      message: 'Login successful',
-      token,
-      admin: adminData
+    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { username }] 
     });
+    
+    if (existingUser) {
+      const field = existingUser.email === email ? 'Email' : 'Username';
+      return createToastResponse(res, 400, `${field} already exists`, 'error');
+    }
+
+    // Find class by code
+    const classObj = await Class.findOne({ 
+      classCode: classCode.toUpperCase(),
+      isActive: true 
+    });
+    
+    if (!classObj) {
+      return createToastResponse(res, 400, 'Invalid class code', 'error');
+    }
+
+    // Create student
+    const student = new User({
+      fullName,
+      email,
+      username,
+      password,
+      role: 'student',
+      department,
+      year,
+      block,
+      enrolledClass: classObj._id
+    });
+
+    await student.save();
+
+    // Add student to class
+    classObj.students.push(student._id);
+    await classObj.save();
+
+    // Generate JWT token
+    const token = generateToken(student);
+
+    return createToastResponse(res, 201, 'Student registration successful!', 'success', {
+      token,
+      user: {
+        id: student._id,
+        fullName: student.fullName,
+        email: student.email,
+        username: student.username,
+        role: student.role,
+        department: student.department,
+        year: student.year,
+        block: student.block,
+        enrolledClass: {
+          id: classObj._id,
+          classCode: classObj.classCode,
+          className: classObj.className
+        }
+      }
+    });
+
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    console.error('Student registration error:', error);
+    return createToastResponse(res, 500, 'Server error during registration', 'error');
   }
 });
 
-// Admin Registration
-app.post('/api/admin/register', async (req, res) => {
-  const { firstName, lastName, username, password, accessCode } = req.body;
-
-  if (!firstName || !lastName || !username || !password || !accessCode)
-    return res.status(400).json({ message: 'All fields are required' });
-
-  if (password.length < 6)
-    return res.status(400).json({ message: 'Password must be at least 6 characters long' });
-
+// =====================
+// 👨‍🏫 EDUCATOR REGISTRATION
+// =====================
+app.post('/api/auth/register/educator', async (req, res) => {
   try {
-    // Check if username already exists
-    const existingAdmin = await Admin.findOne({ username });
-    if (existingAdmin)
-      return res.status(400).json({ message: 'Admin username already exists' });
+    const { fullName, email, username, password } = req.body;
 
-    // Validate and consume the access code
-    const code = accessCode.trim().toUpperCase();
-    const accessCodeDoc = await AccessCode.findActiveByCode(code);
+    // Validate required fields
+    if (!fullName || !email || !username || !password) {
+      return createToastResponse(res, 400, 'Please fill all required fields', 'error');
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { username }] 
+    });
     
-    if (!accessCodeDoc) {
-      return res.status(400).json({ message: 'Invalid access code' });
+    if (existingUser) {
+      const field = existingUser.email === email ? 'Email' : 'Username';
+      return createToastResponse(res, 400, `${field} already exists`, 'error');
     }
 
-    if (!accessCodeDoc.canBeUsed()) {
-      return res.status(400).json({ message: 'This access code cannot be used (inactive or max uses reached)' });
-    }
-
-    // Consume the access code
-    await accessCodeDoc.incrementUsage();
-
-    // Hash password and create admin
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const admin = new Admin({
-      firstName,
-      lastName,
+    // Create educator
+    const educator = new User({
+      fullName,
+      email,
       username,
-      password: hashedPassword,
-      accessCode: code // Store the validated code
+      password,
+      role: 'educator'
+    });
+
+    // Generate and save verification token
+    const verificationToken = educator.generateVerificationToken();
+    await educator.save({ validateBeforeSave: false });
+
+    // Send verification email
+    const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Verify Your Educator Account - Beyond The Brush',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Welcome to Beyond The Brush!</h2>
+          <p>Hi ${fullName},</p>
+          <p>Thank you for registering as an educator. Please verify your email address to activate your account.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" 
+               style="background-color: #4F46E5; color: white; padding: 12px 24px; 
+                      text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Verify Email Address
+            </a>
+          </div>
+          <p>Or copy and paste this link in your browser:</p>
+          <p style="word-break: break-all;">${verificationUrl}</p>
+          <p>This link will expire in 24 hours.</p>
+          <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+          <p style="color: #666; font-size: 12px;">
+            If you didn't create this account, please ignore this email.
+          </p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return createToastResponse(res, 201, 'Educator registration successful! Please check your email to verify your account.', 'success', {
+      user: {
+        id: educator._id,
+        fullName: educator.fullName,
+        email: educator.email,
+        username: educator.username,
+        role: educator.role,
+        isEmailVerified: educator.isEmailVerified
+      }
+    });
+
+  } catch (error) {
+    console.error('Educator registration error:', error);
+    return createToastResponse(res, 500, 'Server error during registration', 'error');
+  }
+});
+
+// =====================
+// ✅ EMAIL VERIFICATION
+// =====================
+app.get('/api/auth/verify-email', async (req, res) => {
+  try {
+    const { token, email } = req.query;
+
+    if (!token || !email) {
+      return createToastResponse(res, 400, 'Invalid verification link', 'error');
+    }
+
+    const educator = await User.findOne({
+      email,
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: Date.now() },
+      role: 'educator'
+    });
+
+    if (!educator) {
+      return createToastResponse(res, 400, 'Verification link is invalid or has expired', 'error');
+    }
+
+    // Verify email
+    educator.isEmailVerified = true;
+    educator.emailVerificationToken = undefined;
+    educator.emailVerificationExpires = undefined;
+    await educator.save();
+
+    // Generate token for immediate login
+    const authToken = generateToken(educator);
+
+    return createToastResponse(res, 200, 'Email verified successfully!', 'success', {
+      token: authToken,
+      user: {
+        id: educator._id,
+        fullName: educator.fullName,
+        email: educator.email,
+        username: educator.username,
+        role: educator.role,
+        isEmailVerified: educator.isEmailVerified
+      }
+    });
+
+  } catch (error) {
+    console.error('Email verification error:', error);
+    return createToastResponse(res, 500, 'Server error during verification', 'error');
+  }
+});
+
+// =====================
+// 👑 ADMIN REGISTRATION
+// =====================
+app.post('/api/admin/register', async (req, res) => {
+  try {
+    const { firstName, lastName, username, password, accessCode } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !username || !password || !accessCode) {
+      return createToastResponse(res, 400, 'All fields are required', 'error');
+    }
+
+    // Validate access code
+    const code = accessCode.trim().toUpperCase();
+    const accessCodeDoc = await AccessCode.findOne({ code });
+
+    if (!accessCodeDoc || !accessCodeDoc.isActive) {
+      return createToastResponse(res, 400, 'Invalid or inactive access code', 'error');
+    }
+
+    if (accessCodeDoc.currentUses >= accessCodeDoc.maxUses) {
+      return createToastResponse(res, 400, 'Access code has reached maximum usage', 'error');
+    }
+
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({ 
+      $or: [{ username: username.toLowerCase() }, { email: `${username}@admin.local` }] 
+    });
+
+    if (existingAdmin) {
+      return createToastResponse(res, 400, 'Admin already exists', 'error');
+    }
+
+    // Create admin user
+    const admin = new User({
+      fullName: `${firstName} ${lastName}`,
+      email: `${username}@admin.local`,
+      username: username.toLowerCase(),
+      password,
+      role: 'admin'
     });
 
     await admin.save();
-    
-    res.status(201).json({ 
-      message: 'Admin registration successful',
+
+    // Increment access code usage
+    await accessCodeDoc.incrementUsage();
+
+    // Generate token
+    const token = generateToken(admin);
+
+    return createToastResponse(res, 201, 'Admin registration successful!', 'success', {
+      token,
+      admin: {
+        id: admin._id,
+        fullName: admin.fullName,
+        username: admin.username,
+        role: admin.role
+      },
       accessCodeUsed: {
         code: accessCodeDoc.code,
-        description: accessCodeDoc.description
+        description: accessCodeDoc.description,
+        remainingUses: accessCodeDoc.maxUses - accessCodeDoc.currentUses
       }
     });
+
   } catch (error) {
     console.error('Admin registration error:', error);
-    res.status(500).json({ message: 'Server error during admin registration' });
+    return createToastResponse(res, 500, 'Server error during registration', 'error');
   }
 });
 
 // =====================
-// 📊 GUEST CLICK TRACKING ENDPOINTS
+// 🔑 LOGIN ENDPOINT (ALL ROLES)
 // =====================
-
-// Click tracking endpoint
-app.post('/api/clicks', async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
-    const { button, page } = req.body;
-    const userAgent = req.headers['user-agent'];
-    const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
+    const { email, password } = req.body;
 
-    if (!button || !page) {
-      return res.status(400).json({ message: 'Button and page are required' });
+    if (!email || !password) {
+      return createToastResponse(res, 400, 'Email and password are required', 'error');
     }
 
-    // Detect device information
-    const deviceInfo = detectDeviceInfo(userAgent);
-    
-    // For location detection, you can use a service like ipapi.co
-    // This is a simplified version - you might want to use a proper IP geolocation service
-    let location = {};
-    try {
-      // You can integrate with ipapi.co or similar service here
-      // const locationResponse = await fetch(`https://ipapi.co/${ipAddress}/json/`);
-      // location = await locationResponse.json();
-    } catch (locationError) {
-      console.log('Location detection failed:', locationError);
-    }
-
-    const click = new Click({ 
-      button, 
-      page,
-      userAgent,
-      ipAddress,
-      ...deviceInfo,
-      location
+    // Find user
+    const user = await User.findOne({ 
+      $or: [{ email: email.toLowerCase() }, { username: email.toLowerCase() }] 
     });
-    
-    await click.save();
-    res.status(201).json({ message: 'Click logged successfully' });
+
+    if (!user) {
+      return createToastResponse(res, 401, 'Invalid credentials', 'error');
+    }
+
+    // Check password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return createToastResponse(res, 401, 'Invalid credentials', 'error');
+    }
+
+    // For educators, check if email is verified
+    if (user.role === 'educator' && !user.isEmailVerified) {
+      return createToastResponse(res, 401, 'Please verify your email first', 'error');
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate token
+    const token = generateToken(user);
+
+    // Prepare user data based on role
+    let userData = {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      username: user.username,
+      role: user.role
+    };
+
+    // Add role-specific data
+    if (user.role === 'student') {
+      userData = {
+        ...userData,
+        department: user.department,
+        year: user.year,
+        block: user.block,
+        enrolledClass: user.enrolledClass
+      };
+      
+      // Populate class info if exists
+      if (user.enrolledClass) {
+        const classObj = await Class.findById(user.enrolledClass);
+        if (classObj) {
+          userData.enrolledClassDetails = {
+            classCode: classObj.classCode,
+            className: classObj.className
+          };
+        }
+      }
+    } else if (user.role === 'educator') {
+      userData = {
+        ...userData,
+        isEmailVerified: user.isEmailVerified
+      };
+    }
+
+    return createToastResponse(res, 200, 'Login successful!', 'success', {
+      token,
+      user: userData
+    });
+
   } catch (error) {
-    console.error('Error logging click:', error);
-    res.status(500).json({ message: 'Server error logging click' });
+    console.error('Login error:', error);
+    return createToastResponse(res, 500, 'Server error during login', 'error');
   }
 });
 
-// Get paginated click logs
-app.get('/api/clicks', verifyToken, async (req, res) => {
+// =====================
+// 👑 ADMIN LOGIN
+// =====================
+app.post('/api/admin/login', async (req, res) => {
   try {
-    const { page = 1, limit = 10, buttons } = req.query;
-    
-    // Build query object for filtering
-    let query = {};
-    if (buttons) {
-      const buttonList = buttons.split(',');
-      query.button = { $in: buttonList };
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return createToastResponse(res, 400, 'Username and password are required', 'error');
     }
+
+    // Find admin user
+    const admin = await User.findOne({ 
+      username: username.toLowerCase(),
+      role: 'admin' 
+    });
+
+    if (!admin) {
+      return createToastResponse(res, 401, 'Invalid credentials', 'error');
+    }
+
+    // Check password
+    const isPasswordValid = await admin.comparePassword(password);
+    if (!isPasswordValid) {
+      return createToastResponse(res, 401, 'Invalid credentials', 'error');
+    }
+
+    // Generate token
+    const token = generateToken(admin);
+
+    // Update last login
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    return createToastResponse(res, 200, 'Login successful!', 'success', {
+      token,
+      admin: {
+        id: admin._id,
+        fullName: admin.fullName,
+        username: admin.username,
+        role: admin.role,
+        lastLogin: admin.lastLogin
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin login error:', error);
+    return createToastResponse(res, 500, 'Server error during login', 'error');
+  }
+});
+
+// =====================
+// 🏫 CLASS MANAGEMENT
+// =====================
+
+// Generate class code
+app.post('/api/classes/generate-code', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { className, description } = req.body;
+    const educatorId = req.user.id;
+
+    // Generate unique class code
+    const generateUniqueCode = async () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code;
+      let isUnique = false;
+      
+      while (!isUnique) {
+        code = '';
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        
+        const existingClass = await Class.findOne({ classCode: code });
+        if (!existingClass) isUnique = true;
+      }
+      return code;
+    };
+
+    const classCode = await generateUniqueCode();
+
+    // Create class
+    const newClass = new Class({
+      classCode,
+      className: className || `Class ${classCode}`,
+      description,
+      educator: educatorId,
+      students: []
+    });
+
+    await newClass.save();
+
+    // Add class to educator's classes
+    const educator = await User.findById(educatorId);
+    educator.classes.push(newClass._id);
+    await educator.save();
+
+    return createToastResponse(res, 201, 'Class code generated successfully!', 'success', {
+      class: newClass
+    });
+
+  } catch (error) {
+    console.error('Generate class code error:', error);
+    return createToastResponse(res, 500, 'Server error generating class code', 'error');
+  }
+});
+
+// Get educator's classes
+app.get('/api/classes/my-classes', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const educatorId = req.user.id;
+
+    const classes = await Class.find({ educator: educatorId })
+      .sort({ createdAt: -1 })
+      .populate('students', 'fullName email username department year block');
+
+    return createToastResponse(res, 200, 'Classes fetched successfully', 'success', {
+      classes
+    });
+
+  } catch (error) {
+    console.error('Get classes error:', error);
+    return createToastResponse(res, 500, 'Server error fetching classes', 'error');
+  }
+});
+
+// Get all classes (admin only)
+app.get('/api/classes', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, isActive } = req.query;
     
-    const clicks = await Click.find(query)
-      .sort({ timestamp: -1 })
+    const query = {};
+    if (isActive !== undefined) {
+      query.isActive = isActive === 'true';
+    }
+
+    const classes = await Class.find(query)
+      .populate('educator', 'fullName email username')
+      .populate('students', 'fullName email')
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(parseInt(limit));
 
-    const total = await Click.countDocuments(query);
+    const total = await Class.countDocuments(query);
 
-    res.json({ clicks, total });
+    res.json({
+      classes,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (error) {
-    console.error('Error fetching click logs:', error);
-    res.status(500).json({ message: 'Server error fetching click logs' });
+    console.error('Get all classes error:', error);
+    return createToastResponse(res, 500, 'Server error fetching classes', 'error');
   }
 });
 
-// Delete a single click log
-app.delete('/api/clicks/:id', verifyToken, async (req, res) => {
+// Get class by ID
+app.get('/api/classes/:id', verifyToken, async (req, res) => {
   try {
-    const { id } = req.params;
-    const deletedClick = await Click.findByIdAndDelete(id);
-    
-    if (!deletedClick) {
-      return res.status(404).json({ message: 'Click log not found' });
+    const classId = req.params.id;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    const classObj = await Class.findById(classId)
+      .populate('educator', 'fullName email username')
+      .populate('students', 'fullName email username department year block');
+
+    if (!classObj) {
+      return createToastResponse(res, 404, 'Class not found', 'error');
     }
-    
-    res.json({ message: 'Click log deleted successfully' });
+
+    // Check permissions
+    if (userRole === 'student' && !classObj.students.some(s => s._id.toString() === userId)) {
+      return createToastResponse(res, 403, 'Access denied', 'error');
+    }
+
+    if (userRole === 'educator' && classObj.educator._id.toString() !== userId) {
+      return createToastResponse(res, 403, 'Access denied', 'error');
+    }
+
+    return createToastResponse(res, 200, 'Class fetched successfully', 'success', {
+      class: classObj
+    });
   } catch (error) {
-    console.error('Error deleting click log:', error);
-    res.status(500).json({ message: 'Server error deleting click log' });
+    console.error('Get class error:', error);
+    return createToastResponse(res, 500, 'Server error fetching class', 'error');
   }
 });
 
-// Delete all click logs
-app.delete('/api/clicks', verifyToken, async (req, res) => {
+// =====================
+// 👥 GET CLASS STUDENTS
+// =====================
+app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
   try {
-    await Click.deleteMany({});
-    res.json({ message: 'All click logs deleted successfully' });
+    const { classId } = req.params;
+    const educatorId = req.user.id;
+
+    // Verify educator owns this class
+    const classObj = await Class.findOne({
+      _id: classId,
+      educator: educatorId
+    }).populate('students', 'fullName email username department year block createdAt');
+
+    if (!classObj) {
+      return createToastResponse(res, 404, 'Class not found or access denied', 'error');
+    }
+
+    return createToastResponse(res, 200, 'Students fetched successfully', 'success', {
+      students: classObj.students,
+      class: {
+        classCode: classObj.classCode,
+        className: classObj.className,
+        description: classObj.description,
+        totalStudents: classObj.students.length
+      }
+    });
+
   } catch (error) {
-    console.error('Error deleting all click logs:', error);
-    res.status(500).json({ message: 'Server error deleting all click logs' });
+    console.error('Get class students error:', error);
+    return createToastResponse(res, 500, 'Server error fetching students', 'error');
   }
 });
 
 // =====================
-// 🔑 ACCESS CODE ENDPOINTS
+// 📚 ACADEMIC SETTINGS
 // =====================
 
-// Public endpoint to validate access code (for registration)
+// Get academic settings
+app.get('/api/academic-settings/:type', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { type } = req.params;
+    
+    if (!['department', 'year', 'block'].includes(type)) {
+      return createToastResponse(res, 400, 'Invalid academic setting type', 'error');
+    }
+
+    const settings = await AcademicSetting.find({ 
+      type,
+      $or: [
+        { createdBy: req.user.id },
+        { isActive: true }
+      ]
+    }).sort({ name: 1 });
+
+    res.json(settings);
+
+  } catch (error) {
+    console.error('Get academic settings error:', error);
+    return createToastResponse(res, 500, 'Server error fetching settings', 'error');
+  }
+});
+
+// Create academic setting
+app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { name, type } = req.body;
+    
+    if (!name || !type || !['department', 'year', 'block'].includes(type)) {
+      return createToastResponse(res, 400, 'Invalid data provided', 'error');
+    }
+
+    // Check if setting already exists
+    const existingSetting = await AcademicSetting.findOne({
+      name: { $regex: new RegExp(`^${name}$`, 'i') },
+      type,
+      createdBy: req.user.id
+    });
+
+    if (existingSetting) {
+      return createToastResponse(res, 400, `${type.charAt(0).toUpperCase() + type.slice(1)} already exists`, 'error');
+    }
+
+    const setting = new AcademicSetting({
+      name,
+      type,
+      createdBy: req.user.id
+    });
+
+    await setting.save();
+
+    return createToastResponse(res, 201, `${type} created successfully`, 'success', {
+      setting
+    });
+
+  } catch (error) {
+    console.error('Create academic setting error:', error);
+    return createToastResponse(res, 500, 'Server error creating setting', 'error');
+  }
+});
+
+// =====================
+// 👑 ADMIN MANAGEMENT
+// =====================
+
+// Get all users (admin only)
+app.get('/api/admin/users', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { role, page = 1, limit = 20 } = req.query;
+    
+    const query = {};
+    if (role && ['student', 'educator', 'admin'].includes(role)) {
+      query.role = role;
+    }
+
+    const users = await User.find(query)
+      .select('-password -emailVerificationToken -emailVerificationExpires')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .populate('enrolledClass', 'classCode className')
+      .populate('classes', 'classCode className');
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      users,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    return createToastResponse(res, 500, 'Server error fetching users', 'error');
+  }
+});
+
+// Get admin dashboard stats
+app.get('/api/admin/stats', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const [
+      totalUsers,
+      totalStudents,
+      totalEducators,
+      totalAdmins,
+      totalClasses,
+      activeClasses,
+      totalAccessCodes,
+      activeAccessCodes,
+      recentRegistrations
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'educator' }),
+      User.countDocuments({ role: 'admin' }),
+      Class.countDocuments(),
+      Class.countDocuments({ isActive: true }),
+      AccessCode.countDocuments(),
+      AccessCode.countDocuments({ isActive: true }),
+      User.find().sort({ createdAt: -1 }).limit(5)
+        .select('fullName email role createdAt')
+        .lean()
+    ]);
+
+    res.json({
+      stats: {
+        users: { total: totalUsers, students: totalStudents, educators: totalEducators, admins: totalAdmins },
+        classes: { total: totalClasses, active: activeClasses },
+        accessCodes: { total: totalAccessCodes, active: activeAccessCodes }
+      },
+      recentRegistrations
+    });
+  } catch (error) {
+    console.error('Get admin stats error:', error);
+    return createToastResponse(res, 500, 'Server error fetching stats', 'error');
+  }
+});
+
+// Delete user (admin only)
+app.delete('/api/admin/users/:id', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // Prevent admin from deleting themselves
+    if (userId === req.user.id) {
+      return createToastResponse(res, 400, 'You cannot delete your own account', 'error');
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return createToastResponse(res, 404, 'User not found', 'error');
+    }
+
+    // If user is an educator, handle their classes
+    if (user.role === 'educator') {
+      await Class.updateMany(
+        { educator: userId },
+        { $set: { isActive: false, educator: null } }
+      );
+    }
+
+    // If user is a student, remove from classes
+    if (user.role === 'student') {
+      await Class.updateMany(
+        { students: userId },
+        { $pull: { students: userId } }
+      );
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    return createToastResponse(res, 200, 'User deleted successfully', 'success');
+  } catch (error) {
+    console.error('Delete user error:', error);
+    return createToastResponse(res, 500, 'Server error deleting user', 'error');
+  }
+});
+
+// =====================
+// 🔑 ACCESS CODE ROUTES
+// =====================
+
+// Get all access codes (admin only)
+app.get('/api/access-codes', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const accessCodes = await AccessCode.find().sort({ createdAt: -1 });
+    res.json(accessCodes);
+  } catch (error) {
+    console.error('Error fetching access codes:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create access code (admin only)
+app.post('/api/access-codes', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { code, description, maxUses, isActive } = req.body;
+
+    const formattedCode = code.trim().toUpperCase();
+
+    const existing = await AccessCode.findOne({ code: formattedCode });
+    if (existing) {
+      return res.status(400).json({ message: 'Access code already exists' });
+    }
+
+    const newCode = new AccessCode({
+      code: formattedCode,
+      description: description || '',
+      maxUses: Math.max(1, parseInt(maxUses) || 1),
+      isActive: isActive !== false,
+      currentUses: 0
+    });
+
+    const saved = await newCode.save();
+    res.status(201).json(saved);
+  } catch (error) {
+    console.error('Error creating access code:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Validate access code (public)
 app.get('/api/access-codes/validate/:code', async (req, res) => {
   try {
     const code = req.params.code.trim().toUpperCase();
-    const accessCode = await AccessCode.findActiveByCode(code);
+    const accessCode = await AccessCode.findOne({ code });
 
     if (!accessCode) {
       return res.status(404).json({ valid: false, message: 'Invalid access code' });
     }
 
-    if (!accessCode.canBeUsed()) {
-      return res.status(400).json({ valid: false, message: 'This access code cannot be used' });
+    if (!accessCode.isActive) {
+      return res.status(400).json({ valid: false, message: 'This access code is no longer active' });
+    }
+
+    if (accessCode.currentUses >= accessCode.maxUses) {
+      return res.status(400).json({ valid: false, message: 'This access code has reached its maximum usage limit' });
     }
 
     res.json({
@@ -441,200 +1018,181 @@ app.get('/api/access-codes/validate/:code', async (req, res) => {
   }
 });
 
-// Public endpoint to consume access code (for registration)
-app.post('/api/access-codes/use/:code', async (req, res) => {
+// =====================
+// 📊 CLICK TRACKING
+// =====================
+
+// Track click (public)
+app.post('/api/clicks', async (req, res) => {
   try {
-    const code = req.params.code.trim().toUpperCase();
-    const accessCode = await AccessCode.findActiveByCode(code);
+    const clickData = req.body;
+    
+    // Add IP address and device info
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || '';
+    
+    // Parse user agent
+    const isMobile = /mobile/i.test(userAgent);
+    const isTablet = /tablet/i.test(userAgent);
+    const isDesktop = !isMobile && !isTablet;
+    const isLaptop = isDesktop && /(windows|macintosh|linux)/i.test(userAgent);
+    
+    const click = new Click({
+      ...clickData,
+      ipAddress: ip,
+      userAgent,
+      deviceType: isMobile ? 'Mobile' : isTablet ? 'Tablet' : isLaptop ? 'Laptop' : 'Desktop',
+      browser: getBrowserFromUA(userAgent),
+      operatingSystem: getOSFromUA(userAgent),
+      isMobile,
+      isTablet,
+      isDesktop,
+      isLaptop
+    });
+    
+    await click.save();
+    res.status(201).json({ success: true, message: 'Click tracked successfully' });
+  } catch (error) {
+    console.error('Click tracking error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
-    if (!accessCode) {
-      return res.status(404).json({ success: false, message: 'Invalid access code' });
+// Get clicks (admin only)
+app.get('/api/clicks', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, button, startDate, endDate } = req.query;
+    
+    const query = {};
+    
+    if (button) {
+      query.button = { $regex: button, $options: 'i' };
     }
-
-    if (!accessCode.canBeUsed()) {
-      return res.status(400).json({ success: false, message: 'This access code cannot be used' });
+    
+    if (startDate && endDate) {
+      query.timestamp = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
     }
-
-    await accessCode.incrementUsage();
-
+    
+    const clicks = await Click.find(query)
+      .sort({ timestamp: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    
+    const total = await Click.countDocuments(query);
+    
     res.json({
-      success: true,
-      message: 'Access code used successfully',
-      code: accessCode.code,
-      description: accessCode.description,
-      remainingUses: accessCode.maxUses - accessCode.currentUses
+      clicks,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit)
     });
   } catch (error) {
-    console.error('Error using access code:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Get clicks error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Get all access codes
-app.get('/api/access-codes', verifyToken, async (req, res) => {
+// Delete single click (admin only)
+app.delete('/api/clicks/:id', verifyToken, requireAdmin, async (req, res) => {
   try {
-    const accessCodes = await AccessCode.find()
-      .sort({ createdAt: -1 });
-    
-    res.json(accessCodes);
+    await Click.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Click deleted successfully' });
   } catch (error) {
-    console.error('Error fetching access codes:', error);
-    return createToastResponse(res, 500, 'Server error fetching access codes', 'error');
+    console.error('Delete click error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Create new access code
-app.post('/api/access-codes', verifyToken, async (req, res) => {
+// Delete all clicks (admin only)
+app.delete('/api/clicks', verifyToken, requireAdmin, async (req, res) => {
   try {
-    const { code, description, maxUses, isActive } = req.body;
-
-    // Validate required fields
-    if (!code || !code.trim()) {
-      return createToastResponse(res, 400, 'Access code is required', 'error');
-    }
-
-    // Check for duplicate code
-    const existingCode = await AccessCode.findOne({ code: code.trim().toUpperCase() });
-    if (existingCode) {
-      return createToastResponse(res, 400, 'Access code already exists', 'error');
-    }
-
-    // Create new access code
-    const accessCode = new AccessCode({
-      code: code.trim().toUpperCase(),
-      description: description?.trim() || '',
-      maxUses: parseInt(maxUses) || 1,
-      isActive: isActive !== undefined ? isActive : true,
-      currentUses: 0
-    });
-
-    await accessCode.save();
-    
-    return createToastResponse(res, 201, 'Access code created successfully', 'success', accessCode);
+    await Click.deleteMany({});
+    res.json({ success: true, message: 'All clicks deleted successfully' });
   } catch (error) {
-    console.error('Error creating access code:', error);
-    
-    // Handle mongoose validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return createToastResponse(res, 400, messages.join(', '), 'error');
-    }
-    
-    // Handle duplicate key error
-    if (error.code === 11000) {
-      return createToastResponse(res, 400, 'Access code already exists', 'error');
-    }
-    
-    return createToastResponse(res, 500, 'Server error creating access code', 'error');
+    console.error('Delete all clicks error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Update access code
-app.put('/api/access-codes/:id', verifyToken, async (req, res) => {
+// =====================
+// 👤 USER PROFILE
+// =====================
+
+// Get current user profile
+app.get('/api/auth/profile', verifyToken, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { code, description, maxUses, isActive } = req.body;
+    const user = await User.findById(req.user.id)
+      .select('-password -emailVerificationToken -emailVerificationExpires');
 
-    // Validate required fields
-    if (!code || !code.trim()) {
-      return createToastResponse(res, 400, 'Access code is required', 'error');
+    if (!user) {
+      return createToastResponse(res, 404, 'User not found', 'error');
     }
 
-    // Check if access code exists
-    const existingCode = await AccessCode.findById(id);
-    if (!existingCode) {
-      return createToastResponse(res, 404, 'Access code not found', 'error');
-    }
-
-    // Check for duplicate code (excluding current record)
-    const duplicateCode = await AccessCode.findOne({ 
-      code: code.trim().toUpperCase(),
-      _id: { $ne: id }
+    return createToastResponse(res, 200, 'Profile fetched successfully', 'success', {
+      user
     });
-    if (duplicateCode) {
-      return createToastResponse(res, 400, 'Access code already exists', 'error');
-    }
+  } catch (error) {
+    console.error('Get profile error:', error);
+    return createToastResponse(res, 500, 'Server error fetching profile', 'error');
+  }
+});
 
-    // Update access code
-    const updatedCode = await AccessCode.findByIdAndUpdate(
-      id,
-      {
-        code: code.trim().toUpperCase(),
-        description: description?.trim() || '',
-        maxUses: parseInt(maxUses) || 1,
-        isActive: isActive !== undefined ? isActive : true
-      },
-      { new: true, runValidators: true }
+// Update user profile
+app.put('/api/auth/profile', verifyToken, async (req, res) => {
+  try {
+    const { fullName, department, year, block } = req.body;
+    
+    const updateData = {};
+    if (fullName) updateData.fullName = fullName;
+    if (department) updateData.department = department;
+    if (year) updateData.year = year;
+    if (block) updateData.block = block;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      updateData,
+      { new: true, select: '-password -emailVerificationToken -emailVerificationExpires' }
     );
 
-    return createToastResponse(res, 200, 'Access code updated successfully', 'success', updatedCode);
+    return createToastResponse(res, 200, 'Profile updated successfully', 'success', {
+      user
+    });
   } catch (error) {
-    console.error('Error updating access code:', error);
-    
-    // Handle mongoose validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return createToastResponse(res, 400, messages.join(', '), 'error');
-    }
-    
-    // Handle duplicate key error
-    if (error.code === 11000) {
-      return createToastResponse(res, 400, 'Access code already exists', 'error');
-    }
-    
-    return createToastResponse(res, 500, 'Server error updating access code', 'error');
-  }
-});
-
-// Delete access code
-app.delete('/api/access-codes/:id', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const deletedCode = await AccessCode.findByIdAndDelete(id);
-    if (!deletedCode) {
-      return createToastResponse(res, 404, 'Access code not found', 'error');
-    }
-    
-    return createToastResponse(res, 200, 'Access code deleted successfully', 'success');
-  } catch (error) {
-    console.error('Error deleting access code:', error);
-    return createToastResponse(res, 500, 'Server error deleting access code', 'error');
+    console.error('Update profile error:', error);
+    return createToastResponse(res, 500, 'Server error updating profile', 'error');
   }
 });
 
 // =====================
-// 🚀 START SERVER
+// 🔧 HELPER FUNCTIONS
 // =====================
-// Allow configuring host and port via environment variables.
-// Prefer WEB_SERVICES_HOST / WEB_SERVICES_PORT for explicit web service config,
-// fall back to HOST / PORT and finally sensible defaults.
-const HOST = process.env.WEB_SERVICES_HOST || process.env.HOST || '0.0.0.0';
-const PORT = process.env.WEB_SERVICES_PORT || process.env.PORT || 3000;
 
-// Serve frontend static files (if present) and provide SPA fallback so
-// client-side routes don't return 404 on refresh. The Vite build output
-// is expected at the project root `dist` directory.
-const frontendDistPath = path.resolve(__dirname, '..', 'dist');
-if (fs.existsSync(frontendDistPath)) {
-  app.use(express.static(frontendDistPath));
-
-  // Catch-all: serve index.html for any non-API route (SPA fallback)
-  app.get('*', (req, res, next) => {
-    // If request is for an API route, continue to API handlers
-    if (req.path.startsWith('/api')) return next();
-
-    const indexPath = path.join(frontendDistPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      return res.sendFile(indexPath);
-    }
-
-    return res.status(404).send('Not found');
-  });
+function getBrowserFromUA(userAgent) {
+  if (/firefox/i.test(userAgent)) return 'Firefox';
+  if (/chrome/i.test(userAgent)) return 'Chrome';
+  if (/safari/i.test(userAgent)) return 'Safari';
+  if (/edge/i.test(userAgent)) return 'Edge';
+  if (/opera/i.test(userAgent)) return 'Opera';
+  return 'Unknown';
 }
 
-app.use(errorHandler);
+function getOSFromUA(userAgent) {
+  if (/windows/i.test(userAgent)) return 'Windows';
+  if (/macintosh/i.test(userAgent)) return 'macOS';
+  if (/linux/i.test(userAgent)) return 'Linux';
+  if (/android/i.test(userAgent)) return 'Android';
+  if (/ios|iphone|ipad/i.test(userAgent)) return 'iOS';
+  return 'Unknown';
+}
 
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 Admin server running on ${HOST}:${PORT}`);
+// =====================
+// 🚀 SERVER START
+// =====================
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
