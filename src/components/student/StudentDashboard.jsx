@@ -97,6 +97,10 @@ export default function StudentDashboard() {
             <h3 className="text-lg font-semibold text-white mb-4">Academic Information</h3>
             <div className="space-y-3">
               <div>
+                <span className="text-gray-400">School:</span>
+                <p className="text-white">{user.school || 'Not specified'}</p>
+              </div>
+              <div>
                 <span className="text-gray-400">Department:</span>
                 <p className="text-white">{user.department || 'Not specified'}</p>
               </div>

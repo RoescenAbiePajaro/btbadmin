@@ -8,6 +8,7 @@ export default function StudentRegistration() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [academicOptions, setAcademicOptions] = useState({
+    school: [],
     departments: [],
     years: [],
     blocks: []
@@ -19,6 +20,7 @@ export default function StudentRegistration() {
     username: '',
     password: '',
     confirmPassword: '',
+    school: '',
     department: '',
     year: '',
     block: '',
@@ -31,15 +33,29 @@ export default function StudentRegistration() {
   useEffect(() => {
     const fetchAcademicOptions = async () => {
       try {
-        // In a real app, fetch from API
-        // For now, use sample data
+        // Fetch departments, years, and blocks from the API
+        const [schoolRes,departmentsRes, yearsRes, blocksRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/academic-settings/school'),
+          axios.get('http://localhost:5000/api/academic-settings/department'),
+          axios.get('http://localhost:5000/api/academic-settings/year'),
+          axios.get('http://localhost:5000/api/academic-settings/block')
+        ]);
+
         setAcademicOptions({
-          departments: ['Computer Science', 'Information Technology', 'Engineering', 'Arts', 'Science'],
-          years: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-          blocks: ['A', 'B', 'C', 'D']
+          school: schoolRes.data.map(item => item.name),
+          departments: departmentsRes.data.map(item => item.name),
+          years: yearsRes.data.map(item => item.name),
+          blocks: blocksRes.data.map(item => item.name)
         });
       } catch (error) {
         console.error('Error fetching academic options:', error);
+        // Fallback to empty arrays if API fails
+        setAcademicOptions({
+          school: [],
+          departments: [],
+          years: [],
+          blocks: []
+        });
       }
     };
 
@@ -100,6 +116,7 @@ export default function StudentRegistration() {
           email: formData.email,
           username: formData.username,
           password: formData.password,
+          school: formData.school,
           department: formData.department,
           year: formData.year,
           block: formData.block,
@@ -252,8 +269,29 @@ export default function StudentRegistration() {
               )}
             </div>
 
+            
+
             {/* Academic Information Grid */}
             <div className="grid grid-cols-3 gap-4">
+              {/* School */}
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  School
+                </label>
+                <select
+                  name="school"
+                  value={formData.school}
+                  onChange={handleChange}
+                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select</option>
+                  {academicOptions.school.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+
+
               {/* Department */}
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -271,6 +309,8 @@ export default function StudentRegistration() {
                   ))}
                 </select>
               </div>
+
+
 
               {/* Year */}
               <div>

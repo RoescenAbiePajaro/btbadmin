@@ -160,7 +160,7 @@ app.get('/api/auth/roles', (req, res) => {
 // =====================
 app.post('/api/auth/register/student', async (req, res) => {
   try {
-    const { fullName, email, username, password, department, year, block, classCode } = req.body;
+    const { fullName, email, username, password, school, department, year, block, classCode } = req.body;
 
     // Validate required fields
     if (!fullName || !email || !username || !password || !classCode) {
@@ -194,6 +194,7 @@ app.post('/api/auth/register/student', async (req, res) => {
       username,
       password,
       role: 'student',
+      school,
       department,
       year,
       block,
@@ -217,6 +218,7 @@ app.post('/api/auth/register/student', async (req, res) => {
         email: student.email,
         username: student.username,
         role: student.role,
+        school: student.school,
         department: student.department,
         year: student.year,
         block: student.block,
@@ -400,6 +402,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (user.role === 'student') {
       userData = {
         ...userData,
+        school: user.school,
         department: user.department,
         year: user.year,
         block: user.block,
@@ -548,7 +551,7 @@ app.get('/api/classes/my-classes', verifyToken, requireEducator, async (req, res
 
     const classes = await Class.find({ educator: educatorId })
       .sort({ createdAt: -1 })
-      .populate('students', 'fullName email username department year block');
+      .populate('students', 'fullName email username school department year block');
 
     return createToastResponse(res, 200, 'Classes fetched successfully', 'success', {
       classes
@@ -600,7 +603,7 @@ app.get('/api/classes/:id', verifyToken, async (req, res) => {
 
     const classObj = await Class.findById(classId)
       .populate('educator', 'fullName email username')
-      .populate('students', 'fullName email username department year block');
+      .populate('students', 'fullName email username school department year block');
 
     if (!classObj) {
       return createToastResponse(res, 404, 'Class not found', 'error');
@@ -636,7 +639,7 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
     const classObj = await Class.findOne({
       _id: classId,
       educator: educatorId
-    }).populate('students', 'fullName email username department year block createdAt');
+    }).populate('students', 'fullName email username school department year block createdAt');
 
     if (!classObj) {
       return createToastResponse(res, 404, 'Class not found or access denied', 'error');
@@ -667,7 +670,7 @@ app.get('/api/academic-settings/:type', verifyToken, requireEducator, async (req
   try {
     const { type } = req.params;
     
-    if (!['department', 'year', 'block'].includes(type)) {
+    if (!['school','department', 'year', 'block'].includes(type)) {
       return createToastResponse(res, 400, 'Invalid academic setting type', 'error');
     }
 
@@ -692,7 +695,7 @@ app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res
   try {
     const { name, type } = req.body;
     
-    if (!name || !type || !['department', 'year', 'block'].includes(type)) {
+    if (!name || !type || !['school','department', 'year', 'block'].includes(type)) {
       return createToastResponse(res, 400, 'Invalid data provided', 'error');
     }
 
@@ -1041,10 +1044,11 @@ app.get('/api/auth/profile', verifyToken, async (req, res) => {
 // Update user profile
 app.put('/api/auth/profile', verifyToken, async (req, res) => {
   try {
-    const { fullName, department, year, block } = req.body;
+    const { fullName, school, department, year, block } = req.body;
     
     const updateData = {};
     if (fullName) updateData.fullName = fullName;
+    if (school) updateData.school = school;
     if (department) updateData.department = department;
     if (year) updateData.year = year;
     if (block) updateData.block = block;

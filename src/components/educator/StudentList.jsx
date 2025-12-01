@@ -173,6 +173,7 @@ export default function StudentList() {
                   <th className="text-left p-4 text-gray-400 font-medium">Full Name</th>
                   <th className="text-left p-4 text-gray-400 font-medium">Email</th>
                   <th className="text-left p-4 text-gray-400 font-medium">Username</th>
+                  <th className="text-left p-4 text-gray-400 font-medium">School</th>
                   <th className="text-left p-4 text-gray-400 font-medium">Department</th>
                   <th className="text-left p-4 text-gray-400 font-medium">Year</th>
                   <th className="text-left p-4 text-gray-400 font-medium">Block</th>
@@ -185,6 +186,7 @@ export default function StudentList() {
                     <td className="p-4 text-white">{student.fullName}</td>
                     <td className="p-4 text-gray-300">{student.email}</td>
                     <td className="p-4 text-gray-300">{student.username}</td>
+                    <td className="p-4 text-gray-300">{student.school || '-'}</td>
                     <td className="p-4 text-gray-300">{student.department || '-'}</td>
                     <td className="p-4 text-gray-300">{student.year || '-'}</td>
                     <td className="p-4 text-gray-300">{student.block || '-'}</td>

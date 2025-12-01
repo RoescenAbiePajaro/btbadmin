@@ -70,6 +70,7 @@ export default function AcademicSettings() {
   };
 
   const typeLabels = {
+    school: 'Schools',
     department: 'Departments',
     year: 'Years',
     block: 'Blocks'
@@ -86,7 +87,7 @@ export default function AcademicSettings() {
       {/* Type Tabs */}
       <div className="border-b border-gray-700">
         <nav className="flex space-x-6">
-          {['department', 'year', 'block'].map((type) => (
+          {['school','department', 'year', 'block'].map((type) => (
             <button
               key={type}
               onClick={() => setActiveType(type)}
