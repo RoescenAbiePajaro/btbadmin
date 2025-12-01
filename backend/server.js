@@ -5,8 +5,6 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
-const crypto = require('crypto');
 
 const User = require('./models/User');
 const Class = require('./models/Class');
@@ -132,17 +130,6 @@ const requireStudent = (req, res, next) => {
   }
   next();
 };
-
-// Configure email transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: process.env.EMAIL_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
 
 // =====================
 // 📊 HEALTH CHECK
@@ -278,105 +265,21 @@ app.post('/api/auth/register/educator', async (req, res) => {
       role: 'educator'
     });
 
-    // Generate and save verification token
-    const verificationToken = educator.generateVerificationToken();
-    await educator.save({ validateBeforeSave: false });
+    await educator.save();
 
-    // Send verification email
-    const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-    
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Verify Your Educator Account - Beyond The Brush',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Welcome to Beyond The Brush!</h2>
-          <p>Hi ${fullName},</p>
-          <p>Thank you for registering as an educator. Please verify your email address to activate your account.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationUrl}" 
-               style="background-color: #4F46E5; color: white; padding: 12px 24px; 
-                      text-decoration: none; border-radius: 6px; font-weight: bold;">
-              Verify Email Address
-            </a>
-          </div>
-          <p>Or copy and paste this link in your browser:</p>
-          <p style="word-break: break-all;">${verificationUrl}</p>
-          <p>This link will expire in 24 hours.</p>
-          <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-          <p style="color: #666; font-size: 12px;">
-            If you didn't create this account, please ignore this email.
-          </p>
-        </div>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    return createToastResponse(res, 201, 'Educator registration successful! Please check your email to verify your account.', 'success', {
+    return createToastResponse(res, 201, 'Educator registration successful!', 'success', {
       user: {
         id: educator._id,
         fullName: educator.fullName,
         email: educator.email,
         username: educator.username,
-        role: educator.role,
-        isEmailVerified: educator.isEmailVerified
+        role: educator.role
       }
     });
 
   } catch (error) {
     console.error('Educator registration error:', error);
     return createToastResponse(res, 500, 'Server error during registration', 'error');
-  }
-});
-
-// =====================
-// ✅ EMAIL VERIFICATION
-// =====================
-app.get('/api/auth/verify-email', async (req, res) => {
-  try {
-    const { token, email } = req.query;
-
-    if (!token || !email) {
-      return createToastResponse(res, 400, 'Invalid verification link', 'error');
-    }
-
-    const educator = await User.findOne({
-      email,
-      emailVerificationToken: token,
-      emailVerificationExpires: { $gt: Date.now() },
-      role: 'educator'
-    });
-
-    if (!educator) {
-      return createToastResponse(res, 400, 'Verification link is invalid or has expired', 'error');
-    }
-
-    // Verify email
-    educator.isEmailVerified = true;
-    educator.emailVerificationToken = undefined;
-    educator.emailVerificationExpires = undefined;
-    await educator.save();
-
-    // Generate token for immediate login
-    const authToken = generateToken(educator);
-
-    return createToastResponse(res, 200, 'Email verified successfully!', 'success', {
-      token: authToken,
-      user: {
-        id: educator._id,
-        fullName: educator.fullName,
-        email: educator.email,
-        username: educator.username,
-        role: educator.role,
-        isEmailVerified: educator.isEmailVerified
-      }
-    });
-
-  } catch (error) {
-    console.error('Email verification error:', error);
-    return createToastResponse(res, 500, 'Server error during verification', 'error');
   }
 });
 
@@ -477,11 +380,6 @@ app.post('/api/auth/login', async (req, res) => {
       return createToastResponse(res, 401, 'Invalid credentials', 'error');
     }
 
-    // For educators, check if email is verified
-    if (user.role === 'educator' && !user.isEmailVerified) {
-      return createToastResponse(res, 401, 'Please verify your email first', 'error');
-    }
-
     // Update last login
     user.lastLogin = new Date();
     await user.save();
@@ -521,7 +419,7 @@ app.post('/api/auth/login', async (req, res) => {
     } else if (user.role === 'educator') {
       userData = {
         ...userData,
-        isEmailVerified: user.isEmailVerified
+        // Email verification not required
       };
     }
 
