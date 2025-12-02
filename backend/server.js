@@ -94,14 +94,6 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Admin middleware
-const requireAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return createToastResponse(res, 403, 'Admin access required', 'error');
-  }
-  next();
-};
-
 // Educator middleware
 const requireEducator = (req, res, next) => {
   if (req.user.role !== 'educator') {
@@ -137,7 +129,6 @@ app.get('/api/auth/roles', (req, res) => {
     roles: [
       { id: 'student', name: 'Student', description: 'Join classes and participate in activities' },
       { id: 'educator', name: 'Educator', description: 'Create and manage classes' },
-      { id: 'admin', name: 'Administrator', description: 'Manage system and users' }
     ]
   });
 });
@@ -273,77 +264,6 @@ app.post('/api/auth/register/educator', async (req, res) => {
 });
 
 // =====================
-// 👑 ADMIN REGISTRATION
-// =====================
-app.post('/api/admin/register', async (req, res) => {
-  try {
-    const { firstName, lastName, username, password, accessCode } = req.body;
-
-    // Validate required fields
-    if (!firstName || !lastName || !username || !password || !accessCode) {
-      return createToastResponse(res, 400, 'All fields are required', 'error');
-    }
-
-    // Validate access code
-    const code = accessCode.trim().toUpperCase();
-    const accessCodeDoc = await AccessCode.findOne({ code });
-
-    if (!accessCodeDoc || !accessCodeDoc.isActive) {
-      return createToastResponse(res, 400, 'Invalid or inactive access code', 'error');
-    }
-
-    if (accessCodeDoc.currentUses >= accessCodeDoc.maxUses) {
-      return createToastResponse(res, 400, 'Access code has reached maximum usage', 'error');
-    }
-
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ 
-      $or: [{ username: username.toLowerCase() }, { email: `${username}@admin.local` }] 
-    });
-
-    if (existingAdmin) {
-      return createToastResponse(res, 400, 'Admin already exists', 'error');
-    }
-
-    // Create admin user
-    const admin = new User({
-      fullName: `${firstName} ${lastName}`,
-      email: `${username}@admin.local`,
-      username: username.toLowerCase(),
-      password,
-      role: 'admin'
-    });
-
-    await admin.save();
-
-    // Increment access code usage
-    await accessCodeDoc.incrementUsage();
-
-    // Generate token
-    const token = generateToken(admin);
-
-    return createToastResponse(res, 201, 'Admin registration successful!', 'success', {
-      token,
-      admin: {
-        id: admin._id,
-        fullName: admin.fullName,
-        username: admin.username,
-        role: admin.role
-      },
-      accessCodeUsed: {
-        code: accessCodeDoc.code,
-        description: accessCodeDoc.description,
-        remainingUses: accessCodeDoc.maxUses - accessCodeDoc.currentUses
-      }
-    });
-
-  } catch (error) {
-    console.error('Admin registration error:', error);
-    return createToastResponse(res, 500, 'Server error during registration', 'error');
-  }
-});
-
-// =====================
 // 🔑 LOGIN ENDPOINT (ALL ROLES)
 // =====================
 app.post('/api/auth/login', async (req, res) => {
@@ -420,57 +340,6 @@ app.post('/api/auth/login', async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error);
-    return createToastResponse(res, 500, 'Server error during login', 'error');
-  }
-});
-
-// =====================
-// 👑 ADMIN LOGIN
-// =====================
-app.post('/api/admin/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      return createToastResponse(res, 400, 'Username and password are required', 'error');
-    }
-
-    // Find admin user
-    const admin = await User.findOne({ 
-      username: username.toLowerCase(),
-      role: 'admin' 
-    });
-
-    if (!admin) {
-      return createToastResponse(res, 401, 'Invalid credentials', 'error');
-    }
-
-    // Check password
-    const isPasswordValid = await admin.comparePassword(password);
-    if (!isPasswordValid) {
-      return createToastResponse(res, 401, 'Invalid credentials', 'error');
-    }
-
-    // Generate token
-    const token = generateToken(admin);
-
-    // Update last login
-    admin.lastLogin = new Date();
-    await admin.save();
-
-    return createToastResponse(res, 200, 'Login successful!', 'success', {
-      token,
-      admin: {
-        id: admin._id,
-        fullName: admin.fullName,
-        username: admin.username,
-        role: admin.role,
-        lastLogin: admin.lastLogin
-      }
-    });
-
-  } catch (error) {
-    console.error('Admin login error:', error);
     return createToastResponse(res, 500, 'Server error during login', 'error');
   }
 });
@@ -583,37 +452,6 @@ app.get('/api/classes/my-classes', verifyToken, requireEducator, async (req, res
   }
 });
 
-// Get all classes (admin only)
-app.get('/api/classes', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const { page = 1, limit = 20, isActive } = req.query;
-    
-    const query = {};
-    if (isActive !== undefined) {
-      query.isActive = isActive === 'true';
-    }
-
-    const classes = await Class.find(query)
-      .populate('educator', 'fullName email username')
-      .populate('students', 'fullName email')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
-
-    const total = await Class.countDocuments(query);
-
-    res.json({
-      classes,
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit)
-    });
-  } catch (error) {
-    console.error('Get all classes error:', error);
-    return createToastResponse(res, 500, 'Server error fetching classes', 'error');
-  }
-});
-
 // Get class by ID
 app.get('/api/classes/:id', verifyToken, async (req, res) => {
   try {
@@ -635,7 +473,7 @@ app.get('/api/classes/:id', verifyToken, async (req, res) => {
     }
     
     // Only the educator who created the class or an admin can view it
-    if (classData.educator._id.toString() !== userId && req.user.role !== 'admin') {
+    if (classData.educator._id.toString() !== userId && req.user.role !== 'educator') {
       return res.status(403).json({
         toast: {
           show: true,
@@ -1072,197 +910,6 @@ app.put('/api/academic-settings/:id/toggle', verifyToken, requireEducator, async
 });
 
 // =====================
-// 👑 ADMIN MANAGEMENT
-// =====================
-
-// Get all users (admin only)
-app.get('/api/admin/users', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const { role, page = 1, limit = 20 } = req.query;
-    
-    const query = {};
-    if (role && ['student', 'educator', 'admin'].includes(role)) {
-      query.role = role;
-    }
-
-    const users = await User.find(query)
-      .select('-password -emailVerificationToken -emailVerificationExpires')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .populate('enrolledClass', 'classCode className')
-      .populate('classes', 'classCode className');
-
-    const total = await User.countDocuments(query);
-
-    res.json({
-      users,
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit)
-    });
-  } catch (error) {
-    console.error('Get users error:', error);
-    return createToastResponse(res, 500, 'Server error fetching users', 'error');
-  }
-});
-
-// Get admin dashboard stats
-app.get('/api/admin/stats', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const [
-      totalUsers,
-      totalStudents,
-      totalEducators,
-      totalAdmins,
-      totalClasses,
-      activeClasses,
-      totalAccessCodes,
-      activeAccessCodes,
-      recentRegistrations
-    ] = await Promise.all([
-      User.countDocuments(),
-      User.countDocuments({ role: 'student' }),
-      User.countDocuments({ role: 'educator' }),
-      User.countDocuments({ role: 'admin' }),
-      Class.countDocuments(),
-      Class.countDocuments({ isActive: true }),
-      AccessCode.countDocuments(),
-      AccessCode.countDocuments({ isActive: true }),
-      User.find().sort({ createdAt: -1 }).limit(5)
-        .select('fullName email role createdAt')
-        .lean()
-    ]);
-
-    res.json({
-      stats: {
-        users: { total: totalUsers, students: totalStudents, educators: totalEducators, admins: totalAdmins },
-        classes: { total: totalClasses, active: activeClasses },
-        accessCodes: { total: totalAccessCodes, active: activeAccessCodes }
-      },
-      recentRegistrations
-    });
-  } catch (error) {
-    console.error('Get admin stats error:', error);
-    return createToastResponse(res, 500, 'Server error fetching stats', 'error');
-  }
-});
-
-// Delete user (admin only)
-app.delete('/api/admin/users/:id', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const userId = req.params.id;
-    
-    // Prevent admin from deleting themselves
-    if (userId === req.user.id) {
-      return createToastResponse(res, 400, 'You cannot delete your own account', 'error');
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return createToastResponse(res, 404, 'User not found', 'error');
-    }
-
-    // If user is an educator, handle their classes
-    if (user.role === 'educator') {
-      await Class.updateMany(
-        { educator: userId },
-        { $set: { isActive: false, educator: null } }
-      );
-    }
-
-    // If user is a student, remove from classes
-    if (user.role === 'student') {
-      await Class.updateMany(
-        { students: userId },
-        { $pull: { students: userId } }
-      );
-    }
-
-    await User.findByIdAndDelete(userId);
-
-    return createToastResponse(res, 200, 'User deleted successfully', 'success');
-  } catch (error) {
-    console.error('Delete user error:', error);
-    return createToastResponse(res, 500, 'Server error deleting user', 'error');
-  }
-});
-
-// =====================
-// 🔑 ACCESS CODE ROUTES
-// =====================
-
-// Get all access codes (admin only)
-app.get('/api/access-codes', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const accessCodes = await AccessCode.find().sort({ createdAt: -1 });
-    res.json(accessCodes);
-  } catch (error) {
-    console.error('Error fetching access codes:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Create access code (admin only)
-app.post('/api/access-codes', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const { code, description, maxUses, isActive } = req.body;
-
-    const formattedCode = code.trim().toUpperCase();
-
-    const existing = await AccessCode.findOne({ code: formattedCode });
-    if (existing) {
-      return res.status(400).json({ message: 'Access code already exists' });
-    }
-
-    const newCode = new AccessCode({
-      code: formattedCode,
-      description: description || '',
-      maxUses: Math.max(1, parseInt(maxUses) || 1),
-      isActive: isActive !== false,
-      currentUses: 0
-    });
-
-    const saved = await newCode.save();
-    res.status(201).json(saved);
-  } catch (error) {
-    console.error('Error creating access code:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Validate access code (public)
-app.get('/api/access-codes/validate/:code', async (req, res) => {
-  try {
-    const code = req.params.code.trim().toUpperCase();
-    const accessCode = await AccessCode.findOne({ code });
-
-    if (!accessCode) {
-      return res.status(404).json({ valid: false, message: 'Invalid access code' });
-    }
-
-    if (!accessCode.isActive) {
-      return res.status(400).json({ valid: false, message: 'This access code is no longer active' });
-    }
-
-    if (accessCode.currentUses >= accessCode.maxUses) {
-      return res.status(400).json({ valid: false, message: 'This access code has reached its maximum usage limit' });
-    }
-
-    res.json({
-      valid: true,
-      message: 'Access code is valid',
-      code: accessCode.code,
-      description: accessCode.description,
-      remainingUses: accessCode.maxUses - accessCode.currentUses
-    });
-  } catch (error) {
-    console.error('Error validating access code:', error);
-    res.status(500).json({ valid: false, message: 'Server error' });
-  }
-});
-
-// =====================
 // 📊 CLICK TRACKING
 // =====================
 
@@ -1299,65 +946,6 @@ app.post('/api/clicks', async (req, res) => {
   } catch (error) {
     console.error('Click tracking error:', error);
     res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get clicks (admin only)
-app.get('/api/clicks', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const { page = 1, limit = 20, button, startDate, endDate } = req.query;
-    
-    const query = {};
-    
-    if (button) {
-      query.button = { $regex: button, $options: 'i' };
-    }
-    
-    if (startDate && endDate) {
-      query.timestamp = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
-    }
-    
-    const clicks = await Click.find(query)
-      .sort({ timestamp: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
-    
-    const total = await Click.countDocuments(query);
-    
-    res.json({
-      clicks,
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit)
-    });
-  } catch (error) {
-    console.error('Get clicks error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Delete single click (admin only)
-app.delete('/api/clicks/:id', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    await Click.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Click deleted successfully' });
-  } catch (error) {
-    console.error('Delete click error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Delete all clicks (admin only)
-app.delete('/api/clicks', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    await Click.deleteMany({});
-    res.json({ success: true, message: 'All clicks deleted successfully' });
-  } catch (error) {
-    console.error('Delete all clicks error:', error);
-    res.status(500).json({ error: error.message });
   }
 });
 
