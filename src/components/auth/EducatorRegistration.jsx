@@ -7,6 +7,7 @@ import axios from 'axios';
 export default function EducatorRegistration() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -16,6 +17,7 @@ export default function EducatorRegistration() {
   });
 
   const [errors, setErrors] = useState({});
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,12 +48,17 @@ export default function EducatorRegistration() {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     
+    if (!agreeToTerms) {
+      newErrors.terms = 'You must agree to the Terms of Service';
+    }
+    
     return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setSuccessMessage('');
     
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
@@ -73,10 +80,25 @@ export default function EducatorRegistration() {
 
       if (response.data.toast?.show) {
         // Show success message
-        alert('Registration successful! Please check your email to verify your account.');
+        setSuccessMessage('Registration successful! Please login with your credentials.');
         
-        // Redirect to login
-        navigate('/login');
+        // Clear form data
+        setFormData({
+          fullName: '',
+          email: '',
+          username: '',
+          password: '',
+          confirmPassword: ''
+        });
+        
+        // Clear errors and terms checkbox
+        setErrors({});
+        setAgreeToTerms(false);
+        
+        // Redirect to login page after 2 seconds
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -117,6 +139,13 @@ export default function EducatorRegistration() {
               Create an account to manage your virtual classes
             </p>
           </div>
+
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+              <p className="text-green-300 text-sm">{successMessage}</p>
+              <p className="text-green-400 text-xs mt-1">Redirecting to login page...</p>
+            </div>
+          )}
 
           {errors.form && (
             <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
@@ -223,6 +252,8 @@ export default function EducatorRegistration() {
               <input
                 type="checkbox"
                 id="terms"
+                checked={agreeToTerms}
+                onChange={(e) => setAgreeToTerms(e.target.checked)}
                 className="mt-1"
               />
               <label htmlFor="terms" className="text-gray-400 text-sm">
@@ -230,11 +261,14 @@ export default function EducatorRegistration() {
                 I'll need to verify my email address to access the Educator Panel.
               </label>
             </div>
+            {errors.terms && (
+              <p className="text-sm text-red-400">{errors.terms}</p>
+            )}
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || successMessage}
               className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -245,6 +279,8 @@ export default function EducatorRegistration() {
                   </svg>
                   Creating Account...
                 </>
+              ) : successMessage ? (
+                'Registration Successful!'
               ) : (
                 'Create Educator Account'
               )}

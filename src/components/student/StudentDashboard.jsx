@@ -1,32 +1,120 @@
 // src/components/student/StudentDashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [forceRefresh, setForceRefresh] = useState(false);
 
-  useEffect(() => {
+  // Function to fetch and set user data
+  const fetchUserData = useCallback(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
 
     if (!token || !userData) {
       navigate('/login');
-      return;
+      return null;
     }
 
     try {
       const parsedUser = JSON.parse(userData);
       if (parsedUser.role !== 'student') {
         navigate('/login');
-        return;
+        return null;
       }
-      setUser(parsedUser);
+      
+      console.log('Fetched user data:', parsedUser);
+      console.log('Class details:', parsedUser.enrolledClassDetails);
+      
+      return parsedUser;
     } catch (error) {
       console.error('Error parsing user data:', error);
       navigate('/login');
+      return null;
     }
   }, [navigate]);
+
+  // Check for fresh registration and force reload
+  useEffect(() => {
+    const isFreshRegistration = localStorage.getItem('freshRegistration');
+    
+    if (isFreshRegistration === 'true') {
+      console.log('Fresh registration detected, forcing reload...');
+      localStorage.removeItem('freshRegistration');
+      
+      // Clear localStorage and reload to get fresh data
+      const token = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
+      
+      if (token && userData) {
+        // Force state update
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+        } catch (error) {
+          console.error('Error parsing user data on fresh registration:', error);
+        }
+      }
+      
+      setForceRefresh(true);
+    }
+  }, []);
+
+  // Initial load and periodic refresh
+  useEffect(() => {
+    const loadUserData = () => {
+      const userData = fetchUserData();
+      if (userData) {
+        setUser(userData);
+      }
+      setLoading(false);
+    };
+
+    loadUserData();
+
+    // Set up interval to check for data updates
+    const intervalId = setInterval(() => {
+      if (forceRefresh) {
+        console.log('Force refresh triggered...');
+        loadUserData();
+        setForceRefresh(false);
+      }
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchUserData, forceRefresh]);
+
+  // Listen for localStorage changes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'user') {
+        console.log('User data changed in localStorage, updating...');
+        const userData = fetchUserData();
+        if (userData) {
+          setUser(userData);
+        }
+      }
+    };
+
+    // Also check on focus in case data was updated in another tab
+    const handleFocus = () => {
+      console.log('Window focused, checking for user data updates...');
+      const userData = fetchUserData();
+      if (userData) {
+        setUser(userData);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchUserData]);
 
   // Handle browser/tab close or navigation away
   useEffect(() => {
@@ -73,6 +161,14 @@ export default function StudentDashboard() {
     };
   }, [navigate]);
 
+  const handleRefreshData = () => {
+    console.log('Manually refreshing user data...');
+    const userData = fetchUserData();
+    if (userData) {
+      setUser(userData);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -81,10 +177,21 @@ export default function StudentDashboard() {
     navigate('/login', { replace: true });
   };
 
-  if (!user) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="text-white flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <p>Loading dashboard...</p>
+          {!user && (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
+            >
+              Reload Page
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -98,8 +205,21 @@ export default function StudentDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-white">Student Dashboard</h1>
               <p className="text-gray-400">Welcome, {user.fullName}</p>
+              {user.enrolledClassDetails && (
+                <p className="text-sm text-green-400 mt-1">
+                  Enrolled in: {user.enrolledClassDetails.className} ({user.enrolledClassDetails.classCode})
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-4">
+              {/* Debug/Refresh button - can be removed in production */}
+              <button
+                onClick={handleRefreshData}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg transition duration-200 text-sm"
+                title="Refresh user data"
+              >
+                Refresh Data
+              </button>
               <button
                 onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200"
@@ -129,6 +249,10 @@ export default function StudentDashboard() {
               <div>
                 <span className="text-gray-400">Username:</span>
                 <p className="text-white">{user.username}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Role:</span>
+                <p className="text-white capitalize">{user.role}</p>
               </div>
             </div>
           </div>
@@ -169,6 +293,12 @@ export default function StudentDashboard() {
                   <span className="text-gray-400">Class Name:</span>
                   <p className="text-white">{user.enrolledClassDetails.className}</p>
                 </div>
+                {user.enrolledClassDetails.educatorName && (
+                  <div>
+                    <span className="text-gray-400">Educator:</span>
+                    <p className="text-white">{user.enrolledClassDetails.educatorName}</p>
+                  </div>
+                )}
                 <button
                   onClick={() => navigate('/')}
                   className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200"
@@ -179,12 +309,20 @@ export default function StudentDashboard() {
             ) : (
               <div className="text-center py-4">
                 <p className="text-gray-400">Not enrolled in any class</p>
-                <button
-                  onClick={() => navigate('/select-role')}
-                  className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition duration-200"
-                >
-                  Join a Class
-                </button>
+                <div className="mt-4 space-y-2">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition duration-200"
+                  >
+                    Check Enrollment Status
+                  </button>
+                  <button
+                    onClick={() => navigate('/select-role')}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition duration-200"
+                  >
+                    Join a Class
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -215,8 +353,20 @@ export default function StudentDashboard() {
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
             <div className="text-gray-400 text-center py-8">
-              <p>No recent activity</p>
-              <p className="text-sm mt-2">Your activity will appear here</p>
+              {user.enrolledClassDetails ? (
+                <>
+                  <p className="text-green-400">✓ Successfully enrolled in class</p>
+                  <p className="text-sm mt-2">
+                    Class: {user.enrolledClassDetails.className}
+                  </p>
+                  <p className="text-sm">Code: {user.enrolledClassDetails.classCode}</p>
+                </>
+              ) : (
+                <>
+                  <p>No recent activity</p>
+                  <p className="text-sm mt-2">Your activity will appear here</p>
+                </>
+              )}
             </div>
           </div>
         </div>

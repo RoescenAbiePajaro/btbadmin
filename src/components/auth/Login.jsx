@@ -57,14 +57,17 @@ export default function Login() {
         localStorage.setItem('token', response.data.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
         
+        // Clear fresh registration flag if it exists
+        localStorage.removeItem('freshRegistration');
+        
         // Redirect based on role
         const user = response.data.data.user;
         if (user.role === 'student') {
-          navigate('/student/dashboard');
+          navigate('/student/dashboard', { replace: true });
         } else if (user.role === 'educator') {
-          navigate('/educator/dashboard');
+          navigate('/educator/dashboard', { replace: true });
         } else if (user.role === 'admin') {
-          navigate('/admin');
+          navigate('/admin', { replace: true });
         }
       }
     } catch (error) {
@@ -102,7 +105,7 @@ export default function Login() {
             Welcome Back
           </h1>
           <p className="text-gray-400">
-          Login to your account to continue
+            Login to your account to continue
           </p>
         </div>
 

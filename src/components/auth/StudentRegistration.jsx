@@ -7,6 +7,7 @@ import axios from 'axios';
 export default function StudentRegistration() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [academicOptions, setAcademicOptions] = useState({
     school: [],
     departments: [],
@@ -34,7 +35,7 @@ export default function StudentRegistration() {
     const fetchAcademicOptions = async () => {
       try {
         // Fetch departments, years, and blocks from the API
-        const [schoolRes,departmentsRes, yearsRes, blocksRes] = await Promise.all([
+        const [schoolRes, departmentsRes, yearsRes, blocksRes] = await Promise.all([
           axios.get('http://localhost:5000/api/academic-settings/school'),
           axios.get('http://localhost:5000/api/academic-settings/department'),
           axios.get('http://localhost:5000/api/academic-settings/year'),
@@ -100,6 +101,7 @@ export default function StudentRegistration() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setSuccessMessage('');
     
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
@@ -125,12 +127,30 @@ export default function StudentRegistration() {
       );
 
       if (response.data.toast?.show) {
-        // Save token and user data
-        localStorage.setItem('token', response.data.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        // Show success message
+        setSuccessMessage('Registration successful! Please login with your credentials.');
         
-        // Redirect to student dashboard
-        navigate('/student/dashboard');
+        // Clear form data
+        setFormData({
+          fullName: '',
+          email: '',
+          username: '',
+          password: '',
+          confirmPassword: '',
+          school: '',
+          department: '',
+          year: '',
+          block: '',
+          classCode: ''
+        });
+        
+        // Clear errors
+        setErrors({});
+        
+        // Redirect to login page after 2 seconds
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -171,6 +191,13 @@ export default function StudentRegistration() {
               Join your educator's virtual class
             </p>
           </div>
+
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+              <p className="text-green-300 text-sm">{successMessage}</p>
+              <p className="text-green-400 text-xs mt-1">Redirecting to login page...</p>
+            </div>
+          )}
 
           {errors.form && (
             <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
@@ -269,8 +296,6 @@ export default function StudentRegistration() {
               )}
             </div>
 
-            
-
             {/* Academic Information Grid */}
             <div className="grid grid-cols-3 gap-4">
               {/* School */}
@@ -291,7 +316,6 @@ export default function StudentRegistration() {
                 </select>
               </div>
 
-
               {/* Department */}
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -309,8 +333,6 @@ export default function StudentRegistration() {
                   ))}
                 </select>
               </div>
-
-
 
               {/* Year */}
               <div>
@@ -378,7 +400,7 @@ export default function StudentRegistration() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || successMessage}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -389,6 +411,8 @@ export default function StudentRegistration() {
                   </svg>
                   Creating Account...
                 </>
+              ) : successMessage ? (
+                'Registration Successful!'
               ) : (
                 'Create Student Account'
               )}
