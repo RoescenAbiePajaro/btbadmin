@@ -212,14 +212,6 @@ export default function StudentDashboard() {
               )}
             </div>
             <div className="flex items-center gap-4">
-              {/* Debug/Refresh button - can be removed in production */}
-              <button
-                onClick={handleRefreshData}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg transition duration-200 text-sm"
-                title="Refresh user data"
-              >
-                Refresh Data
-              </button>
               <button
                 onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200"
@@ -299,12 +291,6 @@ export default function StudentDashboard() {
                     <p className="text-white">{user.enrolledClassDetails.educatorName}</p>
                   </div>
                 )}
-                <button
-                  onClick={() => navigate('/')}
-                  className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200"
-                >
-                  Go to Drawing App
-                </button>
               </div>
             ) : (
               <div className="text-center py-4">
@@ -355,11 +341,7 @@ export default function StudentDashboard() {
             <div className="text-gray-400 text-center py-8">
               {user.enrolledClassDetails ? (
                 <>
-                  <p className="text-green-400">✓ Successfully enrolled in class</p>
-                  <p className="text-sm mt-2">
-                    Class: {user.enrolledClassDetails.className}
-                  </p>
-                  <p className="text-sm">Code: {user.enrolledClassDetails.classCode}</p>
+                 {/* here will be the sahred educator save docs and images */}
                 </>
               ) : (
                 <>
