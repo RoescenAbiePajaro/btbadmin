@@ -75,8 +75,8 @@ export default function ClassManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white">Class Management</h2>
-          <p className="text-gray-400">Create and manage your virtual classes</p>
+          <h2 className="text-2xl font-bold text-white">Class Codes</h2>
+          <p className="text-gray-400">Create and manage your class codes</p>
         </div>
         <button
           onClick={() => setShowModal(true)}

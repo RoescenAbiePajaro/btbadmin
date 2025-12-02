@@ -165,21 +165,7 @@ export default function AcademicSettings() {
         </div>
       </div>
 
-      {/* Info Box */}
-      <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <h4 className="text-blue-300 font-medium mb-1">Note</h4>
-            <p className="text-blue-400 text-sm">
-              Changes made here will be instantly available in the student registration dropdowns.
-              Students can select from these options when joining your classes.
-            </p>
-          </div>
-        </div>
-      </div>
+     
     </div>
   );
 }
