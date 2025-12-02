@@ -7,6 +7,7 @@ export default function AcademicSettings() {
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchItems();
@@ -125,14 +126,33 @@ export default function AcademicSettings() {
 
       {/* Items List */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
           <h3 className="font-semibold text-white">
             {typeLabels[activeType]} ({items.length})
           </h3>
+          <div className="relative w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder={`Search ${activeType}s...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
         
         <div className="divide-y divide-gray-700">
-          {items.map((item) => (
+          {items
+            .filter(item => 
+              searchTerm === '' || 
+              item.name.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .map((item) => (
             <div key={item._id} className="p-4 flex justify-between items-center hover:bg-gray-750 transition duration-200">
               <div>
                 <span className="text-white">{item.name}</span>
@@ -157,11 +177,16 @@ export default function AcademicSettings() {
             </div>
           ))}
           
-          {items.length === 0 && (
+          {items.filter(item => 
+            searchTerm === '' || 
+            item.name.toLowerCase().includes(searchTerm.toLowerCase())
+          ).length === 0 ? (
             <div className="p-8 text-center text-gray-500">
-              No {activeType}s added yet. Add your first one above.
+              {searchTerm 
+                ? `No ${activeType}s found matching "${searchTerm}"`
+                : `No ${activeType}s added yet. Add your first one above.`}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

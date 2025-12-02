@@ -1,10 +1,14 @@
 // src/components/student/StudentDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [classCode, setClassCode] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -49,6 +53,42 @@ export default function StudentDashboard() {
       window.onpopstate = null;
     };
   }, [navigate]);
+
+  // Handle joining a class with access code
+  const handleJoinClass = async () => {
+    if (!classCode.trim()) {
+      alert('Please enter a class code');
+      return;
+    }
+
+    setJoinLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        'http://localhost:5000/api/classes/join',
+        { classCode: classCode.trim().toUpperCase() },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.toast?.type === 'success') {
+        // Update user data
+        const updatedUser = { ...user, enrolledClassDetails: response.data.data.enrolledClass };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        setShowJoinModal(false);
+        setClassCode('');
+        alert('Successfully joined class!');
+      }
+    } catch (error) {
+      console.error('Error joining class:', error);
+      alert(error.response?.data?.toast?.message || 'Failed to join class');
+    } finally {
+      setJoinLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -136,7 +176,17 @@ export default function StudentDashboard() {
           {/* Class Info Card */}
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Class Information</h3>
-            {user.enrolledClassDetails ? (
+            {!user.enrolledClassDetails ? (
+              <div className="text-center py-4">
+                <p className="text-gray-400">Not enrolled in any class</p>
+                <button
+                  onClick={() => setShowJoinModal(true)}
+                  className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition duration-200"
+                >
+                  Join a Class
+                </button>
+              </div>
+            ) : (
               <div className="space-y-3">
                 <div>
                   <span className="text-gray-400">Class Code:</span>
@@ -151,16 +201,6 @@ export default function StudentDashboard() {
                   className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200"
                 >
                   Go to Drawing App
-                </button>
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-400">Not enrolled in any class</p>
-                <button
-                  onClick={() => navigate('/select-role')}
-                  className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition duration-200"
-                >
-                  Join a Class
                 </button>
               </div>
             )}
@@ -199,5 +239,63 @@ export default function StudentDashboard() {
         </div>
       </div>
     </div>
+
+    {/* Join Class Modal */}
+    {showJoinModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-white">Join a Class</h3>
+            <button
+              onClick={() => {
+                setShowJoinModal(false);
+                setClassCode('');
+              }}
+              className="text-gray-400 hover:text-white transition duration-200"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Enter Class Code
+              </label>
+              <input
+                type="text"
+                value={classCode}
+                onChange={(e) => setClassCode(e.target.value.toUpperCase())}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white font-mono text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="e.g., ABCD12"
+                maxLength={6}
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowJoinModal(false);
+                  setClassCode('');
+                }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleJoinClass}
+                disabled={joinLoading || !classCode.trim()}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {joinLoading ? 'Joining...' : 'Join Class'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }

@@ -599,31 +599,144 @@ app.get('/api/classes/:id', verifyToken, async (req, res) => {
   try {
     const classId = req.params.id;
     const userId = req.user.id;
-    const userRole = req.user.role;
-
-    const classObj = await Class.findById(classId)
-      .populate('educator', 'fullName email username')
-      .populate('students', 'fullName email username school department year block');
-
-    if (!classObj) {
-      return createToastResponse(res, 404, 'Class not found', 'error');
+    
+    const classData = await Class.findById(classId)
+      .populate('educator', 'username fullName')
+      .populate('students', 'username fullName email');
+      
+    if (!classData) {
+      return res.status(404).json({
+        toast: {
+          show: true,
+          message: 'Class not found',
+          type: 'error'
+        }
+      });
     }
-
-    // Check permissions
-    if (userRole === 'student' && !classObj.students.some(s => s._id.toString() === userId)) {
-      return createToastResponse(res, 403, 'Access denied', 'error');
+    
+    // Only the educator who created the class or an admin can view it
+    if (classData.educator._id.toString() !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        toast: {
+          show: true,
+          message: 'Not authorized to view this class',
+          type: 'error'
+        }
+      });
     }
-
-    if (userRole === 'educator' && classObj.educator._id.toString() !== userId) {
-      return createToastResponse(res, 403, 'Access denied', 'error');
-    }
-
-    return createToastResponse(res, 200, 'Class fetched successfully', 'success', {
-      class: classObj
+    
+    return res.json({
+      toast: {
+        show: true,
+        message: 'Class retrieved successfully',
+        type: 'success'
+      },
+      data: {
+        class: classData
+      }
     });
   } catch (error) {
-    console.error('Get class error:', error);
-    return createToastResponse(res, 500, 'Server error fetching class', 'error');
+    console.error('Error getting class:', error);
+    return res.status(500).json({
+      toast: {
+        show: true,
+        message: 'Server error',
+        type: 'error'
+      }
+    });
+  }
+});
+
+// Update class
+app.put('/api/classes/:id', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { className, description, isActive } = req.body;
+    const classId = req.params.id;
+    const userId = req.user.id;
+
+    // Find the class and verify ownership
+    const classToUpdate = await Class.findOne({ _id: classId, educator: userId });
+    
+    if (!classToUpdate) {
+      return res.status(404).json({
+        toast: {
+          show: true,
+          message: 'Class not found or access denied',
+          type: 'error'
+        }
+      });
+    }
+
+    // Update class fields
+    if (className) classToUpdate.className = className;
+    if (description !== undefined) classToUpdate.description = description;
+    if (isActive !== undefined) classToUpdate.isActive = isActive;
+
+    await classToUpdate.save();
+
+    return res.json({
+      toast: {
+        show: true,
+        message: 'Class updated successfully',
+        type: 'success'
+      },
+      data: {
+        class: classToUpdate
+      }
+    });
+  } catch (error) {
+    console.error('Error updating class:', error);
+    return res.status(500).json({
+      toast: {
+        show: true,
+        message: 'Failed to update class',
+        type: 'error'
+      }
+    });
+  }
+});
+
+// Delete class
+app.delete('/api/classes/:id', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const classId = req.params.id;
+    const userId = req.user.id;
+
+    // Find and delete the class if the user is the owner
+    const deletedClass = await Class.findOneAndDelete({ 
+      _id: classId, 
+      educator: userId 
+    });
+    
+    if (!deletedClass) {
+      return res.status(404).json({
+        toast: {
+          show: true,
+          message: 'Class not found or access denied',
+          type: 'error'
+        }
+      });
+    }
+
+    return res.json({
+      toast: {
+        show: true,
+        message: 'Class deleted successfully',
+        type: 'success'
+      },
+      data: {
+        class: deletedClass
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting class:', error);
+    return res.status(500).json({
+      toast: {
+        show: true,
+        message: 'Failed to delete class',
+        type: 'error'
+      }
+    });
   }
 });
 

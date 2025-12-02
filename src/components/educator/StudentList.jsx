@@ -7,6 +7,7 @@ export default function StudentList() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchClasses();
@@ -147,23 +148,52 @@ export default function StudentList() {
 
       {/* Students Table */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-gray-700">
-          <h3 className="text-lg font-semibold text-white">Enrolled Students</h3>
-          <p className="text-gray-400 text-sm">
-            {students.length} student{students.length !== 1 ? 's' : ''} enrolled in this class
-          </p>
+        <div className="p-6 border-b border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Enrolled Students</h3>
+            <p className="text-gray-400 text-sm">
+              {students.length} student{students.length !== 1 ? 's' : ''} enrolled in this class
+            </p>
+          </div>
+          <div className="w-full sm:w-64">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Search students..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
 
         {loading ? (
           <div className="p-8 text-center">
             <div className="text-gray-400">Loading students...</div>
           </div>
-        ) : students.length === 0 ? (
+        ) : students.filter(student => 
+            searchTerm === '' || 
+            student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            student.username?.toLowerCase().includes(searchTerm.toLowerCase())
+          ).length === 0 ? (
           <div className="p-8 text-center">
-            <div className="text-gray-500">No students have joined this class yet.</div>
-            <p className="text-gray-400 text-sm mt-2">
-              Share the class code with your students so they can register.
-            </p>
+            <div className="text-gray-500">
+              {searchTerm 
+                ? 'No students found matching your search.'
+                : 'No students have joined this class yet.'}
+            </div>
+            {!searchTerm && (
+              <p className="text-gray-400 text-sm mt-2">
+                Share the class code with your students so they can register.
+              </p>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -181,7 +211,14 @@ export default function StudentList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
-                {students.map((student) => (
+                {students
+                  .filter(student => 
+                    searchTerm === '' || 
+                    student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    student.username?.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((student) => (
                   <tr key={student._id} className="hover:bg-gray-750 transition duration-200">
                     <td className="p-4 text-white">{student.fullName}</td>
                     <td className="p-4 text-gray-300">{student.email}</td>
