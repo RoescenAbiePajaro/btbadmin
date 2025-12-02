@@ -9,7 +9,6 @@ const User = require('./models/User');
 const Class = require('./models/Class');
 const AcademicSetting = require('./models/AcademicSetting');
 const AccessCode = require('./models/AccessCode');
-const Click = require('./models/Click');
 
 // Load environment variables
 dotenv.config();

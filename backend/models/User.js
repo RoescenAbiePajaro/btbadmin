@@ -1,3 +1,4 @@
+// User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -27,7 +28,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['student', 'educator', 'admin'],
+    enum: ['student', 'educator'],
     default: 'student'
   },
   

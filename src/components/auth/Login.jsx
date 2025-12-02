@@ -67,8 +67,6 @@ export default function Login() {
           navigate('/student/dashboard', { replace: true });
         } else if (user.role === 'educator') {
           navigate('/educator/dashboard', { replace: true });
-        } else if (user.role === 'admin') {
-          navigate('/admin', { replace: true });
         }
       }
     } catch (error) {
