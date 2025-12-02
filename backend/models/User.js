@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema({
   
   // Student specific fields
   school: String,
-  department: String,
+  course: String,
   year: String,
   block: String,
   enrolledClass: {

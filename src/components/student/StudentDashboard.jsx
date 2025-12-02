@@ -266,8 +266,8 @@ export default function StudentDashboard() {
                 <p className="text-white">{user.school || 'Not specified'}</p>
               </div>
               <div>
-                <span className="text-gray-400">Department:</span>
-                <p className="text-white">{user.department || 'Not specified'}</p>
+                <span className="text-gray-400">Course:</span>
+                <p className="text-white">{user.course || 'Not specified'}</p>
               </div>
               <div>
                 <span className="text-gray-400">Year:</span>

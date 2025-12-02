@@ -10,7 +10,7 @@ export default function StudentRegistration() {
   const [successMessage, setSuccessMessage] = useState('');
   const [academicOptions, setAcademicOptions] = useState({
     school: [],
-    departments: [],
+    course: [],
     years: [],
     blocks: []
   });
@@ -22,7 +22,7 @@ export default function StudentRegistration() {
     password: '',
     confirmPassword: '',
     school: '',
-    department: '',
+    course: '',
     year: '',
     block: '',
     classCode: ''
@@ -34,17 +34,16 @@ export default function StudentRegistration() {
   useEffect(() => {
     const fetchAcademicOptions = async () => {
       try {
-        // Fetch departments, years, and blocks from the API
-        const [schoolRes, departmentsRes, yearsRes, blocksRes] = await Promise.all([
+        const [schoolRes, courseRes, yearsRes, blocksRes] = await Promise.all([
           axios.get('http://localhost:5000/api/academic-settings/school'),
-          axios.get('http://localhost:5000/api/academic-settings/department'),
+          axios.get('http://localhost:5000/api/academic-settings/course'),
           axios.get('http://localhost:5000/api/academic-settings/year'),
           axios.get('http://localhost:5000/api/academic-settings/block')
         ]);
 
         setAcademicOptions({
           school: schoolRes.data.map(item => item.name),
-          departments: departmentsRes.data.map(item => item.name),
+          course: courseRes.data.map(item => item.name),
           years: yearsRes.data.map(item => item.name),
           blocks: blocksRes.data.map(item => item.name)
         });
@@ -53,7 +52,7 @@ export default function StudentRegistration() {
         // Fallback to empty arrays if API fails
         setAcademicOptions({
           school: [],
-          departments: [],
+          course: [],
           years: [],
           blocks: []
         });
@@ -119,7 +118,7 @@ export default function StudentRegistration() {
           username: formData.username,
           password: formData.password,
           school: formData.school,
-          department: formData.department,
+          course: formData.course,
           year: formData.year,
           block: formData.block,
           classCode: formData.classCode.toUpperCase()
@@ -138,7 +137,7 @@ export default function StudentRegistration() {
           password: '',
           confirmPassword: '',
           school: '',
-          department: '',
+          course: '',
           year: '',
           block: '',
           classCode: ''
@@ -316,19 +315,19 @@ export default function StudentRegistration() {
                 </select>
               </div>
 
-              {/* Department */}
+              {/* Course */}
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Department
+                  Course
                 </label>
                 <select
-                  name="department"
-                  value={formData.department}
+                  name="course"
+                  value={formData.course}
                   onChange={handleChange}
                   className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select</option>
-                  {academicOptions.departments.map(dept => (
+                  {academicOptions.course.map(dept => (
                     <option key={dept} value={dept}>{dept}</option>
                   ))}
                 </select>

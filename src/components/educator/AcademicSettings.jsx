@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 export default function AcademicSettings() {
-  const [activeType, setActiveType] = useState('department');
+  const [activeType, setActiveType] = useState('course');
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState('');
   const [loading, setLoading] = useState(false);
@@ -72,7 +72,7 @@ export default function AcademicSettings() {
 
   const typeLabels = {
     school: 'Schools',
-    department: 'Departments',
+    course: 'Courses',
     year: 'Years',
     block: 'Blocks'
   };
@@ -82,13 +82,13 @@ export default function AcademicSettings() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-white">Academic Settings</h2>
-        <p className="text-gray-400">Manage departments, years, and blocks for student registration</p>
+        <p className="text-gray-400">Manage schools,courses, years, and blocks for student registration</p>
       </div>
 
       {/* Type Tabs */}
       <div className="border-b border-gray-700">
         <nav className="flex space-x-6">
-          {['school','department', 'year', 'block'].map((type) => (
+          {['school','course', 'year', 'block'].map((type) => (
             <button
               key={type}
               onClick={() => setActiveType(type)}

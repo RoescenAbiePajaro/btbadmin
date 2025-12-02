@@ -8,7 +8,7 @@ const academicSettingSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['school', 'department', 'year', 'block'],
+    enum: ['school','course', 'year', 'block'],
     required: true
   },
   code: {
@@ -29,19 +29,6 @@ const academicSettingSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  // Additional metadata for school
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    country: String,
-    postalCode: String
-  },
-  contact: {
-    email: String,
-    phone: String,
-    website: String
-  }
 }, {
   timestamps: true
 });
