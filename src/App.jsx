@@ -10,7 +10,6 @@ import EducatorDashboard from './components/educator/EducatorDashboard';
 import StudentDashboard from './components/student/StudentDashboard';
 import EmailVerification from './components/auth/EmailVerification';
 import Toast from './components/Toast';
-import NotFound from './components/NotFound';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -127,9 +126,6 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        
-        {/* 404 Not Found */}
-        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );
