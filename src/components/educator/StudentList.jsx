@@ -1,6 +1,8 @@
 // src/components/educator/StudentList.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import DeleteConfirmationModal from '../DeleteConfirmationModal';
+import Toast from '../Toast';
 
 export default function StudentList() {
   const [classes, setClasses] = useState([]);
@@ -8,6 +10,9 @@ export default function StudentList() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
   useEffect(() => {
     fetchClasses();
@@ -48,6 +53,7 @@ export default function StudentList() {
       }
     } catch (error) {
       console.error('Error fetching students:', error);
+      showToast('Failed to load students', 'error');
     } finally {
       setLoading(false);
     }
@@ -63,8 +69,62 @@ export default function StudentList() {
     return classes.find(c => c._id === selectedClass);
   };
 
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
+  };
+
+  const handleDeleteClick = (student) => {
+    setStudentToDelete(student);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete || !selectedClass) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(
+        `http://localhost:5000/api/classes/${selectedClass}/students/${studentToDelete._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      // Refresh the students list
+      fetchStudents(selectedClass);
+      showToast('Student removed from class successfully', 'success');
+    } catch (error) {
+      console.error('Error removing student:', error);
+      showToast('Failed to remove student from class', 'error');
+    } finally {
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Toast Notification */}
+      {toast.show && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(prev => ({ ...prev, show: false }))} 
+        />
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        showModal={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setStudentToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        deleteMode={studentToDelete ? 'single' : 'all'}
+        isDeleting={loading}
+      />
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-white">Student Management</h2>
@@ -208,6 +268,7 @@ export default function StudentList() {
                   <th className="text-left p-4 text-gray-400 font-medium">Year</th>
                   <th className="text-left p-4 text-gray-400 font-medium">Block</th>
                   <th className="text-left p-4 text-gray-400 font-medium">Joined Date</th>
+                  <th className="text-left p-4 text-gray-400 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
@@ -229,6 +290,17 @@ export default function StudentList() {
                     <td className="p-4 text-gray-300">{student.block || '-'}</td>
                     <td className="p-4 text-gray-300">
                       {new Date(student.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="p-4">
+                      <button
+                        onClick={() => handleDeleteClick(student)}
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                        title="Remove from class"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))}

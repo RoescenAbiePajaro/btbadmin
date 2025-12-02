@@ -1,6 +1,8 @@
 // src/components/educator/ClassManagement.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import DeleteConfirmationModal from '../DeleteConfirmationModal';
+import Toast from '../Toast';
 
 export default function ClassManagement() {
   const [classes, setClasses] = useState([]);
@@ -15,6 +17,9 @@ export default function ClassManagement() {
   const [generatedCode, setGeneratedCode] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [classToDelete, setClassToDelete] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
   useEffect(() => {
     fetchClasses();
@@ -59,11 +64,11 @@ export default function ClassManagement() {
         setFormData({ className: '', description: '' });
         
         // Show success message
-        alert(`Class code generated: ${newClass.classCode}`);
+        showToast(`Class code generated: ${newClass.classCode}`, 'success');
       }
     } catch (error) {
       console.error('Error generating class code:', error);
-      alert(error.response?.data?.toast?.message || 'Failed to generate class code');
+      showToast(error.response?.data?.toast?.message || 'Failed to generate class code', 'error');
     } finally {
       setLoading(false);
     }
@@ -105,41 +110,51 @@ export default function ClassManagement() {
         setShowEditModal(false);
         setEditingClass(null);
         setFormData({ className: '', description: '' });
-        alert('Class updated successfully!');
+        showToast('Class updated successfully!', 'success');
       }
     } catch (error) {
       console.error('Error updating class:', error);
-      alert(error.response?.data?.toast?.message || 'Failed to update class');
+      showToast(error.response?.data?.toast?.message || 'Failed to update class', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteClass = async (classId) => {
-    if (!window.confirm('Are you sure you want to delete this class? This action cannot be undone.')) {
-      return;
-    }
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
+  };
+
+  const handleDeleteClass = (classItem) => {
+    setClassToDelete(classItem);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteClass = async () => {
+    if (!classToDelete) return;
     
     setIsDeleting(true);
     
     try {
       const token = localStorage.getItem('token');
       const response = await axios.delete(
-        `http://localhost:5000/api/classes/${classId}`,
+        `http://localhost:5000/api/classes/${classToDelete._id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
 
       if (response.data.data?.class) {
-        setClasses(classes.filter(cls => cls._id !== classId));
-        alert('Class deleted successfully!');
+        setClasses(classes.filter(cls => cls._id !== classToDelete._id));
+        showToast('Class deleted successfully!', 'success');
       }
     } catch (error) {
       console.error('Error deleting class:', error);
-      alert(error.response?.data?.toast?.message || 'Failed to delete class');
+      showToast(error.response?.data?.toast?.message || 'Failed to delete class', 'error');
     } finally {
       setIsDeleting(false);
+      setShowDeleteModal(false);
+      setClassToDelete(null);
     }
   };
 
@@ -152,11 +167,31 @@ export default function ClassManagement() {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert('Class code copied to clipboard!');
+    showToast('Class code copied to clipboard!', 'success');
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Toast Notification */}
+      {toast.show && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(prev => ({ ...prev, show: false }))} 
+        />
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        showModal={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setClassToDelete(null);
+        }}
+        onConfirm={confirmDeleteClass}
+        deleteMode="all"
+        isDeleting={isDeleting}
+      />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
@@ -250,7 +285,7 @@ export default function ClassManagement() {
                   </svg>
                 </button>
                 <button
-                  onClick={() => handleDeleteClass(classItem._id)}
+                  onClick={() => handleDeleteClass(classItem)}
                   disabled={isDeleting}
                   className="text-red-400 hover:text-red-300 transition duration-200 disabled:opacity-50"
                   title="Delete Class"

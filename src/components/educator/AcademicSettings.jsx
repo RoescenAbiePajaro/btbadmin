@@ -1,6 +1,8 @@
 // src/components/educator/AcademicSettings.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import DeleteConfirmationModal from '../DeleteConfirmationModal';
+import Toast from '../Toast';
 
 export default function AcademicSettings() {
   const [activeType, setActiveType] = useState('school');
@@ -11,6 +13,8 @@ export default function AcademicSettings() {
   const [toast, setToast] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   useEffect(() => {
     fetchItems();
@@ -76,26 +80,34 @@ export default function AcademicSettings() {
     }
   };
 
-  const handleDeleteItem = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item? This action cannot be undone.')) return;
+  const handleDeleteClick = (item) => {
+    setItemToDelete(item);
+    setShowDeleteModal(true);
+  };
 
+  const handleDeleteItem = async () => {
+    if (!itemToDelete) return;
+    
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `http://localhost:5000/api/academic-settings/${id}`,
+        `http://localhost:5000/api/academic-settings/${itemToDelete._id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
       
-      setItems(items.filter(item => item._id !== id));
-      showToast('Item deleted successfully', 'success');
+      setItems(items.filter(item => item._id !== itemToDelete._id));
+      showToast(`${itemToDelete.name} deleted successfully`, 'success');
     } catch (error) {
       console.error('Error deleting item:', error);
       const errorMessage = error.response?.data?.toast?.message || 
                          error.response?.data?.message || 
                          'Failed to delete item.';
       showToast(errorMessage, 'error');
+    } finally {
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     }
   };
 
@@ -178,9 +190,9 @@ export default function AcademicSettings() {
     }
   };
 
-  const showToast = (message, type) => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
   const typeLabels = {
@@ -196,17 +208,27 @@ export default function AcademicSettings() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       {/* Toast Notification */}
-      {toast && (
-        <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
-          toast.type === 'success' ? 'bg-green-500 text-white' : 
-          toast.type === 'error' ? 'bg-red-500 text-white' : 
-          'bg-blue-500 text-white'
-        }`}>
-          {toast.message}
-        </div>
+      {toast?.show && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(prev => ({ ...prev, show: false }))} 
+        />
       )}
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        showModal={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={handleDeleteItem}
+        deleteMode={itemToDelete ? 'single' : 'all'}
+        isDeleting={loading}
+      />
 
       {/* Header */}
       <div>
@@ -342,7 +364,7 @@ export default function AcademicSettings() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteItem(item._id)}
+                        onClick={() => handleDeleteClick(item)}
                         className="text-red-400 hover:text-red-300 transition duration-200 px-3 py-1 rounded bg-red-900/20 hover:bg-red-900/30"
                       >
                         Delete
