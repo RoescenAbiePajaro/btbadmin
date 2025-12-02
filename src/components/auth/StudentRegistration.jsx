@@ -224,7 +224,7 @@ export default function StudentRegistration() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <button
           onClick={handleBack}
@@ -239,14 +239,14 @@ export default function StudentRegistration() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-6"
+          className="bg-black/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6"
         >
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white mb-2">
               Student Registration
             </h2>
             <p className="text-gray-400 text-sm">
-              Join your educator's virtual class
+              Create an account to join your class
             </p>
           </div>
 
@@ -285,7 +285,7 @@ export default function StudentRegistration() {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.fullName ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full bg-black/50 border ${errors.fullName ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Enter your full name"
               />
               {errors.fullName && (
@@ -303,7 +303,7 @@ export default function StudentRegistration() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.email ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full bg-black/50 border ${errors.email ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Enter your email"
               />
               {errors.email && (
@@ -321,7 +321,7 @@ export default function StudentRegistration() {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.username ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full bg-black/50 border ${errors.username ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Choose a username"
               />
               {errors.username && (
@@ -339,7 +339,7 @@ export default function StudentRegistration() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.password ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full bg-black/50 border ${errors.password ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Create a password"
               />
               {errors.password && (
@@ -357,7 +357,7 @@ export default function StudentRegistration() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full bg-black/50 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Confirm your password"
               />
               {errors.confirmPassword && (
@@ -376,7 +376,7 @@ export default function StudentRegistration() {
                   name="classCode"
                   value={formData.classCode}
                   onChange={handleChange}
-                  className={`w-full bg-gray-900/50 border ${errors.classCode ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase`}
+                  className={`w-full bg-black/50 border ${errors.classCode ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 uppercase`}
                   placeholder="Enter class code (e.g., ABCD12)"
                 />
                 {classCodeLoading && (
@@ -396,13 +396,13 @@ export default function StudentRegistration() {
                 <p className="mt-1 text-sm text-red-400">{errors.classCode}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Enter the class code provided by your educator to join their virtual class
+                Enter the class code provided by your educator to join their class
               </p>
             </div>
 
             {/* Academic Information */}
-            <div className="bg-gray-900/30 border border-gray-700 rounded-xl p-4">
-              <h3 className="text-white font-medium mb-3">Academic Information</h3>
+            <div className="bg-black border border-gray-800 rounded-xl p-4 mb-6">
+              <h3 className="text-white font-medium mb-3">Class Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 {/* School */}
                 <div>
@@ -413,7 +413,7 @@ export default function StudentRegistration() {
                     name="school"
                     value={formData.school}
                     onChange={handleChange}
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                     disabled={!classEducatorId}
                   >
                     <option value="">Select School</option>
@@ -432,7 +432,7 @@ export default function StudentRegistration() {
                     name="course"
                     value={formData.course}
                     onChange={handleChange}
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                     disabled={!classEducatorId}
                   >
                     <option value="">Select Course</option>
@@ -451,7 +451,7 @@ export default function StudentRegistration() {
                     name="year"
                     value={formData.year}
                     onChange={handleChange}
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-1/2 bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                     disabled={!classEducatorId}
                   >
                     <option value="">Select Year</option>
@@ -470,7 +470,7 @@ export default function StudentRegistration() {
                     name="block"
                     value={formData.block}
                     onChange={handleChange}
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-1/2 bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                     disabled={!classEducatorId}
                   >
                     <option value="">Select Block</option>
@@ -491,7 +491,7 @@ export default function StudentRegistration() {
             <button
               type="submit"
               disabled={loading || successMessage || !classEducatorId}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -514,7 +514,7 @@ export default function StudentRegistration() {
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-sm">
               Already have an account?{' '}
-              <Link to="/login" className="text-blue-400 hover:text-blue-300 transition duration-200">
+              <Link to="/login" className="text-yellow-400 hover:text-yellow-300 transition duration-200">
                 Login here
               </Link>
             </p>

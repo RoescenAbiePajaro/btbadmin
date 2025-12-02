@@ -114,7 +114,7 @@ export default function EducatorRegistration() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <button
           onClick={handleBack}
@@ -129,14 +129,14 @@ export default function EducatorRegistration() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-6"
+          className="bg-black/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6"
         >
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white mb-2">
               Educator Registration
             </h2>
             <p className="text-gray-400 text-sm">
-              Create an account to manage your virtual classes
+              Create an account to manage your classes
             </p>
           </div>
 
@@ -164,7 +164,7 @@ export default function EducatorRegistration() {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.fullName ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                className={`w-full bg-black/50 border ${errors.fullName ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Enter your full name"
               />
               {errors.fullName && (
@@ -182,15 +182,12 @@ export default function EducatorRegistration() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.email ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                className={`w-full bg-black/50 border ${errors.email ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Enter your email"
               />
               {errors.email && (
                 <p className="mt-1 text-sm text-red-400">{errors.email}</p>
               )}
-              <p className="mt-1 text-xs text-gray-500">
-                You'll receive a verification email after registration
-              </p>
             </div>
 
             {/* Username */}
@@ -203,7 +200,7 @@ export default function EducatorRegistration() {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.username ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                className={`w-full bg-black/50 border ${errors.username ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Choose a username"
               />
               {errors.username && (
@@ -221,7 +218,7 @@ export default function EducatorRegistration() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.password ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                className={`w-full bg-black/50 border ${errors.password ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Create a password"
               />
               {errors.password && (
@@ -239,7 +236,7 @@ export default function EducatorRegistration() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full bg-gray-900/50 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                className={`w-full bg-black/50 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                 placeholder="Confirm your password"
               />
               {errors.confirmPassword && (
@@ -257,8 +254,7 @@ export default function EducatorRegistration() {
                 className="mt-1"
               />
               <label htmlFor="terms" className="text-gray-400 text-sm">
-                I agree to the Terms of Service and Privacy Policy. I understand that as an educator, 
-                I'll need to verify my email address to access the Educator Panel.
+                I agree to the Terms of Service and Privacy Policy.
               </label>
             </div>
             {errors.terms && (
@@ -269,7 +265,7 @@ export default function EducatorRegistration() {
             <button
               type="submit"
               disabled={loading || successMessage}
-              className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium hover:bg-pink-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -290,7 +286,7 @@ export default function EducatorRegistration() {
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-sm">
               Already have an account?{' '}
-              <Link to="/login" className="text-purple-400 hover:text-purple-300 transition duration-200">
+              <Link to="/login" className="text-yellow-400 hover:text-yellow-300 transition duration-200">
                 Login here
               </Link>
             </p>

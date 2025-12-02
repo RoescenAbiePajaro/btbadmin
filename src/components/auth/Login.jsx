@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import AnimatedBackground from '../AnimatedBackground';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -84,7 +85,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <AnimatedBackground />
       <button
         onClick={handleBackToHome}
         className="absolute top-6 left-6 text-gray-400 hover:text-white transition duration-200 flex items-center gap-2"
@@ -98,9 +100,19 @@ export default function Login() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 w-full max-w-md"
+        className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md"
       >
         <div className="text-center mb-8">
+          <div className="w-20 h-20 mx-auto mb-4">
+            <img
+              src="/icon/logo.png"
+              alt="Beyond The Brush"
+              className="w-full h-full object-contain"
+              width="80"
+              height="80"
+              loading="eager"
+            />
+          </div>
           <h1 className="text-3xl font-bold text-white mb-2">
             Welcome Back
           </h1>
@@ -126,7 +138,7 @@ export default function Login() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className={`w-full bg-gray-900/50 border ${errors.email ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full bg-gray-900 border ${errors.email ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
               placeholder="Enter your email or username"
             />
             {errors.email && (
@@ -146,7 +158,7 @@ export default function Login() {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className={`w-full bg-gray-900/50 border ${errors.password ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full bg-gray-900 border ${errors.password ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
               placeholder="Enter your password"
             />
             {errors.password && (
@@ -158,7 +170,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:opacity-90 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-medium transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -177,7 +189,7 @@ export default function Login() {
         <div className="mt-8">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
+              <div className="w-full border-t border-gray-800"></div>
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-gray-800/50 text-gray-500">
@@ -189,13 +201,13 @@ export default function Login() {
           <div className="mt-6 grid grid-cols-2 gap-4">
             <button
               onClick={() => navigate('/register/student')}
-              className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 py-3 rounded-lg font-medium transition duration-200"
+              className="bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 text-blue-400 py-3 rounded-lg font-medium transition duration-200"
             >
               Register as Student
             </button>
             <button
               onClick={() => navigate('/register/educator')}
-              className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-400 py-3 rounded-lg font-medium transition duration-200"
+              className="bg-pink-600/10 hover:bg-pink-600/20 border border-pink-500/20 text-pink-400 py-3 rounded-lg font-medium transition duration-200"
             >
               Register as Educator
             </button>

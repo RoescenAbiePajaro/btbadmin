@@ -1,42 +1,18 @@
 // src/components/HomePage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { trackClick } from "../../backend/utils/trackClick";
 import AnimatedBackground from "./AnimatedBackground";
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState(null);
-  const [isLinkLoading, setIsLinkLoading] = useState(false);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
-  const [showAdminMenu, setShowAdminMenu] = useState(false);
 
   const handleMenuClick = () => {
-    navigate("/admin-login");
+    navigate("/login");
   };
 
   const closeModal = () => setSelectedImage(null);
-
-  const handleVisitLink = (e) => {
-    e.preventDefault();
-    const url = "https://btblite.vercel.app";
-    
-    // Set loading state
-    setIsLinkLoading(true);
-    
-    // Track click in the background without waiting
-    trackClick("visit_link", "home_page")
-      .catch(error => console.error("Error tracking click:", error))
-      .finally(() => setIsLinkLoading(false));
-    
-    // Open in a new tab for better perceived performance
-    const newWindow = window.open(url, '_blank');
-    
-    // Fallback if popup is blocked
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      window.location.href = url;
-    }
-  };
 
   const handleDownload = async (e) => {
     e.preventDefault();
@@ -90,22 +66,8 @@ export default function HomePage() {
     }
   };
 
-  const toggleAdminMenu = () => {
-    setShowAdminMenu(!showAdminMenu);
-  };
-
-  const handleAdminRegister = () => {
-    navigate("/admin-register");
-    setShowAdminMenu(false);
-  };
-
-  const handleAdminLogin = () => {
-    navigate("/admin-login");
-    setShowAdminMenu(false);
-  };
-
   return (
-    <div className="min-h-screen bg-black flex flex-col relative">
+    <div className="min-h-screen bg-black flex flex-col relative overflow-x-hidden">
       <AnimatedBackground />
       
       {/* Header Navigation */}
@@ -119,59 +81,16 @@ export default function HomePage() {
           </div>
           
           <div className="flex items-center gap-4">
-            <button
-              onClick={checkUserStatus}
-              className="text-white hover:text-gray-300 transition duration-200 text-sm font-medium bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
-            >
-              My Dashboard
-            </button>
-            
-            {/* Admin Menu */}
-            <div className="relative">
-              <button
-                onClick={toggleAdminMenu}
-                className="bg-white text-black py-2 px-4 rounded-lg font-semibold text-sm hover:bg-gray-200 transition duration-200 flex-shrink-0 flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                </svg>
-                Admin
-              </button>
-              
-              {showAdminMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={handleAdminLogin}
-                      className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition duration-200 flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                      </svg>
-                      Admin Login
-                    </button>
-                    <button
-                      onClick={handleAdminRegister}
-                      className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition duration-200 flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                      </svg>
-                      Admin Register
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Dashboard button removed */}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md text-center">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 w-full">
+        <div className="bg-black border border-gray-800 rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-md text-center mx-2 sm:mx-4">
           {/* Main Logo - Responsive */}
-          <div className="w-28 h-28 mx-auto mb-4 flex items-center justify-center">
+          <div className="w-28 h-28 mx-auto mb-8 flex items-center justify-center">
             <img
               src="/icon/logo.png"
               alt="Beyond The Brush"
@@ -188,30 +107,7 @@ export default function HomePage() {
 
           <div className="flex flex-col space-y-4">
             <button
-              className="w-full bg-pink-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-pink-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-              onClick={handleVisitLink}
-              disabled={isLinkLoading}
-            >
-              {isLinkLoading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Opening...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  Visit Link
-                </>
-              )}
-            </button>
-
-            <button
-              className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-600 transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold text-base sm:text-lg transition duration-200 text-center no-underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3"
               onClick={handleDownload}
               disabled={isDownloadLoading}
             >
@@ -240,7 +136,7 @@ export default function HomePage() {
               <div className="flex space-x-4">
                 <button
                   onClick={handleLogin}
-                  className="flex-1 bg-gray-800 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-gray-700 transition duration-200 flex items-center justify-center gap-3"
+                  className="flex-1 bg-yellow-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-yellow-600 transition duration-200 flex items-center justify-center gap-3"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
@@ -250,7 +146,7 @@ export default function HomePage() {
                 
                 <button
                   onClick={handleRegister}
-                  className="flex-1 bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-purple-700 transition duration-200 flex items-center justify-center gap-3"
+                  className="flex-1 bg-green-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-green-600 transition duration-200 flex items-center justify-center gap-3"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -262,8 +158,8 @@ export default function HomePage() {
           </div>
 
           {/* Info Cards */}
-          <div className="mt-8 grid grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-blue-900/20 to-blue-700/10 border border-blue-500/20 rounded-lg p-4 text-center">
+          <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="bg-gradient-to-br from-blue-900/20 to-blue-700/10 border border-blue-500/20 rounded-lg p-2 sm:p-3 md:p-4 text-center">
               <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
                 <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
@@ -273,9 +169,9 @@ export default function HomePage() {
               <p className="text-gray-400 text-xs mt-1">Join classes with codes</p>
             </div>
             
-            <div className="bg-gradient-to-br from-purple-900/20 to-purple-700/10 border border-purple-500/20 rounded-lg p-4 text-center">
-              <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-pink-900/20 to-pink-700/10 border border-pink-500/20 rounded-lg p-2 sm:p-3 md:p-4 text-center">
+              <div className="w-10 h-10 bg-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
@@ -283,7 +179,7 @@ export default function HomePage() {
               <p className="text-gray-400 text-xs mt-1">Create & manage classes</p>
             </div>
             
-            <div className="bg-gradient-to-br from-red-900/20 to-red-700/10 border border-red-500/20 rounded-lg p-4 text-center">
+            <div className="bg-gradient-to-br from-red-900/20 to-red-700/10 border border-red-500/20 rounded-lg p-2 sm:p-3 md:p-4 text-center">
               <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
                 <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A7.968 7.968 0 015 16c0-4.418 3.582-8 8-8s8 3.582 8 8a7.968 7.968 0 01-.121 1.804m-15.758 0A9.003 9.003 0 0012 21a9.003 9.003 0 008.877-5.196m-15.758 0A9 9 0 0112 3a9 9 0 018.877 12.804" />
@@ -296,8 +192,8 @@ export default function HomePage() {
         </div>
 
         {/* Images + Video Section */}
-        <div className="mt-16 w-full max-w-6xl px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+        <div className="mt-12 sm:mt-16 w-full max-w-6xl px-2 sm:px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 items-start">
             {/* Image 1 */}
             <div className="flex flex-col items-center text-center">
               <img
@@ -388,14 +284,6 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-      
-      {/* Click outside to close admin menu */}
-      {showAdminMenu && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowAdminMenu(false)}
-        />
-      )}
     </div>
   );
 }
