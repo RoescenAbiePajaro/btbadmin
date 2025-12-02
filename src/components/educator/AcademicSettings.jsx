@@ -1,13 +1,15 @@
-// src/components/educator/AcademicSettings.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 export default function AcademicSettings() {
-  const [activeType, setActiveType] = useState('course');
+  const [activeType, setActiveType] = useState('school');
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [toast, setToast] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
 
   useEffect(() => {
     fetchItems();
@@ -22,14 +24,20 @@ export default function AcademicSettings() {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      setItems(response.data || []);
+      
+      setItems(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching academic settings:', error);
+      setItems([]);
+      showToast('Error fetching items', 'error');
     }
   };
 
   const handleAddItem = async () => {
-    if (!newItem.trim()) return;
+    if (!newItem.trim()) {
+      showToast('Please enter a name', 'error');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -41,33 +49,145 @@ export default function AcademicSettings() {
           type: activeType
         },
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
         }
       );
 
-      if (response.data.data?.setting) {
-        setItems([...items, response.data.data.setting]);
-        setNewItem('');
+      if (response.data.toast) {
+        showToast(response.data.toast.message, response.data.toast.type);
+        
+        if (response.data.toast.type === 'success' && response.data.setting) {
+          setItems(prevItems => [...prevItems, response.data.setting]);
+          setNewItem('');
+        }
       }
     } catch (error) {
       console.error('Error adding academic setting:', error);
-      alert(error.response?.data?.toast?.message || 'Failed to add item');
+      const errorMessage = error.response?.data?.toast?.message || 
+                         error.response?.data?.message || 
+                         'Failed to add item. Please try again.';
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteItem = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    if (!window.confirm('Are you sure you want to delete this item? This action cannot be undone.')) return;
 
     try {
       const token = localStorage.getItem('token');
-      // You'll need to implement delete endpoint in backend
-      // For now, just remove from frontend
+      await axios.delete(
+        `http://localhost:5000/api/academic-settings/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
       setItems(items.filter(item => item._id !== id));
+      showToast('Item deleted successfully', 'success');
     } catch (error) {
       console.error('Error deleting item:', error);
+      const errorMessage = error.response?.data?.toast?.message || 
+                         error.response?.data?.message || 
+                         'Failed to delete item.';
+      showToast(errorMessage, 'error');
     }
+  };
+
+  const handleToggleActive = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `http://localhost:5000/api/academic-settings/${id}/toggle`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.toast) {
+        showToast(response.data.toast.message, response.data.toast.type);
+        
+        if (response.data.setting) {
+          setItems(items.map(item => 
+            item._id === id ? { ...item, isActive: response.data.setting.isActive } : item
+          ));
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling item:', error);
+      const errorMessage = error.response?.data?.toast?.message || 
+                         'Failed to update item.';
+      showToast(errorMessage, 'error');
+    }
+  };
+
+  const handleStartEdit = (item) => {
+    setEditingId(item._id);
+    setEditName(item.name);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+  };
+
+  const handleSaveEdit = async (id) => {
+    if (!editName.trim()) {
+      showToast('Please enter a name', 'error');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      console.log('Attempting to save edit:', {
+        id,
+        name: editName.trim(),
+        token: token ? 'Token exists' : 'No token'
+      });
+
+      const response = await axios.put(
+        `http://localhost:5000/api/academic-settings/${id}`,
+        {
+          name: editName.trim()
+        },
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      console.log('Edit response:', response.data);
+
+      if (response.data.toast) {
+        showToast(response.data.toast.message, response.data.toast.type);
+        
+        if (response.data.toast.type === 'success' && response.data.setting) {
+          setItems(items.map(item => 
+            item._id === id ? response.data.setting : item
+          ));
+          setEditingId(null);
+          setEditName('');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating item:', error);
+      const errorMessage = error.response?.data?.toast?.message || 
+                         error.response?.data?.message || 
+                         'Failed to update item.';
+      showToast(errorMessage, 'error');
+    }
+  };
+
+  const showToast = (message, type) => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
   const typeLabels = {
@@ -77,21 +197,41 @@ export default function AcademicSettings() {
     block: 'Blocks'
   };
 
+  const filteredItems = items.filter(item => 
+    searchTerm === '' || 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+          toast.type === 'success' ? 'bg-green-500 text-white' : 
+          toast.type === 'error' ? 'bg-red-500 text-white' : 
+          'bg-blue-500 text-white'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-white">Academic Settings</h2>
-        <p className="text-gray-400">Manage schools,courses, years, and blocks for student registration</p>
+        <p className="text-gray-400">Manage schools, courses, years, and blocks for student registration</p>
       </div>
 
       {/* Type Tabs */}
       <div className="border-b border-gray-700">
         <nav className="flex space-x-6">
-          {['school','course', 'year', 'block'].map((type) => (
+          {['school', 'course', 'year', 'block'].map((type) => (
             <button
               key={type}
-              onClick={() => setActiveType(type)}
+              onClick={() => {
+                setActiveType(type);
+                setEditingId(null); // Cancel any ongoing edit when switching tabs
+                setEditName('');
+              }}
               className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeType === type
                   ? 'border-purple-500 text-purple-400'
@@ -111,7 +251,8 @@ export default function AcademicSettings() {
             type="text"
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
-            placeholder={`Add new ${activeType}...`}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
+            placeholder={`Add new ${activeType} (e.g., ${activeType === 'school' ? 'College of Engineering' : 'Computer Science'})`}
             className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
           <button
@@ -128,7 +269,7 @@ export default function AcademicSettings() {
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
           <h3 className="font-semibold text-white">
-            {typeLabels[activeType]} ({items.length})
+            {typeLabels[activeType]} ({filteredItems.length})
           </h3>
           <div className="relative w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -147,50 +288,83 @@ export default function AcademicSettings() {
         </div>
         
         <div className="divide-y divide-gray-700">
-          {items
-            .filter(item => 
-              searchTerm === '' || 
-              item.name.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .map((item) => (
-            <div key={item._id} className="p-4 flex justify-between items-center hover:bg-gray-750 transition duration-200">
-              <div>
-                <span className="text-white">{item.name}</span>
-                <span className="ml-2 px-2 py-1 bg-gray-700 rounded text-xs text-gray-400">
-                  {item.isActive ? 'Active' : 'Inactive'}
-                </span>
+          {filteredItems.length > 0 ? (
+            filteredItems.map((item) => (
+              <div key={item._id} className="p-4 hover:bg-gray-750 transition duration-200">
+                {editingId === item._id ? (
+                  // Edit Mode
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSaveEdit(item._id)}
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSaveEdit(item._id)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // View Mode
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="text-white">{item.name}</span>
+                      <button
+                        onClick={() => handleToggleActive(item._id)}
+                        className={`px-2 py-1 rounded text-xs transition duration-200 ${
+                          item.isActive 
+                            ? 'bg-green-900/30 text-green-400 hover:bg-green-800/40' 
+                            : 'bg-red-900/30 text-red-400 hover:bg-red-800/40'
+                        }`}
+                      >
+                        {item.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                      <span className="text-xs text-gray-500">
+                        Created: {new Date(item.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleStartEdit(item)}
+                        className="text-blue-400 hover:text-blue-300 transition duration-200 px-3 py-1 rounded bg-blue-900/20 hover:bg-blue-900/30"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteItem(item._id)}
+                        className="text-red-400 hover:text-red-300 transition duration-200 px-3 py-1 rounded bg-red-900/20 hover:bg-red-900/30"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {/* Edit functionality */}}
-                  className="text-blue-400 hover:text-blue-300 transition duration-200"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteItem(item._id)}
-                  className="text-red-400 hover:text-red-300 transition duration-200"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-          
-          {items.filter(item => 
-            searchTerm === '' || 
-            item.name.toLowerCase().includes(searchTerm.toLowerCase())
-          ).length === 0 ? (
+            ))
+          ) : (
             <div className="p-8 text-center text-gray-500">
               {searchTerm 
                 ? `No ${activeType}s found matching "${searchTerm}"`
                 : `No ${activeType}s added yet. Add your first one above.`}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
-
-     
     </div>
   );
 }

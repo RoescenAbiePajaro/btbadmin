@@ -1,5 +1,3 @@
-// backend/server.js
-
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -775,26 +773,25 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
 });
 
 // =====================
-// 📚 ACADEMIC SETTINGS
+// 📚 ACADEMIC SETTINGS - FIXED
 // =====================
 
-// Get academic settings
+// Get academic settings - FIXED
 app.get('/api/academic-settings/:type', verifyToken, requireEducator, async (req, res) => {
   try {
     const { type } = req.params;
     
-    if (!['school','course', 'year', 'block'].includes(type)) {
+    // Allow all types including 'school'
+    if (!['school', 'course', 'year', 'block'].includes(type)) {
       return createToastResponse(res, 400, 'Invalid academic setting type', 'error');
     }
 
+    // Find settings by type - no need for additional filtering
     const settings = await AcademicSetting.find({ 
-      type,
-      $or: [
-        { createdBy: req.user.id },
-        { isActive: true }
-      ]
+      type: type
     }).sort({ name: 1 });
 
+    // Return as array directly
     res.json(settings);
 
   } catch (error) {
@@ -803,41 +800,224 @@ app.get('/api/academic-settings/:type', verifyToken, requireEducator, async (req
   }
 });
 
-// Create academic setting
+// Create academic setting - FIXED
 app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res) => {
   try {
     const { name, type } = req.body;
     
-    if (!name || !type || !['school','course', 'year', 'block'].includes(type)) {
-      return createToastResponse(res, 400, 'Invalid data provided', 'error');
+    // Allow 'school' type
+    if (!name || !type || !['school', 'course', 'year', 'block'].includes(type)) {
+      return res.status(400).json({
+        toast: {
+          message: 'Invalid data provided',
+          type: 'error'
+        }
+      });
     }
 
-    // Check if setting already exists
+    // Check if setting already exists (case-insensitive)
     const existingSetting = await AcademicSetting.findOne({
       name: { $regex: new RegExp(`^${name}$`, 'i') },
-      type,
-      createdBy: req.user.id
+      type
     });
 
     if (existingSetting) {
-      return createToastResponse(res, 400, `${type.charAt(0).toUpperCase() + type.slice(1)} already exists`, 'error');
+      return res.status(400).json({
+        toast: {
+          message: `${type.charAt(0).toUpperCase() + type.slice(1)} "${name}" already exists`,
+          type: 'error'
+        }
+      });
     }
 
     const setting = new AcademicSetting({
       name,
       type,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      isActive: true
     });
 
     await setting.save();
 
-    return createToastResponse(res, 201, `${type} created successfully`, 'success', {
+    return res.json({
+      toast: {
+        message: `${type.charAt(0).toUpperCase() + type.slice(1)} created successfully`,
+        type: 'success'
+      },
       setting
     });
 
   } catch (error) {
     console.error('Create academic setting error:', error);
-    return createToastResponse(res, 500, 'Server error creating setting', 'error');
+    return res.status(500).json({
+      toast: {
+        message: 'Server error creating setting',
+        type: 'error'
+      }
+    });
+  }
+});
+
+// Update academic setting - FIXED
+app.put('/api/academic-settings/:id', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        toast: {
+          message: 'Name is required',
+          type: 'error'
+        }
+      });
+    }
+
+    const trimmedName = name.trim();
+
+    // Find the setting
+    const setting = await AcademicSetting.findById(id);
+    
+    if (!setting) {
+      return res.status(404).json({
+        toast: {
+          message: 'Setting not found',
+          type: 'error'
+        }
+      });
+    }
+
+    // Check if name already exists (case-insensitive)
+    const existingSetting = await AcademicSetting.findOne({
+      name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
+      type: setting.type,
+      _id: { $ne: id } // Exclude current setting from check
+    });
+
+    if (existingSetting) {
+      return res.status(400).json({
+        toast: {
+          message: `${setting.type.charAt(0).toUpperCase() + setting.type.slice(1)} "${trimmedName}" already exists`,
+          type: 'error'
+        }
+      });
+    }
+
+    // Update the setting
+    setting.name = trimmedName;
+    await setting.save();
+
+    return res.json({
+      toast: {
+        message: `${setting.type.charAt(0).toUpperCase() + setting.type.slice(1)} updated successfully`,
+        type: 'success'
+      },
+      setting
+    });
+
+  } catch (error) {
+    console.error('Update academic setting error:', error);
+    return res.status(500).json({
+      toast: {
+        message: 'Server error updating setting',
+        type: 'error'
+      }
+    });
+  }
+});
+
+// Delete academic setting
+app.delete('/api/academic-settings/:id', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find and delete the setting
+    const setting = await AcademicSetting.findById(id);
+    
+    if (!setting) {
+      return res.status(404).json({
+        toast: {
+          message: 'Setting not found',
+          type: 'error'
+        }
+      });
+    }
+
+    // Check if user owns this setting
+    if (setting.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({
+        toast: {
+          message: 'You can only delete your own settings',
+          type: 'error'
+        }
+      });
+    }
+
+    await AcademicSetting.findByIdAndDelete(id);
+
+    return res.json({
+      toast: {
+        message: 'Setting deleted successfully',
+        type: 'success'
+      }
+    });
+
+  } catch (error) {
+    console.error('Delete academic setting error:', error);
+    return res.status(500).json({
+      toast: {
+        message: 'Server error deleting setting',
+        type: 'error'
+      }
+    });
+  }
+});
+
+// Toggle academic setting active status
+app.put('/api/academic-settings/:id/toggle', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const setting = await AcademicSetting.findById(id);
+    
+    if (!setting) {
+      return res.status(404).json({
+        toast: {
+          message: 'Setting not found',
+          type: 'error'
+        }
+      });
+    }
+
+    // Check if user owns this setting
+    if (setting.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({
+        toast: {
+          message: 'You can only toggle your own settings',
+          type: 'error'
+        }
+      });
+    }
+
+    setting.isActive = !setting.isActive;
+    await setting.save();
+
+    return res.json({
+      toast: {
+        message: `Setting ${setting.isActive ? 'activated' : 'deactivated'} successfully`,
+        type: 'success'
+      },
+      setting
+    });
+
+  } catch (error) {
+    console.error('Toggle academic setting error:', error);
+    return res.status(500).json({
+      toast: {
+        message: 'Server error toggling setting',
+        type: 'error'
+      }
+    });
   }
 });
 
