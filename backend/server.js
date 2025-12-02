@@ -26,9 +26,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
@@ -40,10 +38,6 @@ app.use(cors({
 app.use(express.json());
 
 // Connect to MongoDB
-if (!process.env.MONGODB_URI) {
-  throw new Error('MONGODB_URI environment variable is not set');
-}
-
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -53,12 +47,6 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.error('MongoDB connection error:', err);
   process.exit(1);
 });
-
-// Models are already imported at the top of the file
-
-// =====================
-// 🔧 HELPER FUNCTIONS
-// =====================
 
 // Generate JWT token
 const generateToken = (user) => {
@@ -491,6 +479,39 @@ app.post('/api/admin/login', async (req, res) => {
 // 🏫 CLASS MANAGEMENT
 // =====================
 
+// Validate class code (public)
+app.get('/api/classes/validate/:code', async (req, res) => {
+  try {
+    const classCode = req.params.code.toUpperCase();
+    
+    const classObj = await Class.findOne({ 
+      classCode,
+      isActive: true 
+    }).populate('educator', 'fullName username');
+    
+    if (!classObj) {
+      return res.json({
+        valid: false,
+        message: 'Invalid class code'
+      });
+    }
+    
+    return res.json({
+      valid: true,
+      classCode: classObj.classCode,
+      className: classObj.className,
+      educatorId: classObj.educator._id,
+      educatorName: classObj.educator.fullName || classObj.educator.username
+    });
+  } catch (error) {
+    console.error('Validate class code error:', error);
+    res.status(500).json({
+      valid: false,
+      message: 'Server error validating class code'
+    });
+  }
+});
+
 // Generate class code
 app.post('/api/classes/generate-code', verifyToken, requireEducator, async (req, res) => {
   try {
@@ -739,9 +760,7 @@ app.delete('/api/classes/:id', verifyToken, requireEducator, async (req, res) =>
   }
 });
 
-// =====================
-// 👥 GET CLASS STUDENTS
-// =====================
+// Get class students
 app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
   try {
     const { classId } = req.params;
@@ -772,14 +791,16 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
     return createToastResponse(res, 500, 'Server error fetching students', 'error');
   }
 });
-// 📚 ACADEMIC SETTINGS - FIXED
+
+// =====================
+// 📚 ACADEMIC SETTINGS
 // =====================
 
 // Get academic settings - Filtered by educator
 app.get('/api/academic-settings/:type', verifyToken, requireEducator, async (req, res) => {
   try {
     const { type } = req.params;
-    const educatorId = req.user.id; // Get the logged-in educator ID
+    const educatorId = req.user.id;
     
     if (!['school', 'course', 'year', 'block'].includes(type)) {
       return createToastResponse(res, 400, 'Invalid academic setting type', 'error');
@@ -795,6 +816,35 @@ app.get('/api/academic-settings/:type', verifyToken, requireEducator, async (req
   } catch (error) {
     console.error('Get academic settings error:', error);
     return createToastResponse(res, 500, 'Server error fetching settings', 'error');
+  }
+});
+
+// Get academic settings by educator (public - for student registration)
+app.get('/api/academic-settings/:type/educator/:educatorId', async (req, res) => {
+  try {
+    const { type, educatorId } = req.params;
+    
+    if (!['school', 'course', 'year', 'block'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid academic setting type' });
+    }
+    
+    // Verify educator exists
+    const educator = await User.findById(educatorId);
+    if (!educator || educator.role !== 'educator') {
+      return res.status(404).json({ message: 'Educator not found' });
+    }
+    
+    // Get settings for this educator
+    const settings = await AcademicSetting.find({ 
+      type: type,
+      educator: educatorId,
+      isActive: true
+    }).sort({ name: 1 });
+    
+    res.json(settings);
+  } catch (error) {
+    console.error('Get academic settings by educator error:', error);
+    res.status(500).json({ message: 'Server error fetching settings' });
   }
 });
 
@@ -833,7 +883,7 @@ app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res
       name,
       type,
       createdBy: educatorId,
-      educator: educatorId, // Store educator reference
+      educator: educatorId,
       isActive: true,
       isDefault: false
     });

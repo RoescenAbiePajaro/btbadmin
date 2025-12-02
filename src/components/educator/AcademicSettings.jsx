@@ -145,12 +145,6 @@ export default function AcademicSettings() {
 
     try {
       const token = localStorage.getItem('token');
-      console.log('Attempting to save edit:', {
-        id,
-        name: editName.trim(),
-        token: token ? 'Token exists' : 'No token'
-      });
-
       const response = await axios.put(
         `http://localhost:5000/api/academic-settings/${id}`,
         {
@@ -163,8 +157,6 @@ export default function AcademicSettings() {
           }
         }
       );
-
-      console.log('Edit response:', response.data);
 
       if (response.data.toast) {
         showToast(response.data.toast.message, response.data.toast.type);
@@ -220,6 +212,9 @@ export default function AcademicSettings() {
       <div>
         <h2 className="text-2xl font-bold text-white">Academic Settings</h2>
         <p className="text-gray-400">Manage schools, courses, years, and blocks for student registration</p>
+        <p className="text-sm text-blue-400 mt-1">
+          These settings are specific to your account and will be shown to students joining your classes.
+        </p>
       </div>
 
       {/* Type Tabs */}
@@ -230,7 +225,7 @@ export default function AcademicSettings() {
               key={type}
               onClick={() => {
                 setActiveType(type);
-                setEditingId(null); // Cancel any ongoing edit when switching tabs
+                setEditingId(null);
                 setEditName('');
               }}
               className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
@@ -364,6 +359,24 @@ export default function AcademicSettings() {
                 : `No ${activeType}s added yet. Add your first one above.`}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Info Section */}
+      <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="text-blue-300 font-medium">How this works:</p>
+            <ul className="text-blue-400 text-sm mt-1 space-y-1">
+              <li>• These academic settings are specific to your educator account</li>
+              <li>• When students join your class, they will only see these options</li>
+              <li>• You can add, edit, or deactivate settings as needed</li>
+              <li>• Each educator has their own unique set of academic options</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import axios from 'axios';
 export default function StudentRegistration() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [classCodeLoading, setClassCodeLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [academicOptions, setAcademicOptions] = useState({
     school: [],
@@ -29,47 +30,108 @@ export default function StudentRegistration() {
   });
 
   const [errors, setErrors] = useState({});
+  const [classEducatorId, setClassEducatorId] = useState(null);
+  const [classInfo, setClassInfo] = useState(null);
 
-  // Fetch academic options
+  // Validate class code and get educator info
   useEffect(() => {
-    const fetchAcademicOptions = async () => {
-      try {
-        const [schoolRes, courseRes, yearsRes, blocksRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/academic-settings/school'),
-          axios.get('http://localhost:5000/api/academic-settings/course'),
-          axios.get('http://localhost:5000/api/academic-settings/year'),
-          axios.get('http://localhost:5000/api/academic-settings/block')
-        ]);
-
-        setAcademicOptions({
-          school: schoolRes.data.map(item => item.name),
-          course: courseRes.data.map(item => item.name),
-          years: yearsRes.data.map(item => item.name),
-          blocks: blocksRes.data.map(item => item.name)
-        });
-      } catch (error) {
-        console.error('Error fetching academic options:', error);
-        // Fallback to empty arrays if API fails
+    const validateClassCode = async () => {
+      if (!formData.classCode || formData.classCode.length < 4) {
+        setClassEducatorId(null);
+        setClassInfo(null);
         setAcademicOptions({
           school: [],
           course: [],
           years: [],
           blocks: []
         });
+        setErrors(prev => ({ ...prev, classCode: '' }));
+        return;
+      }
+
+      setClassCodeLoading(true);
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/api/classes/validate/${formData.classCode.toUpperCase()}`
+        );
+
+        if (response.data.valid) {
+          setClassEducatorId(response.data.educatorId);
+          setClassInfo({
+            className: response.data.className,
+            educatorName: response.data.educatorName
+          });
+          setErrors(prev => ({ ...prev, classCode: '' }));
+          
+          await fetchAcademicOptionsForEducator(response.data.educatorId);
+        } else {
+          setErrors(prev => ({ ...prev, classCode: response.data.message }));
+          setClassEducatorId(null);
+          setClassInfo(null);
+        }
+      } catch (error) {
+        console.error('Error validating class code:', error);
+        setErrors(prev => ({ ...prev, classCode: 'Invalid class code' }));
+        setClassEducatorId(null);
+        setClassInfo(null);
+      } finally {
+        setClassCodeLoading(false);
       }
     };
 
-    fetchAcademicOptions();
-  }, []);
+    const timer = setTimeout(() => {
+      validateClassCode();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formData.classCode]);
+
+  // Fetch academic options for specific educator
+  const fetchAcademicOptionsForEducator = async (educatorId) => {
+    try {
+      const [schoolRes, courseRes, yearsRes, blocksRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/academic-settings/school/educator/${educatorId}`),
+        axios.get(`http://localhost:5000/api/academic-settings/course/educator/${educatorId}`),
+        axios.get(`http://localhost:5000/api/academic-settings/year/educator/${educatorId}`),
+        axios.get(`http://localhost:5000/api/academic-settings/block/educator/${educatorId}`)
+      ]);
+
+      setAcademicOptions({
+        school: schoolRes.data.map(item => item.name),
+        course: courseRes.data.map(item => item.name),
+        years: yearsRes.data.map(item => item.name),
+        blocks: blocksRes.data.map(item => item.name)
+      });
+    } catch (error) {
+      console.error('Error fetching academic options for educator:', error);
+      setAcademicOptions({
+        school: [],
+        course: [],
+        years: [],
+        blocks: []
+      });
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
     
-    // Clear error for this field
+    if (name === 'classCode') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        school: '',
+        course: '',
+        year: '',
+        block: ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+    
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -93,6 +155,7 @@ export default function StudentRegistration() {
     }
     
     if (!formData.classCode.trim()) newErrors.classCode = 'Class code is required';
+    else if (!classEducatorId) newErrors.classCode = 'Please enter a valid class code';
     
     return newErrors;
   };
@@ -126,10 +189,8 @@ export default function StudentRegistration() {
       );
 
       if (response.data.toast?.show) {
-        // Show success message
         setSuccessMessage('Registration successful! Please login with your credentials.');
         
-        // Clear form data
         setFormData({
           fullName: '',
           email: '',
@@ -143,10 +204,8 @@ export default function StudentRegistration() {
           classCode: ''
         });
         
-        // Clear errors
         setErrors({});
         
-        // Redirect to login page after 2 seconds
         setTimeout(() => {
           navigate('/login');
         }, 2000);
@@ -190,6 +249,17 @@ export default function StudentRegistration() {
               Join your educator's virtual class
             </p>
           </div>
+
+          {classInfo && (
+            <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg">
+              <p className="text-blue-300 text-sm">
+                Joining: <span className="font-semibold">{classInfo.className}</span>
+              </p>
+              <p className="text-blue-400 text-xs mt-1">
+                Educator: {classInfo.educatorName}
+              </p>
+            </div>
+          )}
 
           {successMessage && (
             <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
@@ -295,81 +365,6 @@ export default function StudentRegistration() {
               )}
             </div>
 
-            {/* Academic Information Grid */}
-            <div className="grid grid-cols-3 gap-4">
-              {/* School */}
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  School
-                </label>
-                <select
-                  name="school"
-                  value={formData.school}
-                  onChange={handleChange}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select</option>
-                  {academicOptions.school.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Course */}
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Course
-                </label>
-                <select
-                  name="course"
-                  value={formData.course}
-                  onChange={handleChange}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select</option>
-                  {academicOptions.course.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Year */}
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Year
-                </label>
-                <select
-                  name="year"
-                  value={formData.year}
-                  onChange={handleChange}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select</option>
-                  {academicOptions.years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Block */}
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Block
-                </label>
-                <select
-                  name="block"
-                  value={formData.block}
-                  onChange={handleChange}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select</option>
-                  {academicOptions.blocks.map(block => (
-                    <option key={block} value={block}>{block}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {/* Class Code */}
             <div>
               <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -384,9 +379,18 @@ export default function StudentRegistration() {
                   className={`w-full bg-gray-900/50 border ${errors.classCode ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase`}
                   placeholder="Enter class code (e.g., ABCD12)"
                 />
-                <div className="absolute right-3 top-3">
-                  <span className="text-gray-500 text-sm">Ask your educator</span>
-                </div>
+                {classCodeLoading && (
+                  <div className="absolute right-3 top-3">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-400"></div>
+                  </div>
+                )}
+                {classInfo && !classCodeLoading && (
+                  <div className="absolute right-3 top-3">
+                    <svg className="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
               </div>
               {errors.classCode && (
                 <p className="mt-1 text-sm text-red-400">{errors.classCode}</p>
@@ -396,10 +400,97 @@ export default function StudentRegistration() {
               </p>
             </div>
 
+            {/* Academic Information */}
+            <div className="bg-gray-900/30 border border-gray-700 rounded-xl p-4">
+              <h3 className="text-white font-medium mb-3">Academic Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {/* School */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    School
+                  </label>
+                  <select
+                    name="school"
+                    value={formData.school}
+                    onChange={handleChange}
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    disabled={!classEducatorId}
+                  >
+                    <option value="">Select School</option>
+                    {academicOptions.school.map(school => (
+                      <option key={school} value={school}>{school}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Course */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Course
+                  </label>
+                  <select
+                    name="course"
+                    value={formData.course}
+                    onChange={handleChange}
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    disabled={!classEducatorId}
+                  >
+                    <option value="">Select Course</option>
+                    {academicOptions.course.map(course => (
+                      <option key={course} value={course}>{course}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Year */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Year
+                  </label>
+                  <select
+                    name="year"
+                    value={formData.year}
+                    onChange={handleChange}
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    disabled={!classEducatorId}
+                  >
+                    <option value="">Select Year</option>
+                    {academicOptions.years.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Block */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Block
+                  </label>
+                  <select
+                    name="block"
+                    value={formData.block}
+                    onChange={handleChange}
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    disabled={!classEducatorId}
+                  >
+                    <option value="">Select Block</option>
+                    {academicOptions.blocks.map(block => (
+                      <option key={block} value={block}>{block}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {!classEducatorId && formData.classCode && (
+                <p className="mt-2 text-xs text-yellow-400">
+                  Please enter a valid class code to select academic information
+                </p>
+              )}
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || successMessage}
+              disabled={loading || successMessage || !classEducatorId}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -412,6 +503,8 @@ export default function StudentRegistration() {
                 </>
               ) : successMessage ? (
                 'Registration Successful!'
+              ) : !classEducatorId ? (
+                'Enter Valid Class Code First'
               ) : (
                 'Create Student Account'
               )}

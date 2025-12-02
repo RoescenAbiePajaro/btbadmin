@@ -8,7 +8,6 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(false);
 
-  // Function to fetch and set user data
   const fetchUserData = useCallback(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
@@ -36,7 +35,6 @@ export default function StudentDashboard() {
     }
   }, [navigate]);
 
-  // Check for fresh registration and force reload
   useEffect(() => {
     const isFreshRegistration = localStorage.getItem('freshRegistration');
     
@@ -44,12 +42,10 @@ export default function StudentDashboard() {
       console.log('Fresh registration detected, forcing reload...');
       localStorage.removeItem('freshRegistration');
       
-      // Clear localStorage and reload to get fresh data
       const token = localStorage.getItem('token');
       const userData = localStorage.getItem('user');
       
       if (token && userData) {
-        // Force state update
         try {
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
@@ -62,7 +58,6 @@ export default function StudentDashboard() {
     }
   }, []);
 
-  // Initial load and periodic refresh
   useEffect(() => {
     const loadUserData = () => {
       const userData = fetchUserData();
@@ -74,7 +69,6 @@ export default function StudentDashboard() {
 
     loadUserData();
 
-    // Set up interval to check for data updates
     const intervalId = setInterval(() => {
       if (forceRefresh) {
         console.log('Force refresh triggered...');
@@ -86,7 +80,6 @@ export default function StudentDashboard() {
     return () => clearInterval(intervalId);
   }, [fetchUserData, forceRefresh]);
 
-  // Listen for localStorage changes
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'user') {
@@ -98,7 +91,6 @@ export default function StudentDashboard() {
       }
     };
 
-    // Also check on focus in case data was updated in another tab
     const handleFocus = () => {
       console.log('Window focused, checking for user data updates...');
       const userData = fetchUserData();
@@ -116,34 +108,27 @@ export default function StudentDashboard() {
     };
   }, [fetchUserData]);
 
-  // Handle browser/tab close or navigation away
   useEffect(() => {
     const handleBeforeUnload = (event) => {
-      // Clear local storage on close
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
-      // Send a logout request to the server if possible
       const token = localStorage.getItem('token');
       if (token) {
-        // Use sendBeacon for reliable logout request on page unload
         const data = new FormData();
         data.append('token', token);
         navigator.sendBeacon(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/logout`, data);
       }
     };
 
-    // Prevent caching of dashboard page
     window.onpageshow = function(event) {
       if (event.persisted) {
         window.location.reload();
       }
     };
     
-    // Clear browser history and replace current entry
     window.history.pushState(null, document.title, window.location.href);
     
-    // Handle back/forward navigation
     window.onpopstate = function() {
       window.history.pushState(null, document.title, window.location.href);
       if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
@@ -151,10 +136,8 @@ export default function StudentDashboard() {
       }
     };
 
-    // Add event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // Cleanup function
     return () => {
       window.onpopstate = null;
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -172,7 +155,6 @@ export default function StudentDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    // Clear browser history and navigate to login
     window.history.replaceState(null, '', '/login');
     navigate('/login', { replace: true });
   };
@@ -269,6 +251,11 @@ export default function StudentDashboard() {
                 <span className="text-gray-400">Block:</span>
                 <p className="text-white">{user.block || 'Not specified'}</p>
               </div>
+              <div className="pt-3 border-t border-gray-700">
+                <p className="text-xs text-gray-500">
+                  <span className="text-blue-400">Note:</span> These academic options were provided by your educator when you registered for the class.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -291,6 +278,14 @@ export default function StudentDashboard() {
                     <p className="text-white">{user.enrolledClassDetails.educatorName}</p>
                   </div>
                 )}
+                <div className="pt-3 border-t border-gray-700">
+                  <button
+                    onClick={handleRefreshData}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200"
+                  >
+                    Refresh Class Info
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="text-center py-4">
@@ -331,7 +326,7 @@ export default function StudentDashboard() {
                 onClick={() => {/* View assignments */}}
                 className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition duration-200"
               >
-                View Assignments
+                View Learning Materials
               </button>
             </div>
           </div>
@@ -341,7 +336,13 @@ export default function StudentDashboard() {
             <div className="text-gray-400 text-center py-8">
               {user.enrolledClassDetails ? (
                 <>
-                 {/* here will be the sahred educator save docs and images */}
+                  <p>Your academic information has been successfully registered.</p>
+                  <p className="text-sm mt-2">
+                    School: {user.school || 'Not specified'}<br />
+                    Course: {user.course || 'Not specified'}<br />
+                    Year: {user.year || 'Not specified'}<br />
+                    Block: {user.block || 'Not specified'}
+                  </p>
                 </>
               ) : (
                 <>
