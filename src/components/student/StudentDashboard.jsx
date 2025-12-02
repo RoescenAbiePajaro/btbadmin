@@ -28,8 +28,24 @@ export default function StudentDashboard() {
     }
   }, [navigate]);
 
-  // Prevent caching of dashboard page
+  // Handle browser/tab close or navigation away
   useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      // Clear local storage on close
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Send a logout request to the server if possible
+      const token = localStorage.getItem('token');
+      if (token) {
+        // Use sendBeacon for reliable logout request on page unload
+        const data = new FormData();
+        data.append('token', token);
+        navigator.sendBeacon(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/logout`, data);
+      }
+    };
+
+    // Prevent caching of dashboard page
     window.onpageshow = function(event) {
       if (event.persisted) {
         window.location.reload();
@@ -38,6 +54,8 @@ export default function StudentDashboard() {
     
     // Clear browser history and replace current entry
     window.history.pushState(null, document.title, window.location.href);
+    
+    // Handle back/forward navigation
     window.onpopstate = function() {
       window.history.pushState(null, document.title, window.location.href);
       if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
@@ -45,8 +63,13 @@ export default function StudentDashboard() {
       }
     };
 
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Cleanup function
     return () => {
       window.onpopstate = null;
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [navigate]);
 
