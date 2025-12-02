@@ -121,12 +121,6 @@ export default function ClassManagement() {
                 >
                   Copy Code
                 </button>
-                <button
-                  onClick={() => {/* Navigate to student list */}}
-                  className="text-purple-400 hover:text-purple-300 transition duration-200"
-                >
-                  View Students
-                </button>
               </div>
             </div>
           </div>
