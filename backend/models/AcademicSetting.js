@@ -1,3 +1,4 @@
+// backend/models/AcademicSettings.js
 const mongoose = require('mongoose');
 
 const academicSettingSchema = new mongoose.Schema({
@@ -25,12 +26,25 @@ const academicSettingSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  educator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true // Add index for faster queries
+  },
   isActive: {
     type: Boolean,
     default: true
   },
+  isDefault: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });
+
+// Add compound index for unique names per educator per type
+academicSettingSchema.index({ name: 1, type: 1, educator: 1 }, { unique: true });
 
 module.exports = mongoose.model('AcademicSetting', academicSettingSchema);

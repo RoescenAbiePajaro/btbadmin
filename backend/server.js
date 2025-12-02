@@ -1,3 +1,4 @@
+// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -771,41 +772,38 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
     return createToastResponse(res, 500, 'Server error fetching students', 'error');
   }
 });
-
-// =====================
 // 📚 ACADEMIC SETTINGS - FIXED
 // =====================
 
-// Get academic settings - FIXED
+// Get academic settings - Filtered by educator
 app.get('/api/academic-settings/:type', verifyToken, requireEducator, async (req, res) => {
   try {
     const { type } = req.params;
+    const educatorId = req.user.id; // Get the logged-in educator ID
     
-    // Allow all types including 'school'
     if (!['school', 'course', 'year', 'block'].includes(type)) {
       return createToastResponse(res, 400, 'Invalid academic setting type', 'error');
     }
 
-    // Find settings by type - no need for additional filtering
+    // Only return settings created by this educator
     const settings = await AcademicSetting.find({ 
-      type: type
+      type: type,
+      educator: educatorId
     }).sort({ name: 1 });
 
-    // Return as array directly
     res.json(settings);
-
   } catch (error) {
     console.error('Get academic settings error:', error);
     return createToastResponse(res, 500, 'Server error fetching settings', 'error');
   }
 });
 
-// Create academic setting - FIXED
+// Create academic setting - Assign to educator
 app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res) => {
   try {
     const { name, type } = req.body;
+    const educatorId = req.user.id;
     
-    // Allow 'school' type
     if (!name || !type || !['school', 'course', 'year', 'block'].includes(type)) {
       return res.status(400).json({
         toast: {
@@ -815,16 +813,17 @@ app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res
       });
     }
 
-    // Check if setting already exists (case-insensitive)
+    // Check if setting already exists for THIS EDUCATOR (case-insensitive)
     const existingSetting = await AcademicSetting.findOne({
       name: { $regex: new RegExp(`^${name}$`, 'i') },
-      type
+      type,
+      educator: educatorId
     });
 
     if (existingSetting) {
       return res.status(400).json({
         toast: {
-          message: `${type.charAt(0).toUpperCase() + type.slice(1)} "${name}" already exists`,
+          message: `${type.charAt(0).toUpperCase() + type.slice(1)} "${name}" already exists in your settings`,
           type: 'error'
         }
       });
@@ -833,8 +832,10 @@ app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res
     const setting = new AcademicSetting({
       name,
       type,
-      createdBy: req.user.id,
-      isActive: true
+      createdBy: educatorId,
+      educator: educatorId, // Store educator reference
+      isActive: true,
+      isDefault: false
     });
 
     await setting.save();
@@ -846,7 +847,6 @@ app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res
       },
       setting
     });
-
   } catch (error) {
     console.error('Create academic setting error:', error);
     return res.status(500).json({
@@ -858,11 +858,12 @@ app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res
   }
 });
 
-// Update academic setting - FIXED
+// Update academic setting - Verify educator ownership
 app.put('/api/academic-settings/:id', verifyToken, requireEducator, async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
+    const educatorId = req.user.id;
     
     if (!name || !name.trim()) {
       return res.status(400).json({
@@ -875,35 +876,38 @@ app.put('/api/academic-settings/:id', verifyToken, requireEducator, async (req, 
 
     const trimmedName = name.trim();
 
-    // Find the setting
-    const setting = await AcademicSetting.findById(id);
+    // Find the setting and verify ownership
+    const setting = await AcademicSetting.findOne({
+      _id: id,
+      educator: educatorId
+    });
     
     if (!setting) {
       return res.status(404).json({
         toast: {
-          message: 'Setting not found',
+          message: 'Setting not found or access denied',
           type: 'error'
         }
       });
     }
 
-    // Check if name already exists (case-insensitive)
+    // Check if name already exists for THIS EDUCATOR (case-insensitive)
     const existingSetting = await AcademicSetting.findOne({
       name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
       type: setting.type,
-      _id: { $ne: id } // Exclude current setting from check
+      educator: educatorId,
+      _id: { $ne: id }
     });
 
     if (existingSetting) {
       return res.status(400).json({
         toast: {
-          message: `${setting.type.charAt(0).toUpperCase() + setting.type.slice(1)} "${trimmedName}" already exists`,
+          message: `${setting.type.charAt(0).toUpperCase() + setting.type.slice(1)} "${trimmedName}" already exists in your settings`,
           type: 'error'
         }
       });
     }
 
-    // Update the setting
     setting.name = trimmedName;
     await setting.save();
 
@@ -914,7 +918,6 @@ app.put('/api/academic-settings/:id', verifyToken, requireEducator, async (req, 
       },
       setting
     });
-
   } catch (error) {
     console.error('Update academic setting error:', error);
     return res.status(500).json({
@@ -926,28 +929,22 @@ app.put('/api/academic-settings/:id', verifyToken, requireEducator, async (req, 
   }
 });
 
-// Delete academic setting
+// Delete academic setting - Verify educator ownership
 app.delete('/api/academic-settings/:id', verifyToken, requireEducator, async (req, res) => {
   try {
     const { id } = req.params;
+    const educatorId = req.user.id;
     
-    // Find and delete the setting
-    const setting = await AcademicSetting.findById(id);
+    // Find and verify ownership
+    const setting = await AcademicSetting.findOne({
+      _id: id,
+      educator: educatorId
+    });
     
     if (!setting) {
       return res.status(404).json({
         toast: {
-          message: 'Setting not found',
-          type: 'error'
-        }
-      });
-    }
-
-    // Check if user owns this setting
-    if (setting.createdBy.toString() !== req.user.id) {
-      return res.status(403).json({
-        toast: {
-          message: 'You can only delete your own settings',
+          message: 'Setting not found or access denied',
           type: 'error'
         }
       });
@@ -961,7 +958,6 @@ app.delete('/api/academic-settings/:id', verifyToken, requireEducator, async (re
         type: 'success'
       }
     });
-
   } catch (error) {
     console.error('Delete academic setting error:', error);
     return res.status(500).json({
@@ -973,12 +969,16 @@ app.delete('/api/academic-settings/:id', verifyToken, requireEducator, async (re
   }
 });
 
-// Toggle academic setting active status
+// Toggle academic setting - Verify educator ownership
 app.put('/api/academic-settings/:id/toggle', verifyToken, requireEducator, async (req, res) => {
   try {
     const { id } = req.params;
+    const educatorId = req.user.id;
     
-    const setting = await AcademicSetting.findById(id);
+    const setting = await AcademicSetting.findOne({
+      _id: id,
+      educator: educatorId
+    });
     
     if (!setting) {
       return res.status(404).json({
