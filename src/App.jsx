@@ -9,9 +9,6 @@ import Login from './components/auth/Login';
 import EducatorDashboard from './components/educator/EducatorDashboard';
 import StudentDashboard from './components/student/StudentDashboard';
 import EmailVerification from './components/auth/EmailVerification';
-import AdminLogin from './components/AdminLogin';
-import AdminRegistration from './components/AdminRegistration';
-import AdminDashboard from './components/AdminDashboard';
 import Toast from './components/Toast';
 import NotFound from './components/NotFound';
 
@@ -54,8 +51,6 @@ const PublicOnlyRoute = ({ children }) => {
         return <Navigate to="/student/dashboard" replace />;
       } else if (user.role === 'educator') {
         return <Navigate to="/educator/dashboard" replace />;
-      } else if (user.role === 'admin') {
-        return <Navigate to="/admin-dashboard" replace />;
       }
     } catch (error) {
       console.error('Error parsing user data:', error);
@@ -113,10 +108,6 @@ function App() {
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/verify-email" element={<EmailVerification />} />
         
-        {/* Admin Routes */}
-        <Route path="/admin-login" element={<PublicOnlyRoute><AdminLogin /></PublicOnlyRoute>} />
-        <Route path="/admin-register" element={<PublicOnlyRoute><AdminRegistration /></PublicOnlyRoute>} />
-        
         {/* Protected Routes - Student */}
         <Route 
           path="/student/dashboard" 
@@ -133,16 +124,6 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['educator']}>
               <EducatorDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Protected Routes - Admin */}
-        <Route 
-          path="/admin-dashboard" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
             </ProtectedRoute>
           } 
         />

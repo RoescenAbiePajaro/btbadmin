@@ -50,18 +50,6 @@ export default function NotFound() {
             >
               Register
             </button>
-            <button
-              onClick={() => navigate('/admin-login')}
-              className="bg-red-600 hover:bg-red-700 text-white py-2 rounded transition duration-200"
-            >
-              Admin Login
-            </button>
-            <button
-              onClick={() => navigate('/admin-register')}
-              className="bg-red-700 hover:bg-red-800 text-white py-2 rounded transition duration-200"
-            >
-              Admin Register
-            </button>
           </div>
         </div>
       </div>
