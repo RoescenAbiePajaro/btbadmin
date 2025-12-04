@@ -1,4 +1,4 @@
-// models/File.js - Updated
+// backend/models/File.js
 const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
