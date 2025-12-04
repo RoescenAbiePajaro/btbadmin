@@ -9,6 +9,8 @@ const User = require('./models/User');
 const Class = require('./models/Class');
 const AcademicSetting = require('./models/AcademicSetting');
 const AccessCode = require('./models/AccessCode');
+const { supabase, supabasePublic } = require('./config/supabase');
+const fileRoutes = require('./routes/fileRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -1001,6 +1003,9 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
 // =====================
 // 🚀 SERVER START
 // =====================
+// 📁 FILE ROUTES
+// =====================
+app.use('/api/files', fileRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

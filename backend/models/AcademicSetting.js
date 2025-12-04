@@ -1,4 +1,3 @@
-// backend/models/AcademicSetting.js
 const mongoose = require('mongoose');
 
 const academicSettingSchema = new mongoose.Schema({
@@ -12,12 +11,12 @@ const academicSettingSchema = new mongoose.Schema({
     required: true,
     enum: ['school', 'course', 'year', 'block']
   },
-  educator: {
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  createdBy: {
+  educator: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -29,13 +28,14 @@ const academicSettingSchema = new mongoose.Schema({
   isDefault: {
     type: Boolean,
     default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
-}, {
-  timestamps: true
 });
 
-// Add index for faster queries
-academicSettingSchema.index({ educator: 1, type: 1, isActive: 1 });
-academicSettingSchema.index({ type: 1, educator: 1, name: 1 }, { unique: true });
+// Create compound index for unique settings per educator
+academicSettingSchema.index({ name: 1, type: 1, educator: 1 }, { unique: true });
 
 module.exports = mongoose.model('AcademicSetting', academicSettingSchema);

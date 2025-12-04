@@ -1,4 +1,3 @@
-// backend/models/File.js
 const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
@@ -9,6 +8,18 @@ const fileSchema = new mongoose.Schema({
   filePath: {
     type: String,
     required: true
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  },
+  supabaseId: {
+    type: String,
+    unique: true
+  },
+  bucketName: {
+    type: String,
+    default: 'class-files'
   },
   fileSize: {
     type: Number,
@@ -22,6 +33,9 @@ const fileSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  uploadedByName: {
+    type: String
   },
   classCode: {
     type: String,
@@ -48,6 +62,14 @@ const fileSchema = new mongoose.Schema({
   submissionCount: {
     type: Number,
     default: 0
+  },
+  isStudentUpload: {
+    type: Boolean,
+    default: false
+  },
+  sharedWithEducator: {
+    type: Boolean,
+    default: false
   }
 });
 

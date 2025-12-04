@@ -5,13 +5,18 @@ const classSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    uppercase: true
+    uppercase: true,
+    trim: true
   },
   className: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
-  description: String,
+  description: {
+    type: String,
+    trim: true
+  },
   educator: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -24,9 +29,22 @@ const classSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
 });
+
+// Create index for faster lookups
+classSchema.index({ classCode: 1 });
+classSchema.index({ educator: 1 });
+classSchema.index({ isActive: 1 });
 
 module.exports = mongoose.model('Class', classSchema);

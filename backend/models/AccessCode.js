@@ -8,15 +8,33 @@ const accessCodeSchema = new mongoose.Schema({
     uppercase: true,
     trim: true
   },
-  description: String,
-  maxUses: {
-    type: Number,
-    default: 1,
-    min: 1
+  educator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  currentUses: {
-    type: Number,
-    default: 0
+  class: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Class'
+  },
+  type: {
+    type: String,
+    enum: ['class', 'admin', 'registration'],
+    default: 'class'
+  },
+  isUsed: {
+    type: Boolean,
+    default: false
+  },
+  usedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  usedAt: {
+    type: Date
+  },
+  expiresAt: {
+    type: Date
   },
   isActive: {
     type: Boolean,
@@ -27,11 +45,5 @@ const accessCodeSchema = new mongoose.Schema({
     default: Date.now
   }
 });
-
-// Increment usage method
-accessCodeSchema.methods.incrementUsage = async function() {
-  this.currentUses += 1;
-  await this.save();
-};
 
 module.exports = mongoose.model('AccessCode', accessCodeSchema);

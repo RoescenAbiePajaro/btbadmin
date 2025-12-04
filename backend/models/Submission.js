@@ -1,4 +1,3 @@
-// backend/models/Submission.js
 const mongoose = require('mongoose');
 
 const submissionSchema = new mongoose.Schema({
@@ -9,6 +8,14 @@ const submissionSchema = new mongoose.Schema({
   filePath: {
     type: String,
     required: true
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  },
+  supabaseId: {
+    type: String,
+    unique: true
   },
   fileSize: {
     type: Number,
@@ -43,7 +50,27 @@ const submissionSchema = new mongoose.Schema({
   submittedAt: {
     type: Date,
     default: Date.now
+  },
+  isLate: {
+    type: Boolean,
+    default: false
+  },
+  grade: {
+    type: Number,
+    min: 0,
+    max: 100
+  },
+  feedback: {
+    type: String
   }
+}, {
+  timestamps: true
 });
+
+// Create indexes for better query performance
+submissionSchema.index({ assignmentId: 1 });
+submissionSchema.index({ studentId: 1 });
+submissionSchema.index({ classCode: 1 });
+submissionSchema.index({ submittedAt: -1 });
 
 module.exports = mongoose.model('Submission', submissionSchema);
