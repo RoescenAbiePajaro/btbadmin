@@ -10,6 +10,7 @@ export default function StudentList() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [classSearchTerm, setClassSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
@@ -88,21 +89,38 @@ export default function StudentList() {
   const handleConfirmDelete = async () => {
     if (!studentToDelete || !selectedClass) return;
     
+    console.log('Attempting to delete student:', {
+      studentId: studentToDelete._id,
+      classId: selectedClass,
+      studentName: studentToDelete.fullName
+    });
+    
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(
+      console.log('Token available:', !!token);
+      
+      const response = await axios.delete(
         `http://localhost:5000/api/classes/${selectedClass}/students/${studentToDelete._id}`,
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
       );
+      
+      console.log('Delete response:', response.data);
       
       // Refresh the students list
       fetchStudents(selectedClass);
       showToast('Student removed from class successfully', 'success');
     } catch (error) {
       console.error('Error removing student:', error);
-      showToast('Failed to remove student from class', 'error');
+      console.error('Error response:', error.response?.data);
+      showToast(
+        error.response?.data?.toast?.message || 'Failed to remove student from class', 
+        'error'
+      );
     } finally {
       setShowDeleteModal(false);
       setStudentToDelete(null);
@@ -142,8 +160,31 @@ export default function StudentList() {
         <label className="block text-gray-300 text-sm font-medium mb-4">
           Select Class
         </label>
+        
+        {/* Search Bar for Classes */}
+        <div className="relative w-full mb-4">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="Search classes..."
+            value={classSearchTerm}
+            onChange={(e) => setClassSearchTerm(e.target.value)}
+          />
+        </div>
+
         <div className="flex gap-4 overflow-x-auto pb-2">
-          {classes.map((classItem) => (
+          {classes
+            .filter(classItem =>
+              classSearchTerm === '' ||
+              classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
+              classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
+            )
+            .map((classItem) => (
             <button
               key={classItem._id}
               onClick={() => setSelectedClass(classItem._id)}
@@ -161,6 +202,16 @@ export default function StudentList() {
             </button>
           ))}
         </div>
+        
+        {classes.filter(classItem =>
+          classSearchTerm === '' ||
+          classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
+          classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
+        ).length === 0 && classSearchTerm !== '' && (
+          <div className="text-center py-4">
+            <p className="text-gray-400 text-sm">No classes found matching "{classSearchTerm}"</p>
+          </div>
+        )}
       </div>
 
       {/* Class Info */}

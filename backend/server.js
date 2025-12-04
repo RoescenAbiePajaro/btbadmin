@@ -631,11 +631,13 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
   }
 });
 
-// Remove student from class
+// Remove student from class - IMPROVED VERSION
 app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEducator, async (req, res) => {
   try {
     const { classId, studentId } = req.params;
     const educatorId = req.user.id;
+
+    console.log(`Delete attempt - Educator: ${educatorId}, Class: ${classId}, Student: ${studentId}`);
 
     // Verify educator owns this class
     const classObj = await Class.findOne({
@@ -644,23 +646,48 @@ app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEduc
     });
 
     if (!classObj) {
+      console.log('Class not found or educator mismatch');
       return createToastResponse(res, 404, 'Class not found or access denied', 'error');
     }
 
-    // Check if student is in the class
-    if (!classObj.students.includes(studentId)) {
+    // Check if student exists
+    const student = await User.findById(studentId);
+    if (!student) {
+      console.log('Student not found');
+      return createToastResponse(res, 404, 'Student not found', 'error');
+    }
+
+    // Check if student is enrolled in this class
+    const isStudentInClass = classObj.students.some(id => id.toString() === studentId);
+    if (!isStudentInClass) {
+      console.log('Student not enrolled in this class');
       return createToastResponse(res, 404, 'Student not found in this class', 'error');
     }
 
-    // Remove student from class
+    // Remove student from class array
     classObj.students = classObj.students.filter(id => id.toString() !== studentId);
-    await classObj.save();
+    
+    // Update student's enrolledClass to null
+    student.enrolledClass = null;
+    
+    // Save both changes
+    await Promise.all([
+      classObj.save(),
+      student.save()
+    ]);
+
+    console.log(`Student ${studentId} removed from class ${classId}`);
 
     return createToastResponse(res, 200, 'Student removed from class successfully', 'success', {
       class: {
         classCode: classObj.classCode,
         className: classObj.className,
         totalStudents: classObj.students.length
+      },
+      removedStudent: {
+        id: student._id,
+        fullName: student.fullName,
+        email: student.email
       }
     });
 

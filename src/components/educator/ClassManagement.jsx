@@ -16,10 +16,13 @@ export default function ClassManagement() {
   });
   const [generatedCode, setGeneratedCode] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, a-z, z-a
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [classToDelete, setClassToDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 16;
 
   useEffect(() => {
     fetchClasses();
@@ -170,6 +173,38 @@ export default function ClassManagement() {
     showToast('Class code copied to clipboard!', 'success');
   };
 
+  const getSortedAndFilteredClasses = () => {
+    let filtered = classes.filter(classItem => 
+      searchTerm === '' || 
+      classItem.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      classItem.classCode.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Apply sorting
+    switch(sortBy) {
+      case 'a-z':
+        return filtered.sort((a, b) => a.className.localeCompare(b.className));
+      case 'z-a':
+        return filtered.sort((a, b) => b.className.localeCompare(a.className));
+      case 'oldest':
+        return filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      case 'newest':
+      default:
+        return filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+  };
+
+  const getPaginatedClasses = () => {
+    const sorted = getSortedAndFilteredClasses();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sorted.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(getSortedAndFilteredClasses().length / itemsPerPage);
+  };
+
   return (
     <div className="space-y-6 relative">
       {/* Toast Notification */}
@@ -211,9 +246,28 @@ export default function ClassManagement() {
             className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             placeholder="Search classes..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
+
+        {/* Sort Dropdown */}
+        <select
+          value={sortBy}
+          onChange={(e) => {
+            setSortBy(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="px-4 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="a-z">A to Z</option>
+          <option value="z-a">Z to A</option>
+        </select>
+
         <button
           onClick={() => setShowModal(true)}
           className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-6 rounded-lg transition duration-200 flex items-center gap-2"
@@ -226,79 +280,116 @@ export default function ClassManagement() {
       </div>
 
       {/* Filter classes based on search term */}
-      {classes.filter(classItem => 
-        searchTerm === '' || 
-        classItem.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        classItem.classCode.toLowerCase().includes(searchTerm.toLowerCase())
-      ).length === 0 ? (
+      {getSortedAndFilteredClasses().length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-400">No classes found matching "{searchTerm}"</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {classes
-            .filter(classItem => 
-              searchTerm === '' || 
-              classItem.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              classItem.classCode.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .map((classItem) => (
-          <div key={classItem._id} className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-white">{classItem.className}</h3>
-                <p className="text-gray-400 text-sm">{classItem.classCode}</p>
+        <>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {getPaginatedClasses().map((classItem) => (
+            <div key={classItem._id} className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">{classItem.className}</h3>
+                  <p className="text-gray-400 text-sm">{classItem.classCode}</p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  classItem.isActive 
+                    ? 'bg-green-500/20 text-green-400' 
+                    : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {classItem.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                classItem.isActive 
-                  ? 'bg-green-500/20 text-green-400' 
-                  : 'bg-red-500/20 text-red-400'
-              }`}>
-                {classItem.isActive ? 'Active' : 'Inactive'}
+              
+              <p className="text-gray-300 mb-4">{classItem.description || 'No description'}</p>
+              
+              <div className="flex items-center justify-between text-sm">
+                <div>
+                  <span className="text-gray-400">Students: </span>
+                  <span className="text-white font-medium">{classItem.students?.length || 0}</span>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => copyToClipboard(classItem.classCode)}
+                    className="text-blue-400 hover:text-blue-300 transition duration-200"
+                    title="Copy Code"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleEditClass(classItem)}
+                    className="text-yellow-400 hover:text-yellow-300 transition duration-200"
+                    title="Edit Class"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClass(classItem)}
+                    disabled={isDeleting}
+                    className="text-red-400 hover:text-red-300 transition duration-200 disabled:opacity-50"
+                    title="Delete Class"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+              ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {getTotalPages() > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <div className="flex gap-1">
+                {Array.from({ length: getTotalPages() }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 rounded-lg transition duration-200 ${
+                      currentPage === page
+                        ? 'bg-purple-600 text-white'
+                        : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                disabled={currentPage === getTotalPages()}
+                className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              <span className="text-gray-400 text-sm ml-4">
+                Page {currentPage} of {getTotalPages()}
               </span>
             </div>
-            
-            <p className="text-gray-300 mb-4">{classItem.description || 'No description'}</p>
-            
-            <div className="flex items-center justify-between text-sm">
-              <div>
-                <span className="text-gray-400">Students: </span>
-                <span className="text-white font-medium">{classItem.students?.length || 0}</span>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => copyToClipboard(classItem.classCode)}
-                  className="text-blue-400 hover:text-blue-300 transition duration-200"
-                  title="Copy Code"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleEditClass(classItem)}
-                  className="text-yellow-400 hover:text-yellow-300 transition duration-200"
-                  title="Edit Class"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleDeleteClass(classItem)}
-                  disabled={isDeleting}
-                  className="text-red-400 hover:text-red-300 transition duration-200 disabled:opacity-50"
-                  title="Delete Class"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-            ))}
-        </div>
+          )}
+        </>
       )}
 
       {/* Edit Class Modal */}
