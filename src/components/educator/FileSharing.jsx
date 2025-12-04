@@ -27,16 +27,31 @@ const FileSharing = ({ educatorId }) => {
     }
   }, [selectedAssignment]);
 
+  useEffect(() => {
+    console.log('ClassCodes loaded:', classCodes);
+  }, [classCodes]);
+
   const fetchClassCodes = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+      
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/educator/classes`,
+        `http://localhost:5000/api/classes/my-classes`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setClassCodes(response.data.classes || []);
+      
+      if (response.data.data?.classes) {
+        console.log('Classes fetched successfully:', response.data.data.classes);
+        setClassCodes(response.data.data.classes);
+      } else {
+        console.warn('No classes in response:', response.data);
+      }
     } catch (error) {
-      console.error('Error fetching class codes:', error);
+      console.error('Error fetching class codes:', error.response?.data || error.message);
     }
   };
 
@@ -44,7 +59,7 @@ const FileSharing = ({ educatorId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/recent`,
+        `http://localhost:5000/api/files/recent`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setRecentActivities(response.data.activities || []);
@@ -57,7 +72,7 @@ const FileSharing = ({ educatorId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/educator`,
+        `http://localhost:5000/api/files/educator`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setFiles(response.data.files || []);
@@ -70,7 +85,7 @@ const FileSharing = ({ educatorId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/assignment-submissions/${assignmentId}`,
+        `http://localhost:5000/api/files/assignment-submissions/${assignmentId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setStudentSubmissions(response.data.submissions || []);
@@ -88,7 +103,12 @@ const FileSharing = ({ educatorId }) => {
 
   const handleUpload = async () => {
     if (!selectedFile || !shareToClassCode) {
-      alert('Please select a file and enter a class code');
+      alert('Please select a file and select a class');
+      return;
+    }
+
+    if (!assignmentTitle.trim()) {
+      alert('Please enter an assignment title');
       return;
     }
 
@@ -98,13 +118,12 @@ const FileSharing = ({ educatorId }) => {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('classCode', shareToClassCode);
-      formData.append('educatorId', educatorId);
       formData.append('assignmentTitle', assignmentTitle);
       formData.append('assignmentDescription', assignmentDescription);
       formData.append('submissionDeadline', submissionDeadline);
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/upload-assignment`,
+        `http://localhost:5000/api/files/upload-assignment`,
         formData,
         {
           headers: {
@@ -127,7 +146,8 @@ const FileSharing = ({ educatorId }) => {
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Error uploading assignment');
+      const errorMessage = error.response?.data?.message || error.response?.data?.toast?.message || 'Error uploading assignment';
+      alert(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -137,7 +157,7 @@ const FileSharing = ({ educatorId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/download/${fileId}`,
+        `http://localhost:5000/api/files/download/${fileId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: 'blob',
@@ -160,7 +180,7 @@ const FileSharing = ({ educatorId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/download-submission/${submissionId}`,
+        `http://localhost:5000/api/files/download-submission/${submissionId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: 'blob',
@@ -254,23 +274,36 @@ const FileSharing = ({ educatorId }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Share to Class
-              </label>
-              <select
-                value={shareToClassCode}
-                onChange={(e) => setShareToClassCode(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Select a class</option>
-                {classCodes.map((classItem) => (
-                  <option key={classItem._id} value={classItem.classCode}>
-                    {classItem.className} ({classItem.classCode})
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Share to Class
+            </label>
+            {classCodes.length === 0 ? (
+              <div className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-gray-400">
+                <p>No classes available. Create a class first.</p>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={shareToClassCode}
+                  onChange={(e) => setShareToClassCode(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select a class</option>
+                  {classCodes.map((classItem) => (
+                    <option key={classItem._id} value={classItem.classCode}>
+                      {classItem.className} ({classItem.classCode})
+                    </option>
+                  ))}
+                </select>
+                {shareToClassCode && (
+                  <p className="text-gray-400 text-sm mt-1">
+                    Selected: {classCodes.find(c => c.classCode === shareToClassCode)?.className}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -287,8 +320,9 @@ const FileSharing = ({ educatorId }) => {
 
           <button
             onClick={handleUpload}
-            disabled={uploading || !selectedFile || !shareToClassCode || !assignmentTitle}
+            disabled={uploading || !selectedFile || !shareToClassCode || !assignmentTitle || classCodes.length === 0}
             className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+            title={classCodes.length === 0 ? 'Create a class first' : !selectedFile ? 'Select a file' : !shareToClassCode ? 'Select a class' : !assignmentTitle ? 'Enter assignment title' : ''}
           >
             {uploading ? (
               <>
