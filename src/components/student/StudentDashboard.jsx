@@ -278,14 +278,6 @@ export default function StudentDashboard() {
                     <p className="text-white">{user.enrolledClassDetails.educatorName}</p>
                   </div>
                 )}
-                <div className="pt-3 border-t border-gray-700">
-                  <button
-                    onClick={handleRefreshData}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200"
-                  >
-                    Refresh Class Info
-                  </button>
-                </div>
               </div>
             ) : (
               <div className="text-center py-4">

@@ -999,28 +999,6 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
 });
 
 // =====================
-// 🔧 HELPER FUNCTIONS
-// =====================
-
-function getBrowserFromUA(userAgent) {
-  if (/firefox/i.test(userAgent)) return 'Firefox';
-  if (/chrome/i.test(userAgent)) return 'Chrome';
-  if (/safari/i.test(userAgent)) return 'Safari';
-  if (/edge/i.test(userAgent)) return 'Edge';
-  if (/opera/i.test(userAgent)) return 'Opera';
-  return 'Unknown';
-}
-
-function getOSFromUA(userAgent) {
-  if (/windows/i.test(userAgent)) return 'Windows';
-  if (/macintosh/i.test(userAgent)) return 'macOS';
-  if (/linux/i.test(userAgent)) return 'Linux';
-  if (/android/i.test(userAgent)) return 'Android';
-  if (/ios|iphone|ipad/i.test(userAgent)) return 'iOS';
-  return 'Unknown';
-}
-
-// =====================
 // 🚀 SERVER START
 // =====================
 
