@@ -631,6 +631,45 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
   }
 });
 
+// Remove student from class
+app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const { classId, studentId } = req.params;
+    const educatorId = req.user.id;
+
+    // Verify educator owns this class
+    const classObj = await Class.findOne({
+      _id: classId,
+      educator: educatorId
+    });
+
+    if (!classObj) {
+      return createToastResponse(res, 404, 'Class not found or access denied', 'error');
+    }
+
+    // Check if student is in the class
+    if (!classObj.students.includes(studentId)) {
+      return createToastResponse(res, 404, 'Student not found in this class', 'error');
+    }
+
+    // Remove student from class
+    classObj.students = classObj.students.filter(id => id.toString() !== studentId);
+    await classObj.save();
+
+    return createToastResponse(res, 200, 'Student removed from class successfully', 'success', {
+      class: {
+        classCode: classObj.classCode,
+        className: classObj.className,
+        totalStudents: classObj.students.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Remove student error:', error);
+    return createToastResponse(res, 500, 'Server error removing student', 'error');
+  }
+});
+
 // =====================
 // 📚 ACADEMIC SETTINGS
 // =====================

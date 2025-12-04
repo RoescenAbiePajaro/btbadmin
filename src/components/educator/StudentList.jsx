@@ -28,13 +28,19 @@ export default function StudentList() {
         }
       );
       if (response.data.data?.classes) {
-        setClasses(response.data.data.classes);
-        if (response.data.data.classes.length > 0) {
-          setSelectedClass(response.data.data.classes[0]._id);
+        // Ensure classCode is present in all classes
+        const classesWithCode = response.data.data.classes.map(cls => ({
+          ...cls,
+          classCode: cls.classCode || 'No code'
+        }));
+        setClasses(classesWithCode);
+        if (classesWithCode.length > 0) {
+          setSelectedClass(classesWithCode[0]._id);
         }
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
+      showToast('Failed to load classes', 'error');
     }
   };
 
@@ -148,7 +154,7 @@ export default function StudentList() {
               }`}
             >
               <div className="font-medium">{classItem.className}</div>
-              <div className="text-sm opacity-80">{classItem.classCode}</div>
+              <div className="text-sm opacity-80">{classItem.classCode || 'Loading code...'}</div>
               <div className="text-xs mt-2">
                 {classItem.students?.length || 0} students
               </div>
