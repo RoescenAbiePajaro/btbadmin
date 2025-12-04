@@ -14,6 +14,10 @@ export default function StudentList() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 16;
+  const [classPage, setClassPage] = useState(1);
+  const classItemsPerPage = 6;
 
   useEffect(() => {
     fetchClasses();
@@ -47,6 +51,7 @@ export default function StudentList() {
 
   const fetchStudents = async (classId) => {
     setLoading(true);
+    setCurrentPage(1);
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
@@ -127,6 +132,45 @@ export default function StudentList() {
     }
   };
 
+  const getFilteredStudents = () => {
+    return students.filter(student => 
+      searchTerm === '' || 
+      student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.username?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const getPaginatedStudents = () => {
+    const filtered = getFilteredStudents();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(getFilteredStudents().length / itemsPerPage);
+  };
+
+  const getFilteredClasses = () => {
+    return classes.filter(classItem =>
+      classSearchTerm === '' ||
+      classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
+      classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
+    );
+  };
+
+  const getPaginatedClasses = () => {
+    const filtered = getFilteredClasses();
+    const startIndex = (classPage - 1) * classItemsPerPage;
+    const endIndex = startIndex + classItemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  const getTotalClassPages = () => {
+    return Math.ceil(getFilteredClasses().length / classItemsPerPage);
+  };
+
   return (
     <div className="space-y-6 relative">
       {/* Toast Notification */}
@@ -173,18 +217,15 @@ export default function StudentList() {
             className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             placeholder="Search classes..."
             value={classSearchTerm}
-            onChange={(e) => setClassSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setClassSearchTerm(e.target.value);
+              setClassPage(1);
+            }}
           />
         </div>
 
         <div className="flex gap-4 overflow-x-auto pb-2">
-          {classes
-            .filter(classItem =>
-              classSearchTerm === '' ||
-              classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
-              classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
-            )
-            .map((classItem) => (
+          {getPaginatedClasses().map((classItem) => (
             <button
               key={classItem._id}
               onClick={() => setSelectedClass(classItem._id)}
@@ -203,13 +244,54 @@ export default function StudentList() {
           ))}
         </div>
         
-        {classes.filter(classItem =>
-          classSearchTerm === '' ||
-          classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
-          classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
-        ).length === 0 && classSearchTerm !== '' && (
+        {getFilteredClasses().length === 0 && classSearchTerm !== '' && (
           <div className="text-center py-4">
             <p className="text-gray-400 text-sm">No classes found matching "{classSearchTerm}"</p>
+          </div>
+        )}
+
+        {/* Pagination Controls for Classes */}
+        {getTotalClassPages() > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <button
+              onClick={() => setClassPage(Math.max(1, classPage - 1))}
+              disabled={classPage === 1}
+              className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div className="flex gap-1">
+              {Array.from({ length: getTotalClassPages() }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setClassPage(page)}
+                  className={`px-2 py-1 rounded text-sm transition duration-200 ${
+                    classPage === page
+                      ? 'bg-purple-600 text-white'
+                      : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setClassPage(Math.min(getTotalClassPages(), classPage + 1))}
+              disabled={classPage === getTotalClassPages()}
+              className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <span className="text-gray-400 text-xs ml-2">
+              Page {classPage} of {getTotalClassPages()}
+            </span>
           </div>
         )}
       </div>
@@ -284,7 +366,10 @@ export default function StudentList() {
                 className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="Search students..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
           </div>
@@ -294,12 +379,7 @@ export default function StudentList() {
           <div className="p-8 text-center">
             <div className="text-gray-400">Loading students...</div>
           </div>
-        ) : students.filter(student => 
-            searchTerm === '' || 
-            student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.username?.toLowerCase().includes(searchTerm.toLowerCase())
-          ).length === 0 ? (
+        ) : getFilteredStudents().length === 0 ? (
           <div className="p-8 text-center">
             <div className="text-gray-500">
               {searchTerm 
@@ -313,57 +393,97 @@ export default function StudentList() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-900">
-                <tr>
-                  <th className="text-left p-4 text-gray-400 font-medium">Full Name</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Email</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Username</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">School</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Course</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Year</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Block</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Joined Date</th>
-                  <th className="text-left p-4 text-gray-400 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {students
-                  .filter(student => 
-                    searchTerm === '' || 
-                    student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    student.username?.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map((student) => (
-                  <tr key={student._id} className="hover:bg-gray-750 transition duration-200">
-                    <td className="p-4 text-white">{student.fullName}</td>
-                    <td className="p-4 text-gray-300">{student.email}</td>
-                    <td className="p-4 text-gray-300">{student.username}</td>
-                    <td className="p-4 text-gray-300">{student.school || '-'}</td>
-                    <td className="p-4 text-gray-300">{student.course || '-'}</td>
-                    <td className="p-4 text-gray-300">{student.year || '-'}</td>
-                    <td className="p-4 text-gray-300">{student.block || '-'}</td>
-                    <td className="p-4 text-gray-300">
-                      {new Date(student.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => handleDeleteClick(student)}
-                        className="text-red-400 hover:text-red-300 transition-colors"
-                        title="Remove from class"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-900">
+                  <tr>
+                    <th className="text-left p-4 text-gray-400 font-medium">Full Name</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">Email</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">Username</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">School</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">Course</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">Year</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">Block</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">Joined Date</th>
+                    <th className="text-left p-4 text-gray-400 font-medium">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {getPaginatedStudents().map((student) => (
+                    <tr key={student._id} className="hover:bg-gray-750 transition duration-200">
+                      <td className="p-4 text-white">{student.fullName}</td>
+                      <td className="p-4 text-gray-300">{student.email}</td>
+                      <td className="p-4 text-gray-300">{student.username}</td>
+                      <td className="p-4 text-gray-300">{student.school || '-'}</td>
+                      <td className="p-4 text-gray-300">{student.course || '-'}</td>
+                      <td className="p-4 text-gray-300">{student.year || '-'}</td>
+                      <td className="p-4 text-gray-300">{student.block || '-'}</td>
+                      <td className="p-4 text-gray-300">
+                        {new Date(student.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => handleDeleteClick(student)}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                          title="Remove from class"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {getTotalPages() > 1 && (
+              <div className="p-6 border-t border-gray-700 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <div className="flex gap-1">
+                  {Array.from({ length: getTotalPages() }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-2 rounded-lg transition duration-200 ${
+                        currentPage === page
+                          ? 'bg-purple-600 text-white'
+                          : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                  disabled={currentPage === getTotalPages()}
+                  className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                <span className="text-gray-400 text-sm ml-4">
+                  Page {currentPage} of {getTotalPages()}
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
