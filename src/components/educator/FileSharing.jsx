@@ -103,7 +103,7 @@ const FileSharing = ({ educatorId }) => {
 
   const handleUpload = async () => {
     if (!selectedFile || !shareToClassCode) {
-      alert('Please select a file and select a class');
+      alert('Please select a file and class code');
       return;
     }
 
@@ -112,67 +112,70 @@ const FileSharing = ({ educatorId }) => {
       return;
     }
 
-    setUploading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('classCode', shareToClassCode);
-      formData.append('assignmentTitle', assignmentTitle);
-      formData.append('assignmentDescription', assignmentDescription);
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('classCode', shareToClassCode);
+    formData.append('title', assignmentTitle);
+    formData.append('description', assignmentDescription);
+    
+    if (submissionDeadline) {
       formData.append('submissionDeadline', submissionDeadline);
+    }
 
+    try {
+      setUploading(true);
+      const token = localStorage.getItem('token');
+      
+      // First upload the file to our backend which will handle Supabase upload
       const response = await axios.post(
-        `http://localhost:5000/api/files/upload-assignment`,
+        'http://localhost:5000/api/files/upload',
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data',
-          },
+            Authorization: `Bearer ${token}`
+          }
         }
       );
 
       if (response.data.success) {
-        alert('Assignment uploaded successfully! Students can now submit their work.');
+        // Add the new file to the files list
+        setFiles([response.data.file, ...files]);
         setSelectedFile(null);
         setShareToClassCode('');
         setAssignmentTitle('');
         setAssignmentDescription('');
         setSubmissionDeadline('');
-        document.getElementById('fileInput').value = '';
-        fetchSharedFiles();
-        fetchRecentActivities();
+        document.getElementById('file-upload').value = '';
+        
+        // Refresh recent activities
+        await fetchRecentActivities();
+        
+        alert('File shared successfully!');
+      } else {
+        throw new Error(response.data.error || 'Failed to upload file');
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      const errorMessage = error.response?.data?.message || error.response?.data?.toast?.message || 'Error uploading assignment';
-      alert(errorMessage);
+      alert(`Error: ${error.response?.data?.error || error.message || 'Failed to upload file'}`);
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDownload = async (fileId, fileName) => {
+  const handleDownload = async (fileUrl, fileName) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:5000/api/files/download/${fileId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
-        }
-      );
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // Since files are publicly accessible in Supabase, we can create a direct download link
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
+      link.href = fileUrl;
+      link.setAttribute('download', fileName || 'download');
+      link.setAttribute('target', '_blank');
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
       console.error('Error downloading file:', error);
+      alert('Failed to download file');
     }
   };
 
@@ -215,6 +218,32 @@ const FileSharing = ({ educatorId }) => {
     return new Date(deadline) < new Date();
   };
 
+  const renderFilePreview = (file) => {
+    const fileType = file.mimeType?.split('/')[0] || '';
+    const fileName = file.name || 'file';
+    
+    if (fileType === 'image') {
+      return (
+        <img 
+          src={file.url} 
+          alt={fileName}
+          className="w-16 h-16 object-cover rounded"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUtaW1hZ2UiPjcmIzQ3O3BhdGggZD0iTTE0LjUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjcuNUwxNC41IDJ6Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48Y2lyY2xlIGN4PSIxMCIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7bC0zLjEtMy4xYTIgMiAwIDAgMC0yLjggMEw4IDE4Ii8+PC9zdmc+';
+          }}
+        />
+      );
+    }
+    
+    // Default file icon
+    return (
+      <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded">
+        <span className="text-2xl">📄</span>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Create Assignment Section */}
@@ -254,7 +283,7 @@ const FileSharing = ({ educatorId }) => {
             </label>
             <div className="flex items-center gap-4">
               <input
-                id="fileInput"
+                id="file-upload"
                 type="file"
                 onChange={handleFileSelect}
                 className="block w-full text-sm text-gray-400
@@ -357,11 +386,7 @@ const FileSharing = ({ educatorId }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-purple-900/30 rounded-lg">
-                        <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
+                      {renderFilePreview(file)}
                       <div>
                         <h4 className="text-white font-medium">{file.assignmentTitle || 'Assignment'}</h4>
                         <p className="text-gray-400 text-sm">
