@@ -1,5 +1,3 @@
-// backend/services/supabaseService.js
-
 const { supabase } = require('../config/supabase');
 const fs = require('fs');
 const path = require('path');
@@ -9,83 +7,43 @@ class SupabaseService {
     this.bucketName = 'class-files';
   }
 
-  // Initialize bucket (run once manually or on first upload)
-  async initializeBucket() {
-    try {
-      // Check if bucket exists
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      
-      if (listError) throw listError;
-      
-      const bucketExists = buckets.some(bucket => bucket.name === this.bucketName);
-      
-      if (!bucketExists) {
-        // Create bucket if it doesn't exist
-        const { error: createError } = await supabase.storage.createBucket(this.bucketName, {
-          public: true, // Enable public access
-          fileSizeLimit: 52428800, // 50MB limit
-          allowedMimeTypes: [
-            'image/*',
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'text/plain',
-            'application/zip',
-            'application/x-rar-compressed',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-          ]
-        });
-        
-        if (createError && createError.message !== 'Bucket already exists') {
-          throw createError;
-        }
-        
-        console.log(`Bucket "${this.bucketName}" initialized successfully`);
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error initializing bucket:', error);
-      throw error;
-    }
-  }
-
   // Upload file to Supabase Storage
-  async uploadFile(filePath, destinationPath) {
+  async uploadFile(filePath, originalName) {
     try {
       const file = fs.readFileSync(filePath);
-      const fileName = path.basename(filePath);
-      const fileExt = path.extname(fileName);
-      const fileBaseName = path.basename(fileName, fileExt);
+      const fileExt = path.extname(originalName);
+      const fileBaseName = path.basename(originalName, fileExt);
       
       // Generate unique filename
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       const uniqueFileName = `${fileBaseName}-${uniqueSuffix}${fileExt}`;
       
+      // Sanitize filename for Supabase
+      const safeFileName = uniqueFileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      
       const { data, error } = await supabase.storage
         .from(this.bucketName)
-        .upload(uniqueFileName, file);
+        .upload(safeFileName, file, {
+          contentType: this.getMimeType(fileExt),
+          upsert: false
+        });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase upload error:', error);
+        throw error;
+      }
       
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(this.bucketName)
-        .getPublicUrl(uniqueFileName);
+        .getPublicUrl(safeFileName);
       
       return {
         path: data.path,
         publicUrl,
         bucket: this.bucketName,
-        fileName: uniqueFileName
+        fileName: safeFileName,
+        originalName: originalName
       };
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -93,8 +51,62 @@ class SupabaseService {
     }
   }
 
+  // Get MIME type from extension
+  getMimeType(extension) {
+    const mimeTypes = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.ppt': 'application/vnd.ms-powerpoint',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.txt': 'text/plain',
+      '.zip': 'application/zip',
+      '.rar': 'application/x-rar-compressed'
+    };
+    
+    return mimeTypes[extension.toLowerCase()] || 'application/octet-stream';
+  }
+
+  // Delete file from storage
+  async deleteFile(filePath) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(this.bucketName)
+        .remove([filePath]);
+      
+      if (error) throw error;
+      
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      throw error;
+    }
+  }
+
+  // List files (not used much since we store in DB)
+  async listFiles() {
+    try {
+      const { data, error } = await supabase.storage
+        .from(this.bucketName)
+        .list();
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error listing files:', error);
+      throw error;
+    }
+  }
+
   // Get file URL
-  async getFileUrl(filePath) {
+  getFileUrl(filePath) {
     try {
       const { data: { publicUrl } } = supabase.storage
         .from(this.bucketName)
@@ -103,22 +115,6 @@ class SupabaseService {
       return publicUrl;
     } catch (error) {
       console.error('Error getting file URL:', error);
-      throw error;
-    }
-  }
-
-  // List files in a folder
-  async listFiles(folderPath = '') {
-    try {
-      const { data, error } = await supabase.storage
-        .from(this.bucketName)
-        .list(folderPath);
-      
-      if (error) throw error;
-      
-      return data;
-    } catch (error) {
-      console.error('Error listing files:', error);
       throw error;
     }
   }

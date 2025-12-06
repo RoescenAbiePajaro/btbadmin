@@ -5,6 +5,9 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const supabase = require('../services/supabaseService');
+const File = require('../models/File');
+const User = require('../models/User');
+const { verifyToken } = require('../middleware/auth');
 
 // Ensure temp-uploads directory exists
 const tempUploadDir = 'temp-uploads';
@@ -79,7 +82,7 @@ router.get('/health', async (req, res) => {
 });
 
 // Upload file endpoint
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ 
@@ -89,51 +92,52 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     const { classCode, title, description, submissionDeadline } = req.body;
+    
+    if (!classCode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Class code is required'
+      });
+    }
+
     const filePath = req.file.path;
     
     try {
       // Upload to Supabase
-      const uploadResult = await supabase.uploadFile(filePath);
+      const uploadResult = await supabase.uploadFile(filePath, req.file.originalname);
       
       // Clean up the temporary file
       fs.unlinkSync(filePath);
       
-      // Here you would typically save file metadata to your database
-      // For example:
-      // const fileRecord = await File.create({
-      //   name: req.file.originalname,
-      //   path: uploadResult.path,
-      //   url: uploadResult.publicUrl,
-      //   size: req.file.size,
-      //   mimeType: req.file.mimetype,
-      //   classCode,
-      //   title,
-      //   description,
-      //   submissionDeadline: submissionDeadline || null,
-      //   uploadedBy: req.user.id,
-      //   type: submissionDeadline ? 'assignment' : 'material'
-      // });
-
-      // For now, we'll return the file info directly
-      const fileInfo = {
-        _id: uploadResult.path, // Using path as a temporary ID
-        name: req.file.originalname,
+      // Get user info
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Save file metadata to database
+      const fileRecord = new File({
+        name: uploadResult.fileName,
+        originalName: req.file.originalname,
         path: uploadResult.path,
         url: uploadResult.publicUrl,
         size: req.file.size,
         mimeType: req.file.mimetype,
-        classCode,
+        classCode: classCode.toUpperCase(),
         assignmentTitle: title,
         assignmentDescription: description,
         submissionDeadline: submissionDeadline || null,
-        uploadedAt: new Date().toISOString(),
-        type: submissionDeadline ? 'assignment' : 'material'
-      };
+        type: submissionDeadline ? 'assignment' : 'material',
+        uploadedBy: req.user.id,
+        uploaderName: user.fullName || user.username
+      });
+
+      await fileRecord.save();
 
       res.status(200).json({
         success: true,
         message: 'File uploaded successfully',
-        file: fileInfo
+        file: fileRecord
       });
     } catch (uploadError) {
       // Clean up the temporary file in case of error
@@ -151,37 +155,45 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// List files endpoint
-router.get('/list', async (req, res) => {
+// List files endpoint with role-based access control
+router.get('/list', verifyToken, async (req, res) => {
   try {
     const { classCode } = req.query;
+    const userId = req.user.id;
+    const userRole = req.user.role;
     
-    // In a real app, you would fetch files from your database with proper filtering
-    // For now, we'll list all files from the bucket
-    const files = await supabase.listFiles();
+    let query = {};
     
-    // Format files with public URLs
-    const formattedFiles = await Promise.all(files.map(async (file) => {
-      const { data: { publicUrl } } = await supabase.getFileUrl(file.name);
-      return {
-        _id: file.name, // Using name as ID for now
-        name: file.name,
-        size: file.metadata?.size,
-        mimeType: file.metadata?.mimetype,
-        lastModified: file.metadata?.lastModified,
-        url: publicUrl,
-        path: file.name
-      };
-    }));
+    if (classCode) {
+      query.classCode = classCode.toUpperCase();
+    }
     
-    // Filter by class code if provided
-    const filteredFiles = classCode 
-      ? formattedFiles.filter(file => file.classCode === classCode)
-      : formattedFiles;
+    // If user is educator, show only their uploaded files
+    if (userRole === 'educator') {
+      query.uploadedBy = userId;
+    }
+    // If user is student, show files from their enrolled class
+    else if (userRole === 'student') {
+      const user = await User.findById(userId).populate('enrolledClass');
+      if (user.enrolledClass) {
+        query.classCode = user.enrolledClass.classCode;
+      } else {
+        return res.json({
+          success: true,
+          files: [],
+          message: 'You are not enrolled in any class'
+        });
+      }
+    }
+    
+    const files = await File.find(query)
+      .sort({ uploadedAt: -1 })
+      .populate('uploadedBy', 'username fullName');
     
     res.status(200).json({
       success: true,
-      files: filteredFiles
+      count: files.length,
+      files: files
     });
   } catch (error) {
     console.error('Error listing files:', error);
@@ -232,27 +244,37 @@ router.get('/recent', async (req, res) => {
   }
 });
 
-// Delete file endpoint
-router.delete('/:filePath', async (req, res) => {
+// Delete file endpoint with permission check
+router.delete('/:fileId', verifyToken, async (req, res) => {
   try {
-    const { filePath } = req.params;
+    const { fileId } = req.params;
     
-    // In a real app, you would check permissions here
-    // For example: verify the user has rights to delete this file
-    
-    const result = await supabase.deleteFile(filePath);
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to delete file');
+    // Find the file
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
     }
     
-    // Also delete the file record from your database
-    // await File.deleteOne({ path: filePath });
+    // Verify ownership (educator can only delete their own files)
+    if (req.user.role === 'educator' && file.uploadedBy.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only delete files you uploaded'
+      });
+    }
+    
+    // Delete from Supabase storage
+    await supabase.deleteFile(file.path);
+    
+    // Delete from database
+    await File.findByIdAndDelete(fileId);
     
     res.status(200).json({
       success: true,
-      message: 'File deleted successfully',
-      data: result.data
+      message: 'File deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting file:', error);
@@ -333,14 +355,38 @@ router.get('/assignment-submissions/:assignmentId', async (req, res) => {
   }
 });
 
-// Get files by class
-router.get('/class/:classCode', async (req, res) => {
+// Get files by class with access control
+router.get('/class/:classCode', verifyToken, async (req, res) => {
   try {
     const { classCode } = req.params;
+    const userId = req.user.id;
+    
+    // Verify user has access to this class
+    if (req.user.role === 'educator') {
+      const educatorClasses = await Class.find({ educator: userId });
+      const hasAccess = educatorClasses.some(c => c.classCode === classCode);
+      
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this class'
+        });
+      }
+    } else if (req.user.role === 'student') {
+      const user = await User.findById(userId);
+      if (!user.enrolledClass || user.enrolledClass.classCode !== classCode) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this class'
+        });
+      }
+    }
     
     const files = await File.find({ 
       classCode: classCode.toUpperCase()
-    }).sort({ uploadedAt: -1 });
+    })
+    .sort({ uploadedAt: -1 })
+    .populate('uploadedBy', 'username fullName');
     
     res.json({ 
       success: true, 

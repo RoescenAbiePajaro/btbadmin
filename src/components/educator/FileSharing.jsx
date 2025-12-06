@@ -72,12 +72,24 @@ const FileSharing = ({ educatorId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5000/api/files/educator`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `http://localhost:5000/api/files/list`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          },
+          params: {
+            classCode: shareToClassCode // Filter by selected class
+          }
+        }
       );
-      setFiles(response.data.files || []);
+      
+      if (response.data.success) {
+        setFiles(response.data.files || []);
+      } else {
+        console.error('Failed to fetch files:', response.data.error);
+      }
     } catch (error) {
-      console.error('Error fetching shared files:', error);
+      console.error('Error fetching shared files:', error.response?.data || error.message);
     }
   };
 
@@ -86,9 +98,19 @@ const FileSharing = ({ educatorId }) => {
       const token = localStorage.getItem('token');
       const response = await axios.get(
         `http://localhost:5000/api/files/assignment-submissions/${assignmentId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob',
+        }
       );
-      setStudentSubmissions(response.data.submissions || []);
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'submissions.zip');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     } catch (error) {
       console.error('Error fetching student submissions:', error);
     }
@@ -165,14 +187,8 @@ const FileSharing = ({ educatorId }) => {
 
   const handleDownload = async (fileUrl, fileName) => {
     try {
-      // Since files are publicly accessible in Supabase, we can create a direct download link
-      const link = document.createElement('a');
-      link.href = fileUrl;
-      link.setAttribute('download', fileName || 'download');
-      link.setAttribute('target', '_blank');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      // Direct download from Supabase public URL
+      window.open(fileUrl, '_blank');
     } catch (error) {
       console.error('Error downloading file:', error);
       alert('Failed to download file');
@@ -422,9 +438,12 @@ const FileSharing = ({ educatorId }) => {
                   
                   <div className="flex items-center gap-2 ml-4">
                     <button
-                      onClick={() => handleDownload(file._id, file.fileName)}
+                      onClick={() => handleDownload(file.url, file.originalName)}
                       className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200"
                     >
+                      <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
                       Download
                     </button>
                     <button

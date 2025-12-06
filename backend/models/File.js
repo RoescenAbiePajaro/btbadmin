@@ -1,57 +1,37 @@
+// models/File.js
 const mongoose = require('mongoose');
 
-const fileSchema = new mongoose.Schema({
-  fileName: {
+const FileSchema = new mongoose.Schema({
+  name: {
     type: String,
     required: true
   },
-  filePath: {
+  originalName: {
     type: String,
     required: true
   },
-  fileUrl: {
+  path: {
     type: String,
     required: true
   },
-  supabaseId: {
+  url: {
     type: String,
-    unique: true
+    required: true
   },
-  bucketName: {
-    type: String,
-    default: 'class-files'
-  },
-  fileSize: {
+  size: {
     type: Number,
     required: true
   },
-  fileType: {
+  mimeType: {
     type: String,
     required: true
-  },
-  uploadedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  uploadedByName: {
-    type: String
   },
   classCode: {
     type: String,
     required: true
   },
-  uploadedAt: {
-    type: Date,
-    default: Date.now
-  },
-  isAssignment: {
-    type: Boolean,
-    default: false
-  },
   assignmentTitle: {
-    type: String,
-    default: 'Assignment'
+    type: String
   },
   assignmentDescription: {
     type: String
@@ -59,18 +39,31 @@ const fileSchema = new mongoose.Schema({
   submissionDeadline: {
     type: Date
   },
-  submissionCount: {
-    type: Number,
-    default: 0
+  type: {
+    type: String,
+    enum: ['material', 'assignment'],
+    default: 'material'
   },
-  isStudentUpload: {
-    type: Boolean,
-    default: false
+  uploadedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  sharedWithEducator: {
-    type: Boolean,
-    default: false
+  uploaderName: {
+    type: String,
+    required: true
+  },
+  uploadedAt: {
+    type: Date,
+    default: Date.now
   }
+}, {
+  timestamps: true
 });
 
-module.exports = mongoose.model('File', fileSchema);
+// Index for faster queries
+FileSchema.index({ classCode: 1, uploadedAt: -1 });
+FileSchema.index({ uploadedBy: 1 });
+FileSchema.index({ type: 1 });
+
+module.exports = mongoose.model('File', FileSchema);
