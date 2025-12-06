@@ -1,11 +1,13 @@
-// src/components/educator/FileSharing.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [files, setFiles] = useState([]);
+  const [deletingFiles, setDeletingFiles] = useState({});
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [filterClassCode, setFilterClassCode] = useState('');
+  const [classSearchTerm, setClassSearchTerm] = useState('');
   const [shareToClassCode, setShareToClassCode] = useState(selectedClassCode || '');
   const [recentActivities, setRecentActivities] = useState([]);
   const [classCodes, setClassCodes] = useState([]);
@@ -18,8 +20,18 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   useEffect(() => {
     fetchClassCodes();
     fetchRecentActivities();
-    fetchSharedFiles();
   }, [educatorId]);
+
+  useEffect(() => {
+    // When selectedClassCode changes, update the filter and shareToClassCode
+    if (selectedClassCode) {
+      setShareToClassCode(selectedClassCode);
+      setFilterClassCode(selectedClassCode);
+      fetchSharedFiles(selectedClassCode);
+    } else {
+      fetchSharedFiles();
+    }
+  }, [selectedClassCode]);
 
   useEffect(() => {
     if (selectedAssignment) {
@@ -47,6 +59,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       if (response.data.data?.classes) {
         console.log('Classes fetched successfully:', response.data.data.classes);
         setClassCodes(response.data.data.classes);
+        
+        // If no class is selected and educator has classes, select the first one
+        if (!selectedClassCode && response.data.data.classes.length > 0) {
+          const firstClass = response.data.data.classes[0];
+          setShareToClassCode(firstClass.classCode);
+          setFilterClassCode(firstClass.classCode);
+        }
       } else {
         console.warn('No classes in response:', response.data);
       }
@@ -68,18 +87,23 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     }
   };
 
-  const fetchSharedFiles = async () => {
+  const fetchSharedFiles = async (classCode = '') => {
     try {
       const token = localStorage.getItem('token');
+      
+      // Build query parameters
+      const params = {};
+      if (classCode) {
+        params.classCode = classCode;
+      }
+      
       const response = await axios.get(
         `http://localhost:5000/api/files/list`,
         { 
           headers: { 
             Authorization: `Bearer ${token}` 
           },
-          params: {
-            classCode: shareToClassCode // Filter by selected class
-          }
+          params: params
         }
       );
       
@@ -99,18 +123,15 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       const response = await axios.get(
         `http://localhost:5000/api/files/assignment-submissions/${assignmentId}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'submissions.zip');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      if (response.data.success) {
+        setStudentSubmissions(response.data.submissions || []);
+      } else {
+        console.error('Error fetching submissions:', response.data.error);
+      }
     } catch (error) {
       console.error('Error fetching student submissions:', error);
     }
@@ -148,7 +169,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       setUploading(true);
       const token = localStorage.getItem('token');
       
-      // First upload the file to our backend which will handle Supabase upload
       const response = await axios.post(
         'http://localhost:5000/api/files/upload',
         formData,
@@ -164,7 +184,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         // Add the new file to the files list
         setFiles([response.data.file, ...files]);
         setSelectedFile(null);
-        setShareToClassCode('');
         setAssignmentTitle('');
         setAssignmentDescription('');
         setSubmissionDeadline('');
@@ -255,41 +274,10 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     }
   };
 
-  const renderFileActions = (file) => (
-    <div className="flex items-center gap-2 ml-4">
-      <button
-        onClick={() => handleDownload(file.url, file.originalName)}
-        className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200"
-      >
-        <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        Download
-      </button>
-      <button
-        onClick={() => setSelectedAssignment(file)}
-        className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200"
-      >
-        View Submissions
-      </button>
-      <button
-        onClick={() => handleDeleteFile(file._id)}
-        disabled={deletingFiles[file._id]}
-        className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {deletingFiles[file._id] ? (
-          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mx-auto"></div>
-        ) : (
-          <>
-            <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete
-          </>
-        )}
-      </button>
-    </div>
-  );
+  const handleFilterChange = (classCode) => {
+    setFilterClassCode(classCode);
+    fetchSharedFiles(classCode);
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -392,36 +380,36 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Share to Class
-            </label>
-            {classCodes.length === 0 ? (
-              <div className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-gray-400">
-                <p>No classes available. Create a class first.</p>
-              </div>
-            ) : (
-              <>
-                <select
-                  value={shareToClassCode}
-                  onChange={(e) => setShareToClassCode(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Select a class</option>
-                  {classCodes.map((classItem) => (
-                    <option key={classItem._id} value={classItem.classCode}>
-                      {classItem.className} ({classItem.classCode})
-                    </option>
-                  ))}
-                </select>
-                {shareToClassCode && (
-                  <p className="text-gray-400 text-sm mt-1">
-                    Selected: {classCodes.find(c => c.classCode === shareToClassCode)?.className}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Share to Class
+              </label>
+              {classCodes.length === 0 ? (
+                <div className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-gray-400">
+                  <p>No classes available. Create a class first.</p>
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={shareToClassCode}
+                    onChange={(e) => setShareToClassCode(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Select a class</option>
+                    {classCodes.map((classItem) => (
+                      <option key={classItem._id} value={classItem.classCode}>
+                        {classItem.className} ({classItem.classCode})
+                      </option>
+                    ))}
+                  </select>
+                  {shareToClassCode && (
+                    <p className="text-gray-400 text-sm mt-1">
+                      Selected: {classCodes.find(c => c.classCode === shareToClassCode)?.className}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -461,7 +449,52 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
 
       {/* Your Assignments Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-        <h3 className="text-xl font-semibold text-white mb-6">Your Assignments</h3>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-semibold text-white">Shared Files</h3>
+          <div className="flex items-center space-x-4">
+            <div className="w-64 relative">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Filter by Class
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search classes..."
+                  value={classSearchTerm}
+                  onChange={(e) => setClassSearchTerm(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 mb-1"
+                />
+                <select
+                  value={filterClassCode}
+                  onChange={(e) => handleFilterChange(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
+                >
+                  <option value="">All Classes</option>
+                  {classCodes
+                    .filter(classItem => 
+                      classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) || 
+                      classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
+                    )
+                    .map((classItem) => (
+                      <option key={classItem._id} value={classItem.classCode}>
+                        {classItem.className} ({classItem.classCode})
+                      </option>
+                    ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+              {filterClassCode && (
+                <p className="text-gray-400 text-xs mt-1">
+                  Showing files for: {classCodes.find(c => c.classCode === filterClassCode)?.className || filterClassCode}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
         
         <div className="space-y-4">
           {files.length > 0 ? (
@@ -479,7 +512,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                       <div>
                         <h4 className="text-white font-medium">{file.assignmentTitle || 'Assignment'}</h4>
                         <p className="text-gray-400 text-sm">
-                          Class: {file.classCode} • {formatFileSize(file.fileSize)}
+                          Class: {file.classCode} • {formatFileSize(file.size || 0)}
                         </p>
                         {file.assignmentDescription && (
                           <p className="text-gray-500 text-sm mt-1">{file.assignmentDescription}</p>
@@ -492,7 +525,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        {formatDate(file.uploadedAt)}
+                        {formatDate(file.uploadedAt || file.createdAt)}
                       </div>
                       {file.submissionDeadline && (
                         <div className={`flex items-center gap-1 ${isDeadlinePassed(file.submissionDeadline) ? 'text-red-400' : 'text-yellow-400'}`}>
@@ -524,6 +557,22 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                       className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200"
                     >
                       View Submissions
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFile(file._id)}
+                      disabled={deletingFiles[file._id]}
+                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {deletingFiles[file._id] ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mx-auto"></div>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -574,8 +623,10 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   {studentSubmissions.map((submission) => (
                     <tr key={submission._id} className="border-b border-gray-700 hover:bg-gray-900/50">
                       <td className="py-3 px-4 text-white">
-                        {submission.studentName}
-                        <p className="text-gray-400 text-sm">{submission.studentEmail}</p>
+                        {submission.studentName || submission.student?.fullName}
+                        {submission.studentEmail && (
+                          <p className="text-gray-400 text-sm">{submission.studentEmail}</p>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-white">
                         <div className="flex items-center gap-3">
@@ -584,7 +635,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                           </div>
-                          <span className="truncate max-w-xs">{submission.fileName}</span>
+                          <span className="truncate max-w-xs">{submission.fileName || submission.file?.originalName}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-300">{formatDate(submission.submittedAt)}</td>
