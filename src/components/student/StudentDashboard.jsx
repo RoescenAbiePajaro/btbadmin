@@ -132,7 +132,16 @@ export default function StudentDashboard() {
     window.history.pushState(null, document.title, window.location.href);
     
     window.onpopstate = function() {
+      // If we're on the overview tab and user hits back, log them out
+      if (activeTab === 'overview') {
+        handleLogout();
+        return;
+      }
+      
+      // For other tabs, prevent default back navigation
       window.history.pushState(null, document.title, window.location.href);
+      
+      // If no token or user, redirect to login
       if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
         navigate('/login');
       }

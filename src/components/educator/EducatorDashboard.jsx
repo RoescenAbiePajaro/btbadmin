@@ -65,8 +65,17 @@ export default function EducatorDashboard() {
     window.history.pushState(null, document.title, window.location.href);
     
     // Handle back/forward navigation
-    window.onpopstate = function() {
+    window.onpopstate = function(event) {
+      // If we're on the class code tab and user hits back, log them out
+      if (activeTab === 'classes') {
+        handleLogout();
+        return;
+      }
+      
+      // For other tabs, prevent default back navigation
       window.history.pushState(null, document.title, window.location.href);
+      
+      // If no token or user, redirect to login
       if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
         navigate('/login');
       }
