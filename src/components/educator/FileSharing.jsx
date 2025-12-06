@@ -12,11 +12,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [shareToClassCode, setShareToClassCode] = useState(selectedClassCode || '');
   const [recentActivities, setRecentActivities] = useState([]);
   const [classCodes, setClassCodes] = useState([]);
-  const [assignmentTitle, setAssignmentTitle] = useState('');
-  const [assignmentDescription, setAssignmentDescription] = useState('');
-  const [submissionDeadline, setSubmissionDeadline] = useState('');
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [studentSubmissions, setStudentSubmissions] = useState([]);
 
   useEffect(() => {
     fetchClassCodes();
@@ -33,12 +28,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       fetchSharedFiles();
     }
   }, [selectedClassCode]);
-
-  useEffect(() => {
-    if (selectedAssignment) {
-      fetchStudentSubmissions(selectedAssignment._id);
-    }
-  }, [selectedAssignment]);
 
   useEffect(() => {
     console.log('ClassCodes loaded:', classCodes);
@@ -118,26 +107,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     }
   };
 
-  const fetchStudentSubmissions = async (assignmentId) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:5000/api/files/assignment-submissions/${assignmentId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      if (response.data.success) {
-        setStudentSubmissions(response.data.submissions || []);
-      } else {
-        console.error('Error fetching submissions:', response.data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching student submissions:', error);
-    }
-  };
-
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -151,20 +120,9 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       return;
     }
 
-    if (!assignmentTitle.trim()) {
-      alert('Please enter an assignment title');
-      return;
-    }
-
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('classCode', shareToClassCode);
-    formData.append('title', assignmentTitle);
-    formData.append('description', assignmentDescription);
-    
-    if (submissionDeadline) {
-      formData.append('submissionDeadline', submissionDeadline);
-    }
 
     try {
       setUploading(true);
@@ -185,9 +143,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         // Add the new file to the files list
         setFiles([response.data.file, ...files]);
         setSelectedFile(null);
-        setAssignmentTitle('');
-        setAssignmentDescription('');
-        setSubmissionDeadline('');
         document.getElementById('file-upload').value = '';
         
         // Refresh recent activities
@@ -215,31 +170,8 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     }
   };
 
-  const handleDownloadSubmission = async (submissionId, fileName) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:5000/api/files/download-submission/${submissionId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
-        }
-      );
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Error downloading submission:', error);
-    }
-  };
-
   const handleDeleteFile = async (fileId) => {
-    if (!window.confirm('Are you sure you want to delete this assignment?')) {
+    if (!window.confirm('Are you sure you want to delete this file?')) {
       return;
     }
 
@@ -263,7 +195,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         // Refresh recent activities
         await fetchRecentActivities();
         
-        alert('Assignment deleted successfully!');
+        alert('File deleted successfully!');
       } else {
         throw new Error(response.data.error || 'Failed to delete file');
       }
@@ -289,11 +221,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     if (bytes < 1024) return bytes + ' bytes';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
     else return (bytes / 1048576).toFixed(2) + ' MB';
-  };
-
-  const isDeadlinePassed = (deadline) => {
-    if (!deadline) return false;
-    return new Date(deadline) < new Date();
   };
 
   const renderFilePreview = (file) => {
@@ -324,37 +251,11 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
 
   return (
     <div className="space-y-8">
-      {/* Create Assignment Section */}
+      {/* Create File Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-        <h3 className="text-xl font-semibold text-white mb-6">Upload Learning Materials</h3>
+        <h3 className="text-xl font-semibold text-white mb-6">Upload File</h3>
         
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Learning Materials Title
-            </label>
-            <input
-              type="text"
-              value={assignmentTitle}
-              onChange={(e) => setAssignmentTitle(e.target.value)}
-              placeholder="Type Here..."
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Description (Optional)
-            </label>
-            <textarea
-              value={assignmentDescription}
-              onChange={(e) => setAssignmentDescription(e.target.value)}
-              placeholder="Type Here..."
-              rows="3"
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Upload File
@@ -380,75 +281,60 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Share to Class
-              </label>
-              {classCodes.length === 0 ? (
-                <div className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-gray-400">
-                  <p>No classes available. Create a class first.</p>
-                </div>
-              ) : (
-                <>
-                  <select
-                    value={shareToClassCode}
-                    onChange={(e) => setShareToClassCode(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Select a class</option>
-                    {classCodes.map((classItem) => (
-                      <option key={classItem._id} value={classItem.classCode}>
-                        {classItem.className} ({classItem.classCode})
-                      </option>
-                    ))}
-                  </select>
-                  {shareToClassCode && (
-                    <p className="text-gray-400 text-sm mt-1">
-                      Selected: {classCodes.find(c => c.classCode === shareToClassCode)?.className}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Submission Deadline (Optional)
-              </label>
-              <input
-                type="datetime-local"
-                value={submissionDeadline}
-                onChange={(e) => setSubmissionDeadline(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Share to Class
+            </label>
+            {classCodes.length === 0 ? (
+              <div className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-gray-400">
+                <p>No classes available. Create a class first.</p>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={shareToClassCode}
+                  onChange={(e) => setShareToClassCode(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select a class</option>
+                  {classCodes.map((classItem) => (
+                    <option key={classItem._id} value={classItem.classCode}>
+                      {classItem.className} ({classItem.classCode})
+                    </option>
+                  ))}
+                </select>
+                {shareToClassCode && (
+                  <p className="text-gray-400 text-sm mt-1">
+                    Selected: {classCodes.find(c => c.classCode === shareToClassCode)?.className}
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           <button
             onClick={handleUpload}
-            disabled={uploading || !selectedFile || !shareToClassCode || !assignmentTitle || classCodes.length === 0}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-            title={classCodes.length === 0 ? 'Create a class first' : !selectedFile ? 'Select a file' : !shareToClassCode ? 'Select a class' : !assignmentTitle ? 'Enter assignment title' : ''}
+            disabled={uploading || !selectedFile || !shareToClassCode || classCodes.length === 0}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg transition duration-200"
           >
             {uploading ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                Creating Assignment...
+                Uploading...
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
-                Create Assignment
+                Upload File
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Your Assignments Section */}
+      {/* Your Files Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-white">Shared Files</h3>
@@ -502,22 +388,17 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             files.map((file) => (
               <div
                 key={file._id}
-                className={`bg-gray-900 border border-gray-700 rounded-lg p-4 ${
-                  selectedAssignment?._id === file._id ? 'ring-2 ring-purple-500' : ''
-                }`}
+                className="bg-gray-900 border border-gray-700 rounded-lg p-4"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       {renderFilePreview(file)}
                       <div>
-                        <h4 className="text-white font-medium">{file.assignmentTitle || 'Assignment'}</h4>
+                        <h4 className="text-white font-medium">{file.name}</h4>
                         <p className="text-gray-400 text-sm">
                           Class: {file.classCode} • {formatFileSize(file.size || 0)}
                         </p>
-                        {file.assignmentDescription && (
-                          <p className="text-gray-500 text-sm mt-1">{file.assignmentDescription}</p>
-                        )}
                       </div>
                     </div>
                     
@@ -527,18 +408,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         {formatDate(file.uploadedAt || file.createdAt)}
-                      </div>
-                      {file.submissionDeadline && (
-                        <div className={`flex items-center gap-1 ${isDeadlinePassed(file.submissionDeadline) ? 'text-red-400' : 'text-yellow-400'}`}>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Deadline: {formatDate(file.submissionDeadline)}
-                          {isDeadlinePassed(file.submissionDeadline) && ' (Passed)'}
-                        </div>
-                      )}
-                      <div className="text-blue-400">
-                        {file.submissionCount || 0} submissions
                       </div>
                     </div>
                   </div>
@@ -552,12 +421,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                       Download
-                    </button>
-                    <button
-                      onClick={() => setSelectedAssignment(file)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200"
-                    >
-                      View Submissions
                     </button>
                     <button
                       onClick={() => handleDeleteFile(file._id)}
@@ -584,103 +447,12 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
               <svg className="w-12 h-12 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p className="text-gray-400">No assignments created yet</p>
-              <p className="text-gray-500 text-sm mt-1">Create an assignment to get started</p>
+              <p className="text-gray-400">No files shared yet</p>
+              <p className="text-gray-500 text-sm mt-1">Share a file to get started</p>
             </div>
           )}
         </div>
       </div>
-
-      {/* Student Submissions Section */}
-      {selectedAssignment && (
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-white">
-              Submissions for: {selectedAssignment.assignmentTitle}
-            </h3>
-            <button
-              onClick={() => setSelectedAssignment(null)}
-              className="text-gray-400 hover:text-white"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {studentSubmissions.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left py-3 px-4 text-gray-300 font-medium">Student</th>
-                    <th className="text-left py-3 px-4 text-gray-300 font-medium">Submitted File</th>
-                    <th className="text-left py-3 px-4 text-gray-300 font-medium">Submission Date</th>
-                    <th className="text-left py-3 px-4 text-gray-300 font-medium">Status</th>
-                    <th className="text-left py-3 px-4 text-gray-300 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentSubmissions.map((submission) => (
-                    <tr key={submission._id} className="border-b border-gray-700 hover:bg-gray-900/50">
-                      <td className="py-3 px-4 text-white">
-                        {submission.studentName || submission.student?.fullName}
-                        {submission.studentEmail && (
-                          <p className="text-gray-400 text-sm">{submission.studentEmail}</p>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-white">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-700 rounded-lg">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <span className="truncate max-w-xs">{submission.fileName || submission.file?.originalName}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-300">{formatDate(submission.submittedAt)}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          isDeadlinePassed(selectedAssignment.submissionDeadline) 
-                            ? 'bg-red-900/30 text-red-400'
-                            : new Date(submission.submittedAt) > new Date(selectedAssignment.submissionDeadline)
-                            ? 'bg-yellow-900/30 text-yellow-400'
-                            : 'bg-green-900/30 text-green-400'
-                        }`}>
-                          {isDeadlinePassed(selectedAssignment.submissionDeadline) 
-                            ? 'Late'
-                            : new Date(submission.submittedAt) > new Date(selectedAssignment.submissionDeadline)
-                            ? 'Submitted Late'
-                            : 'On Time'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => handleDownloadSubmission(submission._id, submission.fileName)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-lg text-sm transition duration-200"
-                        >
-                          Download
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <svg className="w-12 h-12 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-              <p className="text-gray-400">No submissions yet</p>
-              <p className="text-gray-500 text-sm mt-1">
-                Students can submit their work for this assignment
-              </p>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Recent Activities Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
