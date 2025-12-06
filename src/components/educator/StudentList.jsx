@@ -4,7 +4,7 @@ import axios from 'axios';
 import DeleteConfirmationModal from '../DeleteConfirmationModal';
 import Toast from '../Toast';
 
-export default function StudentList() {
+const StudentList = () => {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [students, setStudents] = useState([]);
@@ -84,6 +84,16 @@ export default function StudentList() {
   const showToast = (message, type = 'info') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
+  };
+
+  const handleCopyCode = (code) => {
+    if (!code) {
+      showToast('No class code available', 'error');
+      return;
+    }
+    navigator.clipboard.writeText(code)
+      .then(() => showToast('Class code copied to clipboard!', 'success'))
+      .catch(() => showToast('Failed to copy class code', 'error'));
   };
 
   const handleDeleteClick = (student) => {
@@ -236,7 +246,23 @@ export default function StudentList() {
               }`}
             >
               <div className="font-medium">{classItem.className}</div>
-              <div className="text-sm opacity-80">{classItem.classCode || 'Loading code...'}</div>
+              <div className="flex items-center gap-2 text-sm opacity-80">
+                {classItem.classCode || 'No code'}
+                {classItem.classCode && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyCode(classItem.classCode);
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="Copy class code"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <div className="text-xs mt-2">
                 {classItem.students?.length || 0} students
               </div>
@@ -306,6 +332,15 @@ export default function StudentList() {
                 <div>
                   <span className="text-gray-400">Class Code:</span>{' '}
                   <span className="font-mono text-white">{getSelectedClassInfo()?.classCode}</span>
+                  <button 
+                    onClick={() => handleCopyCode(getSelectedClassInfo()?.classCode)}
+                    className="text-gray-400 hover:text-white transition-colors ml-2"
+                    title="Copy class code"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
                 </div>
                 <div>
                   <span className="text-gray-400">Class Name:</span>{' '}
@@ -329,7 +364,7 @@ export default function StudentList() {
               <h3 className="text-lg font-semibold text-white mb-2">Actions</h3>
               <div className="flex flex-col gap-3">
                 <button
-                  onClick={() => navigator.clipboard.writeText(getSelectedClassInfo()?.classCode)}
+                  onClick={() => handleCopyCode(getSelectedClassInfo()?.classCode)}
                   className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200 text-center"
                 >
                   Copy Class Code
@@ -488,4 +523,6 @@ export default function StudentList() {
       </div>
     </div>
   );
-}
+};
+
+export default StudentList;

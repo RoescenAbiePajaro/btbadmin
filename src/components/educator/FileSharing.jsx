@@ -1,6 +1,7 @@
 // src/components/educator/FileSharing.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Toast from '../Toast';
 
 const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [files, setFiles] = useState([]);
@@ -13,6 +14,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [recentActivities, setRecentActivities] = useState([]);
   const [classCodes, setClassCodes] = useState([]);
   const [viewingFile, setViewingFile] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
   useEffect(() => {
     fetchClassCodes();
@@ -117,7 +119,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
 
   const handleUpload = async () => {
     if (!selectedFile || !shareToClassCode) {
-      alert('Please select a file and class code');
+      showToast('Please select a file and class code', 'error');
       return;
     }
 
@@ -149,13 +151,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         // Refresh recent activities
         await fetchRecentActivities();
         
-        alert('File shared successfully!');
+        showToast('File shared successfully!', 'success');
       } else {
         throw new Error(response.data.error || 'Failed to upload file');
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert(`Error: ${error.response?.data?.error || error.message || 'Failed to upload file'}`);
+      showToast(error.response?.data?.error || error.message || 'Failed to upload file', 'error');
     } finally {
       setUploading(false);
     }
@@ -172,7 +174,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       document.body.removeChild(link);
     } catch (error) {
       console.error('Error downloading file:', error);
-      alert('Failed to download file');
+      showToast('Failed to download file', 'error');
     }
   };
 
@@ -182,12 +184,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       window.open(fileUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error opening file:', error);
-      alert('Failed to open file');
+      showToast('Failed to open file', 'error');
     }
   };
 
   const handleDeleteFile = async (fileId) => {
     if (!window.confirm('Are you sure you want to delete this file?')) {
+      showToast('File deletion cancelled', 'info');
       return;
     }
 
@@ -211,13 +214,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         // Refresh recent activities
         await fetchRecentActivities();
         
-        alert('File deleted successfully!');
+        showToast('File deleted successfully', 'success');
       } else {
         throw new Error(response.data.error || 'Failed to delete file');
       }
     } catch (error) {
       console.error('Error deleting file:', error);
-      alert(`Error: ${error.response?.data?.error || error.message || 'Failed to delete file'}`);
+      showToast(error.response?.data?.error || error.message || 'Failed to delete file', 'error');
     } finally {
       setDeletingFiles(prev => ({ ...prev, [fileId]: false }));
     }
@@ -422,6 +425,11 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     );
   };
 
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
   return (
     <div className="space-y-6">
       {viewingFile && renderFileModal()}
@@ -532,7 +540,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       </div>
 
       {/* Files List Section */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden transition-all duration-300">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         <div className="p-6 border-b border-gray-700">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -753,6 +761,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           )}
         </div>
       </div>
+      {toast.show && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(prev => ({ ...prev, show: false }))}
+        />
+      )}
     </div>
   );
 };
