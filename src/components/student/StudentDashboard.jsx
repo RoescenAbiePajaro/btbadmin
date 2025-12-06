@@ -317,8 +317,8 @@ export default function StudentDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="mt-8 grid md:grid-cols-2 gap-6">
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <div className="mt-8">
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-md mx-auto">
                 <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <button
@@ -338,28 +338,6 @@ export default function StudentDashboard() {
                   >
                     Download PC
                   </a>
-                </div>
-              </div>
-
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
-                <div className="text-gray-400 text-center py-8">
-                  {user.enrolledClassDetails ? (
-                    <>
-                      <p>Your academic information has been successfully registered.</p>
-                      <p className="text-sm mt-2">
-                        School: {user.school || 'Not specified'}<br />
-                        Course: {user.course || 'Not specified'}<br />
-                        Year: {user.year || 'Not specified'}<br />
-                        Block: {user.block || 'Not specified'}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p>No recent activity</p>
-                      <p className="text-sm mt-2">Your activity will appear here</p>
-                    </>
-                  )}
                 </div>
               </div>
             </div>

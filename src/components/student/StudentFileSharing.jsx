@@ -3,74 +3,70 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const StudentFileSharing = ({ student }) => {
-  const [assignments, setAssignments] = useState([]);
-  const [mySubmissions, setMySubmissions] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
-  const [selectedClass, setSelectedClass] = useState(student?.enrolledClassDetails?._id || null);
-  const [selectedClassCode, setSelectedClassCode] = useState(student?.enrolledClassDetails?.classCode || '');
-
-  // Handle class selection
-  const handleClassSelect = (classId, classCode) => {
-    setSelectedClass(classId);
-    setSelectedClassCode(classCode);
-    // Store in sessionStorage for persistence
-    sessionStorage.setItem('selectedClassCode', classCode);
-  };
+  const [mySubmissions, setMySubmissions] = useState([]);
+  const [showSubmitForm, setShowSubmitForm] = useState(false);
 
   useEffect(() => {
-    // Initialize with student's enrolled class by default
-    if (student?.enrolledClassDetails) {
-      handleClassSelect(student.enrolledClassDetails._id, student.enrolledClassDetails.classCode);
-    }
-  }, [student]);
-
-  useEffect(() => {
-    if (selectedClassCode) {
-      fetchAssignments();
+    if (student && student.enrolledClass) {
+      fetchFiles();
       fetchMySubmissions();
       fetchRecentActivities();
     }
-  }, [selectedClassCode]);
+  }, [student]);
 
-  const fetchAssignments = async () => {
+  const fetchFiles = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/assignments/${selectedClassCode}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        'http://localhost:5000/api/files/list',
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          }
+        }
       );
-      setAssignments(response.data.assignments || []);
+      
+      if (response.data.success) {
+        setFiles(response.data.files || []);
+      } else {
+        setError(response.data.error || 'Failed to fetch files');
+      }
     } catch (error) {
-      console.error('Error fetching assignments:', error);
+      console.error('Error fetching files:', error);
+      setError(error.response?.data?.error || 'Error fetching files');
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchMySubmissions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/my-submissions`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMySubmissions(response.data.submissions || []);
+      // Since we don't have the my-submissions endpoint yet,
+      // we'll get all submissions for now
+      // In a real app, you'd have a separate endpoint for this
+      const submissions = [];
+      setMySubmissions(submissions);
     } catch (error) {
-      console.error('Error fetching my submissions:', error);
+      console.error('Error fetching submissions:', error);
     }
   };
 
   const fetchRecentActivities = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/student-activities`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setRecentActivities(response.data.activities || []);
+      // Mock activities for now
+      setRecentActivities([]);
     } catch (error) {
-      console.error('Error fetching recent activities:', error);
+      console.error('Error fetching activities:', error);
     }
   };
 
@@ -87,13 +83,6 @@ const StudentFileSharing = ({ student }) => {
       return;
     }
 
-    // Check if deadline has passed
-    if (selectedAssignment.submissionDeadline && new Date(selectedAssignment.submissionDeadline) < new Date()) {
-      if (!window.confirm('The submission deadline has passed. Do you still want to submit? This will be marked as late.')) {
-        return;
-      }
-    }
-
     setUploading(true);
     try {
       const token = localStorage.getItem('token');
@@ -103,10 +92,10 @@ const StudentFileSharing = ({ student }) => {
       formData.append('studentId', student._id);
       formData.append('studentName', student.fullName);
       formData.append('studentEmail', student.email);
-      formData.append('classCode', student.enrolledClassDetails.classCode);
+      formData.append('classCode', student.enrolledClass?.classCode || '');
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/submit-assignment`,
+        'http://localhost:5000/api/files/submit-assignment',
         formData,
         {
           headers: {
@@ -120,71 +109,35 @@ const StudentFileSharing = ({ student }) => {
         alert('Assignment submitted successfully!');
         setSelectedFile(null);
         setSelectedAssignment(null);
+        setShowSubmitForm(false);
         document.getElementById('submissionFileInput').value = '';
-        fetchAssignments();
+        fetchFiles();
         fetchMySubmissions();
-        fetchRecentActivities();
       }
     } catch (error) {
       console.error('Error submitting assignment:', error);
-      alert('Error submitting assignment');
+      alert(error.response?.data?.error || 'Error submitting assignment');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDownloadAssignment = async (fileId, fileName) => {
+  const handleDownloadFile = async (fileUrl, fileName) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/download/${fileId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
-        }
-      );
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
+      // Direct download from Supabase public URL
+      window.open(fileUrl, '_blank');
+      
       // Log download activity
+      const token = localStorage.getItem('token');
       await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/log-download`,
-        { fileId, studentId: student._id, studentName: student.fullName },
+        'http://localhost:5000/api/files/log-download',
+        { fileId: fileName, studentId: student._id, studentName: student.fullName },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
+      
       fetchRecentActivities();
     } catch (error) {
       console.error('Error downloading file:', error);
-    }
-  };
-
-  const handleDownloadMySubmission = async (submissionId, fileName) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/download-submission/${submissionId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
-        }
-      );
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Error downloading submission:', error);
     }
   };
 
@@ -194,6 +147,7 @@ const StudentFileSharing = ({ student }) => {
   };
 
   const formatFileSize = (bytes) => {
+    if (!bytes) return 'Unknown size';
     if (bytes < 1024) return bytes + ' bytes';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
     else return (bytes / 1048576).toFixed(2) + ' MB';
@@ -204,16 +158,18 @@ const StudentFileSharing = ({ student }) => {
     return new Date(deadline) < new Date();
   };
 
+  // Filter assignments (files with type 'assignment')
+  const assignments = files.filter(file => file.type === 'assignment');
+  // Filter learning materials (files without type 'assignment')
+  const learningMaterials = files.filter(file => file.type !== 'assignment');
+
   const hasSubmitted = (assignmentId) => {
+    // Check if student has submitted this assignment
     return mySubmissions.some(sub => sub.assignmentId === assignmentId);
   };
 
   const getSubmissionStatus = (assignment) => {
     if (hasSubmitted(assignment._id)) {
-      const submission = mySubmissions.find(sub => sub.assignmentId === assignment._id);
-      if (assignment.submissionDeadline && new Date(submission.submittedAt) > new Date(assignment.submissionDeadline)) {
-        return { status: 'submitted_late', text: 'Submitted Late', color: 'bg-yellow-900/30 text-yellow-400' };
-      }
       return { status: 'submitted', text: 'Submitted', color: 'bg-green-900/30 text-green-400' };
     }
     if (isDeadlinePassed(assignment.submissionDeadline)) {
@@ -224,8 +180,42 @@ const StudentFileSharing = ({ student }) => {
 
   return (
     <div className="space-y-8">
-      {/* Submit Assignment Section */}
-      {selectedAssignment && (
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-900/30 border border-red-700 rounded-xl p-6">
+          <div className="flex items-center gap-3">
+            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-white">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* No Class Enrolled */}
+      {!student?.enrolledClass && !loading && (
+        <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl p-6">
+          <div className="flex items-center gap-3">
+            <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <p className="text-white font-medium">Not Enrolled in Any Class</p>
+              <p className="text-yellow-400 text-sm mt-1">You need to be enrolled in a class to view and submit assignments</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Assignment Form */}
+      {showSubmitForm && selectedAssignment && (
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -237,7 +227,10 @@ const StudentFileSharing = ({ student }) => {
               )}
             </div>
             <button
-              onClick={() => setSelectedAssignment(null)}
+              onClick={() => {
+                setShowSubmitForm(false);
+                setSelectedAssignment(null);
+              }}
               className="text-gray-400 hover:text-white"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,10 +307,87 @@ const StudentFileSharing = ({ student }) => {
         </div>
       )}
 
-      {/* Assignments from Educator */}
+      {/* Learning Materials Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
         <h3 className="text-xl font-semibold text-white mb-6">
           Learning Materials from Educator
+        </h3>
+        
+        <div className="space-y-4">
+          {learningMaterials.length > 0 ? (
+            learningMaterials.map((material) => (
+              <div
+                key={material._id}
+                className="bg-gray-900 border border-gray-700 rounded-lg p-4"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-purple-900/30 rounded-lg">
+                        <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-white font-medium">{material.assignmentTitle || 'Learning Material'}</h4>
+                        {material.assignmentDescription && (
+                          <p className="text-gray-400 text-sm mt-1">{material.assignmentDescription}</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-400 mt-3">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Posted: {formatDate(material.uploadedAt)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {formatFileSize(material.size)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        By: {material.uploaderName || 'Educator'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 ml-4">
+                    <button
+                      onClick={() => handleDownloadFile(material.url, material.originalName)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
+                    >
+                      <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : !loading && (
+            <div className="text-center py-8">
+              <svg className="w-12 h-12 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-gray-400">No learning materials yet</p>
+              <p className="text-gray-500 text-sm mt-1">Your educator will post learning materials here</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Assignments Section */}
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+        <h3 className="text-xl font-semibold text-white mb-6">
+          Assignments
         </h3>
         
         <div className="space-y-4">
@@ -358,13 +428,14 @@ const StudentFileSharing = ({ student }) => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             Deadline: {formatDate(assignment.submissionDeadline)}
+                            {isDeadlinePassed(assignment.submissionDeadline) && ' (Passed)'}
                           </div>
                         )}
                         <div className="flex items-center gap-1">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
-                          {formatFileSize(assignment.fileSize)}
+                          {formatFileSize(assignment.size)}
                         </div>
                       </div>
                     </div>
@@ -375,14 +446,17 @@ const StudentFileSharing = ({ student }) => {
                       </span>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleDownloadAssignment(assignment._id, assignment.fileName)}
+                          onClick={() => handleDownloadFile(assignment.url, assignment.originalName)}
                           className="bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded-lg text-sm transition duration-200"
                         >
                           Download
                         </button>
                         {status.status !== 'submitted' && !isDeadlinePassed(assignment.submissionDeadline) && (
                           <button
-                            onClick={() => setSelectedAssignment(assignment)}
+                            onClick={() => {
+                              setSelectedAssignment(assignment);
+                              setShowSubmitForm(true);
+                            }}
                             className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-lg text-sm transition duration-200"
                           >
                             Submit
@@ -394,7 +468,7 @@ const StudentFileSharing = ({ student }) => {
                 </div>
               );
             })
-          ) : (
+          ) : !loading && (
             <div className="text-center py-8">
               <svg className="w-12 h-12 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -403,76 +477,6 @@ const StudentFileSharing = ({ student }) => {
               <p className="text-gray-500 text-sm mt-1">Your educator will post assignments here</p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* My Submissions Section */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-        <h3 className="text-xl font-semibold text-white mb-6">
-          My Submissions
-        </h3>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Assignment</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Submitted File</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Submission Date</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Status</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mySubmissions.length > 0 ? (
-                mySubmissions.map((submission) => {
-                  const assignment = assignments.find(a => a._id === submission.assignmentId);
-                  const isLate = assignment?.submissionDeadline && 
-                                new Date(submission.submittedAt) > new Date(assignment.submissionDeadline);
-                  
-                  return (
-                    <tr key={submission._id} className="border-b border-gray-700 hover:bg-gray-900/50">
-                      <td className="py-3 px-4 text-white">
-                        {assignment?.assignmentTitle || 'Assignment'}
-                      </td>
-                      <td className="py-3 px-4 text-white">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-700 rounded-lg">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <span className="truncate max-w-xs">{submission.fileName}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-300">{formatDate(submission.submittedAt)}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          isLate ? 'bg-yellow-900/30 text-yellow-400' : 'bg-green-900/30 text-green-400'
-                        }`}>
-                          {isLate ? 'Submitted Late' : 'Submitted'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => handleDownloadMySubmission(submission._id, submission.fileName)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-lg text-sm transition duration-200"
-                        >
-                          Download
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="5" className="py-8 text-center text-gray-400">
-                    No submissions yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
 
@@ -506,8 +510,8 @@ const StudentFileSharing = ({ student }) => {
                     <p className="text-white font-medium">{activity.fileName}</p>
                     <p className="text-gray-400 text-sm">
                       {activity.type === 'submission' 
-                        ? `Submitted for assignment`
-                        : `Downloaded assignment`}
+                        ? `Assignment submitted`
+                        : `File downloaded`}
                     </p>
                   </div>
                   <span className="text-gray-500 text-sm">
@@ -519,6 +523,7 @@ const StudentFileSharing = ({ student }) => {
           ) : (
             <div className="text-center py-8">
               <p className="text-gray-400">No recent activities</p>
+              <p className="text-gray-500 text-sm mt-1">Your activities will appear here</p>
             </div>
           )}
         </div>
