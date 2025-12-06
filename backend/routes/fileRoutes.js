@@ -129,7 +129,8 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
         submissionDeadline: submissionDeadline || null,
         type: submissionDeadline ? 'assignment' : 'material',
         uploadedBy: req.user.id,
-        uploaderName: user.fullName || user.username
+        uploaderName: user.fullName || user.username,
+        supabaseId: uploadResult.supabaseId
       });
 
       await fileRecord.save();

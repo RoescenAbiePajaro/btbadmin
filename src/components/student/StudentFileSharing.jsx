@@ -9,20 +9,37 @@ const StudentFileSharing = ({ student }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [selectedClass, setSelectedClass] = useState(student?.enrolledClassDetails?._id || null);
+  const [selectedClassCode, setSelectedClassCode] = useState(student?.enrolledClassDetails?.classCode || '');
+
+  // Handle class selection
+  const handleClassSelect = (classId, classCode) => {
+    setSelectedClass(classId);
+    setSelectedClassCode(classCode);
+    // Store in sessionStorage for persistence
+    sessionStorage.setItem('selectedClassCode', classCode);
+  };
 
   useEffect(() => {
-    if (student?.enrolledClassDetails?.classCode) {
+    // Initialize with student's enrolled class by default
+    if (student?.enrolledClassDetails) {
+      handleClassSelect(student.enrolledClassDetails._id, student.enrolledClassDetails.classCode);
+    }
+  }, [student]);
+
+  useEffect(() => {
+    if (selectedClassCode) {
       fetchAssignments();
       fetchMySubmissions();
       fetchRecentActivities();
     }
-  }, [student]);
+  }, [selectedClassCode]);
 
   const fetchAssignments = async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/assignments/${student.enrolledClassDetails.classCode}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/files/assignments/${selectedClassCode}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setAssignments(response.data.assignments || []);
