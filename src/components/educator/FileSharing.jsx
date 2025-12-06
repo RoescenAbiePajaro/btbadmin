@@ -397,7 +397,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                       <div>
                         <h4 className="text-white font-medium">{file.name}</h4>
                         <p className="text-gray-400 text-sm">
-                          Class: {file.classCode} • {formatFileSize(file.size || 0)}
+                          Class: {classCodes.find(c => c.classCode === file.classCode)?.className || 'Unknown Class'} ({file.classCode}) • {formatFileSize(file.size || 0)}
                         </p>
                       </div>
                     </div>
