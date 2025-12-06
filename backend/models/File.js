@@ -1,3 +1,4 @@
+// backend/models/File.js
 const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
@@ -27,8 +28,7 @@ const fileSchema = new mongoose.Schema({
   },
   classCode: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   assignmentTitle: {
     type: String,
@@ -56,20 +56,19 @@ const fileSchema = new mongoose.Schema({
     required: true
   },
   supabaseId: {
-    type: String,
-    unique: true,
-    sparse: true // Add sparse index to allow multiple null values
+    type: String
   },
-  uploadedAt: {
-    type: Date,
-    default: Date.now
-  }
+  // Add submission tracking
+  submissionCount: {
+    type: Number,
+    default: 0
+  },
+  submissions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Submission'
+  }]
 }, {
   timestamps: true
 });
-
-// Add compound index for better querying
-fileSchema.index({ classCode: 1, uploadedAt: -1 });
-fileSchema.index({ uploadedBy: 1, uploadedAt: -1 });
 
 module.exports = mongoose.model('File', fileSchema);

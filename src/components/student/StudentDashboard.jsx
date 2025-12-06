@@ -191,7 +191,7 @@ export default function StudentDashboard() {
               <p className="text-gray-400">Welcome, {user.fullName}</p>
               {user.enrolledClassDetails && (
                 <p className="text-sm text-green-400 mt-1">
-                  Enrolled in: {user.enrolledClassDetails.className} ({user.enrolledClassDetails.classCode})
+                  Joined in: {user.enrolledClassDetails.className} ({user.enrolledClassDetails.classCode})
                 </p>
               )}
             </div>

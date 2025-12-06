@@ -403,4 +403,350 @@ router.get('/class/:classCode', verifyToken, async (req, res) => {
   }
 });
 
+// ===============================
+// SUBMISSION ROUTES
+// ===============================
+
+// Submit assignment
+router.post('/submit-assignment', verifyToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No file uploaded' 
+      });
+    }
+
+    const { assignmentId, studentId, studentName, studentEmail, classCode } = req.body;
+    
+    if (!assignmentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Assignment ID is required'
+      });
+    }
+
+    // Get the assignment
+    const assignment = await File.findById(assignmentId);
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Assignment not found'
+      });
+    }
+
+    // Check if assignment is actually an assignment
+    if (assignment.type !== 'assignment') {
+      return res.status(400).json({
+        success: false,
+        error: 'This is not an assignment'
+      });
+    }
+
+    // Check if deadline has passed
+    if (assignment.submissionDeadline && new Date(assignment.submissionDeadline) < new Date()) {
+      // Still allow submission but mark as late
+      console.log('Late submission detected');
+    }
+
+    const filePath = req.file.path;
+    
+    try {
+      // Upload to Supabase
+      const uploadResult = await supabase.uploadFile(filePath, req.file.originalname);
+      
+      // Clean up the temporary file
+      fs.unlinkSync(filePath);
+      
+      // Create submission record
+      const Submission = require('../models/Submission');
+      
+      const submission = new Submission({
+        assignmentId: assignmentId,
+        studentId: studentId || req.user.id,
+        studentName: studentName || req.user.fullName,
+        studentEmail: studentEmail || req.user.email,
+        fileName: uploadResult.fileName,
+        originalName: req.file.originalname,
+        filePath: uploadResult.path,
+        fileUrl: uploadResult.publicUrl,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        classCode: assignment.classCode,
+        submittedAt: new Date(),
+        status: assignment.submissionDeadline && new Date() > new Date(assignment.submissionDeadline) ? 'late' : 'submitted'
+      });
+
+      await submission.save();
+
+      // Update assignment submission count and add submission reference
+      assignment.submissionCount = (assignment.submissionCount || 0) + 1;
+      assignment.submissions = assignment.submissions || [];
+      assignment.submissions.push(submission._id);
+      await assignment.save();
+
+      // Create activity log
+      const Activity = require('../models/Activity');
+      const activity = new Activity({
+        fileId: assignmentId,
+        studentId: studentId || req.user.id,
+        studentName: studentName || req.user.fullName,
+        activityType: 'submission',
+        createdAt: new Date()
+      });
+      await activity.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Assignment submitted successfully',
+        submission: submission
+      });
+    } catch (uploadError) {
+      // Clean up the temporary file in case of error
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      throw uploadError;
+    }
+  } catch (error) {
+    console.error('Submission error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Error submitting assignment' 
+    });
+  }
+});
+
+// Get student's submissions
+router.get('/my-submissions', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const Submission = require('../models/Submission');
+    const submissions = await Submission.find({ 
+      studentId: userId 
+    })
+    .sort({ submittedAt: -1 })
+    .populate('assignmentId', 'assignmentTitle submissionDeadline classCode');
+    
+    res.json({
+      success: true,
+      count: submissions.length,
+      submissions: submissions
+    });
+  } catch (error) {
+    console.error('Error fetching submissions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching submissions',
+      details: error.message
+    });
+  }
+});
+
+// Get assignment submissions (for educator)
+router.get('/assignment-submissions/:assignmentId', verifyToken, async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    
+    // Verify the user is the educator who uploaded this assignment
+    const assignment = await File.findById(assignmentId);
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Assignment not found'
+      });
+    }
+
+    if (assignment.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only view submissions for your own assignments'
+      });
+    }
+
+    const Submission = require('../models/Submission');
+    const submissions = await Submission.find({ 
+      assignmentId: assignmentId 
+    })
+    .sort({ submittedAt: 1 })
+    .populate('studentId', 'fullName email username');
+    
+    res.json({
+      success: true,
+      count: submissions.length,
+      submissions: submissions
+    });
+  } catch (error) {
+    console.error('Error fetching submissions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch submissions',
+      details: error.message
+    });
+  }
+});
+
+// Download submission file
+router.get('/download-submission/:submissionId', verifyToken, async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    
+    const Submission = require('../models/Submission');
+    const submission = await Submission.findById(submissionId);
+    
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        error: 'Submission not found'
+      });
+    }
+
+    // Verify access
+    const user = req.user;
+    const assignment = await File.findById(submission.assignmentId);
+    
+    // Check permissions: Educator can download if they uploaded the assignment
+    // Student can download their own submission
+    const isEducator = user.role === 'educator' && assignment.uploadedBy.toString() === user.id;
+    const isStudentOwner = user.role === 'student' && submission.studentId.toString() === user.id;
+    
+    if (!isEducator && !isStudentOwner) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    // Get the file URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('class-files')
+      .getPublicUrl(submission.filePath);
+    
+    // Redirect to the download URL
+    res.redirect(publicUrl);
+  } catch (error) {
+    console.error('Error downloading submission:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error downloading submission',
+      details: error.message
+    });
+  }
+});
+
+// Grade submission
+router.post('/grade-submission/:submissionId', verifyToken, async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const { grade, feedback } = req.body;
+    
+    if (grade === undefined || grade === null) {
+      return res.status(400).json({
+        success: false,
+        error: 'Grade is required'
+      });
+    }
+
+    const Submission = require('../models/Submission');
+    const submission = await Submission.findById(submissionId);
+    
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        error: 'Submission not found'
+      });
+    }
+
+    // Verify educator owns the assignment
+    const assignment = await File.findById(submission.assignmentId);
+    if (assignment.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only grade submissions for your own assignments'
+      });
+    }
+
+    // Update submission
+    submission.grade = grade;
+    submission.feedback = feedback || '';
+    submission.status = 'graded';
+    await submission.save();
+
+    res.json({
+      success: true,
+      message: 'Submission graded successfully',
+      submission: submission
+    });
+  } catch (error) {
+    console.error('Error grading submission:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to grade submission',
+      details: error.message
+    });
+  }
+});
+
+// Get student activities
+router.get('/student-activities', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const Activity = require('../models/Activity');
+    const activities = await Activity.find({
+      studentId: userId
+    })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .populate('fileId', 'assignmentTitle');
+    
+    res.json({
+      success: true,
+      activities: activities.map(activity => ({
+        type: activity.activityType,
+        fileName: activity.fileId?.assignmentTitle || 'File',
+        timestamp: activity.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching activities:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching activities',
+      details: error.message
+    });
+  }
+});
+
+// Log download activity
+router.post('/log-download', verifyToken, async (req, res) => {
+  try {
+    const { fileId, studentId, studentName } = req.body;
+    
+    const Activity = require('../models/Activity');
+    
+    const activity = new Activity({
+      fileId: fileId,
+      studentId: studentId || req.user.id,
+      studentName: studentName || req.user.fullName,
+      activityType: 'download',
+      createdAt: new Date()
+    });
+    
+    await activity.save();
+    
+    res.json({
+      success: true,
+      message: 'Download logged'
+    });
+  } catch (error) {
+    console.error('Error logging download:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error logging download'
+    });
+  }
+});
+
 module.exports = router;

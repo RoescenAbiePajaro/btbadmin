@@ -1,30 +1,7 @@
+// backend/models/Submission.js
 const mongoose = require('mongoose');
 
 const submissionSchema = new mongoose.Schema({
-  fileName: {
-    type: String,
-    required: true
-  },
-  filePath: {
-    type: String,
-    required: true
-  },
-  fileUrl: {
-    type: String,
-    required: true
-  },
-  supabaseId: {
-    type: String,
-    unique: true
-  },
-  fileSize: {
-    type: Number,
-    required: true
-  },
-  fileType: {
-    type: String,
-    required: true
-  },
   assignmentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'File',
@@ -40,6 +17,29 @@ const submissionSchema = new mongoose.Schema({
     required: true
   },
   studentEmail: {
+    type: String
+  },
+  fileName: {
+    type: String,
+    required: true
+  },
+  originalName: {
+    type: String,
+    required: true
+  },
+  filePath: {
+    type: String,
+    required: true
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  },
+  fileSize: {
+    type: Number,
+    required: true
+  },
+  mimeType: {
     type: String,
     required: true
   },
@@ -51,10 +51,6 @@ const submissionSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  isLate: {
-    type: Boolean,
-    default: false
-  },
   grade: {
     type: Number,
     min: 0,
@@ -62,15 +58,17 @@ const submissionSchema = new mongoose.Schema({
   },
   feedback: {
     type: String
+  },
+  status: {
+    type: String,
+    enum: ['submitted', 'graded', 'late'],
+    default: 'submitted'
   }
 }, {
   timestamps: true
 });
 
-// Create indexes for better query performance
-submissionSchema.index({ assignmentId: 1 });
-submissionSchema.index({ studentId: 1 });
-submissionSchema.index({ classCode: 1 });
-submissionSchema.index({ submittedAt: -1 });
+// Create index for faster queries
+submissionSchema.index({ assignmentId: 1, studentId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Submission', submissionSchema);

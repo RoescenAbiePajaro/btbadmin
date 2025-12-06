@@ -24,4 +24,8 @@ const activitySchema = new mongoose.Schema({
   }
 });
 
+// Create indexes for faster queries
+activitySchema.index({ studentId: 1, createdAt: -1 });
+activitySchema.index({ fileId: 1 });
+
 module.exports = mongoose.model('Activity', activitySchema);
