@@ -224,7 +224,7 @@ const StudentList = () => {
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             placeholder="Search classes..."
             value={classSearchTerm}
             onChange={(e) => {
@@ -241,7 +241,7 @@ const StudentList = () => {
               onClick={() => setSelectedClass(classItem._id)}
               className={`px-4 py-3 rounded-lg min-w-[200px] text-left transition duration-200 ${
                 selectedClass === classItem._id
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-pink-600 text-white'
                   : 'bg-gray-900 hover:bg-gray-700 text-gray-300'
               }`}
             >
@@ -296,7 +296,7 @@ const StudentList = () => {
                   onClick={() => setClassPage(page)}
                   className={`px-2 py-1 rounded text-sm transition duration-200 ${
                     classPage === page
-                      ? 'bg-purple-600 text-white'
+                      ? 'bg-pink-600 text-white'
                       : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
                   }`}
                 >
@@ -370,7 +370,7 @@ const StudentList = () => {
                   Copy Class Code
                 </button>
                 <button
-                  className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200 text-center"
+                  className="bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded-lg transition duration-200 text-center"
                 >
                   Export Student List
                 </button>
@@ -398,7 +398,7 @@ const StudentList = () => {
               </div>
               <input
                 type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                 placeholder="Search students..."
                 value={searchTerm}
                 onChange={(e) => {
@@ -494,7 +494,7 @@ const StudentList = () => {
                       onClick={() => setCurrentPage(page)}
                       className={`px-3 py-2 rounded-lg transition duration-200 ${
                         currentPage === page
-                          ? 'bg-purple-600 text-white'
+                          ? 'bg-pink-600 text-white'
                           : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
                       }`}
                     >

@@ -243,7 +243,7 @@ export default function ClassManagement() {
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-10 py-2.5 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 hover:border-gray-600"
+            className="block w-full pl-10 pr-10 py-2.5 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200 hover:border-gray-600"
             placeholder="Search classes or codes..."
             value={searchTerm}
             onChange={(e) => {
@@ -277,7 +277,7 @@ export default function ClassManagement() {
                 setSortBy(e.target.value);
                 setCurrentPage(1);
               }}
-              className="appearance-none pl-4 pr-10 py-2.5 border border-gray-700 rounded-lg bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent cursor-pointer transition-all duration-200 hover:border-gray-600 w-full md:w-48"
+              className="appearance-none pl-4 pr-10 py-2.5 border border-gray-700 rounded-lg bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent cursor-pointer transition-all duration-200 hover:border-gray-600 w-full md:w-48"
               aria-label="Sort classes by"
             >
               <option value="newest">Newest First</option>
@@ -295,7 +295,7 @@ export default function ClassManagement() {
 
         <button
           onClick={() => setShowModal(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-6 rounded-lg transition duration-200 flex items-center gap-2"
+          className="bg-pink-600 hover:bg-pink-700 text-white py-2 px-6 rounded-lg transition duration-200 flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -390,7 +390,7 @@ export default function ClassManagement() {
                     onClick={() => setCurrentPage(page)}
                     className={`px-3 py-2 rounded-lg transition duration-200 ${
                       currentPage === page
-                        ? 'bg-purple-600 text-white'
+                        ? 'bg-pink-600 text-white'
                         : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
                     }`}
                   >
@@ -442,7 +442,7 @@ export default function ClassManagement() {
                   type="text"
                   value={formData.className}
                   onChange={(e) => setFormData({...formData, className: e.target.value})}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   placeholder="e.g., Computer Science 101"
                   required
                 />
@@ -455,7 +455,7 @@ export default function ClassManagement() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   rows="3"
                   placeholder="Enter class description..."
                 />
@@ -472,7 +472,7 @@ export default function ClassManagement() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition duration-200 flex items-center gap-2"
+                  className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition duration-200 flex items-center gap-2"
                   disabled={loading}
                 >
                   {loading ? (
@@ -516,7 +516,7 @@ export default function ClassManagement() {
                   type="text"
                   value={formData.className}
                   onChange={(e) => setFormData({...formData, className: e.target.value})}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   placeholder="e.g., Computer Science 101"
                 />
               </div>
@@ -528,7 +528,7 @@ export default function ClassManagement() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   rows="3"
                   placeholder="Brief description of the class..."
                 />
@@ -545,7 +545,7 @@ export default function ClassManagement() {
                 <button
                   type="submit"
                   disabled={loading || !formData.className.trim()}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-pink-600 hover:bg-pink-700 text-white py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Generating...' : 'Generate Code'}
                 </button>

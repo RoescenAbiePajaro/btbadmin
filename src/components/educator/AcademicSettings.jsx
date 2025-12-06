@@ -252,7 +252,7 @@ export default function AcademicSettings() {
               }}
               className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeType === type
-                  ? 'border-purple-500 text-purple-400'
+                  ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
@@ -271,12 +271,12 @@ export default function AcademicSettings() {
             onChange={(e) => setNewItem(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
             placeholder={`Add new ${activeType} (e.g., ${activeType === 'school' ? 'College of Engineering' : 'Computer Science'})`}
-            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
           <button
             onClick={handleAddItem}
             disabled={loading || !newItem.trim()}
-            className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-pink-600 hover:bg-pink-700 text-white py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Adding...' : 'Add'}
           </button>
@@ -297,7 +297,7 @@ export default function AcademicSettings() {
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
               placeholder={`Search ${activeType}s...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

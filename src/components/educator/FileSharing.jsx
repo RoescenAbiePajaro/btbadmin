@@ -434,11 +434,11 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     <div className="space-y-6">
       {viewingFile && renderFileModal()}
       {/* Upload Section */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden transition-all duration-300 hover:border-purple-500/30">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden transition-all duration-300 hover:border-pink-500/30">
         <div className="p-6 border-b border-gray-700">
           <div className="flex items-center">
-            <div className="p-2 rounded-lg bg-purple-500/10 mr-4">
-              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-2 rounded-lg bg-pink-500/10 mr-4">
+              <svg className="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
@@ -457,13 +457,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             </label>
             <div className="flex items-center gap-4">
               <label className="flex-1 cursor-pointer">
-                <div className="flex items-center justify-center w-full px-4 py-10 border-2 border-dashed border-gray-600 rounded-lg hover:border-purple-500 transition-colors duration-200">
+                <div className="flex items-center justify-center w-full px-4 py-10 border-2 border-dashed border-gray-600 rounded-lg hover:border-pink-500 transition-colors duration-200">
                   <div className="text-center">
                     <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <p className="mt-1 text-sm text-gray-400">
-                      <span className="font-medium text-purple-400 hover:text-purple-300">Click to upload</span> or drag and drop
+                      <span className="font-medium text-pink-400 hover:text-pink-300">Click to upload</span> or drag and drop
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {selectedFile ? selectedFile.name : 'Supports .pdf, .docx, .jpg, .png (max 10MB)'}
@@ -495,7 +495,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                 <select
                   value={shareToClassCode}
                   onChange={(e) => setShareToClassCode(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none"
                 >
                   <option value="">Select a class</option>
                   {classCodes.map((classItem) => (
@@ -519,7 +519,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
               uploading || !selectedFile || !shareToClassCode || classCodes.length === 0
                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-purple-500/20'
+                : 'bg-gradient-to-r from-pink-600 to-indigo-600 text-white hover:from-pink-700 hover:to-indigo-700 shadow-lg hover:shadow-pink-500/20'
             }`}
           >
             {uploading ? (
@@ -550,7 +550,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             
             <div className="w-full md:w-auto">
               <div className="relative">
-                <div className="flex items-center bg-gray-700 rounded-lg overflow-hidden border border-gray-600 focus-within:ring-2 focus-within:ring-purple-500">
+                <div className="flex items-center bg-gray-700 rounded-lg overflow-hidden border border-gray-600 focus-within:ring-2 focus-within:ring-pink-500">
                   <div className="pl-3 pr-2 text-gray-400">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -579,7 +579,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   <select
                     value={filterClassCode}
                     onChange={(e) => handleFilterChange(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none"
                   >
                     <option value="">All Classes</option>
                     {classCodes
@@ -597,7 +597,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
               </div>
               
               {filterClassCode && (
-                <div className="mt-2 flex items-center text-sm text-purple-400">
+                <div className="mt-2 flex items-center text-sm text-pink-400">
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V19l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
@@ -631,7 +631,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                     <div className="min-w-0">
                       <h4 className="text-white font-medium truncate">{file.name}</h4>
                       <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-400">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
                           {classCodes.find(c => c.classCode === file.classCode)?.className || file.classCode}
                         </span>
                         <span>•</span>
@@ -715,7 +715,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
               <div key={index} className="p-4 hover:bg-gray-750 transition-colors duration-200">
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${
-                    activity.type === 'upload' ? 'bg-purple-500/10 text-purple-400' :
+                    activity.type === 'upload' ? 'bg-pink-500/10 text-pink-400' :
                     activity.type === 'download' ? 'bg-blue-500/10 text-blue-400' :
                     'bg-green-500/10 text-green-400'
                   }`}>

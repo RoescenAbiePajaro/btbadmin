@@ -138,7 +138,7 @@ export default function EducatorDashboard() {
               onClick={() => setActiveTab('classes')}
               className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'classes'
-                  ? 'border-purple-500 text-purple-400'
+                  ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
@@ -153,7 +153,7 @@ export default function EducatorDashboard() {
               onClick={() => setActiveTab('academic')}
               className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'academic'
-                  ? 'border-purple-500 text-purple-400'
+                  ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
@@ -168,7 +168,7 @@ export default function EducatorDashboard() {
               onClick={() => setActiveTab('students')}
               className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'students'
-                  ? 'border-purple-500 text-purple-400'
+                  ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
@@ -183,7 +183,7 @@ export default function EducatorDashboard() {
               onClick={() => setActiveTab('files')}
               className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'files'
-                  ? 'border-purple-500 text-purple-400'
+                  ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
