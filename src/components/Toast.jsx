@@ -1,3 +1,4 @@
+// src/components/Toast.jsx
 import React, { useEffect } from 'react';
 import { FiCheckCircle, FiAlertCircle, FiInfo, FiXCircle, FiX } from 'react-icons/fi';
 

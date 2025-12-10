@@ -1,4 +1,4 @@
-// backend/models/accessCodeSchema.js
+// backend/models/AccessCode.js
 const mongoose = require('mongoose');
 
 const accessCodeSchema = new mongoose.Schema({
