@@ -9,9 +9,12 @@ const User = require('./models/User');
 const Class = require('./models/Class');
 const AcademicSetting = require('./models/AcademicSetting');
 const AccessCode = require('./models/AccessCode');
+const Click = require('./models/Click');
+const FileActivity = require('./models/FileActivity');
 const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
+const analyticsRoutes = require('./routes/analytics');
 
 // Load environment variables
 dotenv.config();
@@ -44,7 +47,15 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('Connected to MongoDB'))
+.then(() => {
+  console.log('Connected to MongoDB');
+  
+  // Auto-create indexes on startup (optional)
+  if (process.env.CREATE_INDEXES === 'true') {
+    console.log('Auto-creating indexes...');
+    require('./scripts/createIndexesOnStartup')();
+  }
+})
 .catch(err => {
   console.error('MongoDB connection error:', err);
   process.exit(1);
@@ -111,6 +122,158 @@ const requireStudent = (req, res, next) => {
   }
   next();
 };
+
+// Helper function to get device type
+function getDeviceType(userAgent) {
+  if (!userAgent) return 'Unknown';
+  const ua = userAgent.toLowerCase();
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i.test(ua)) {
+    return 'Tablet';
+  }
+  if (/mobile|iphone|ipod|android|blackberry|opera mini|opera mobi|windows phone/i.test(ua)) {
+    return 'Mobile';
+  }
+  if (/macintosh|mac os/i.test(ua)) {
+    return 'Laptop';
+  }
+  return 'Desktop';
+}
+
+const getBrowserFromUA = (userAgent) => {
+  if (!userAgent) return 'Unknown';
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('chrome')) return 'Chrome';
+  if (ua.includes('firefox')) return 'Firefox';
+  if (ua.includes('safari') && !ua.includes('chrome')) return 'Safari';
+  if (ua.includes('edge')) return 'Edge';
+  if (ua.includes('opera')) return 'Opera';
+  return 'Other';
+};
+
+const getOSFromUA = (userAgent) => {
+  if (!userAgent) return 'Unknown';
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('windows')) return 'Windows';
+  if (ua.includes('mac os')) return 'macOS';
+  if (ua.includes('linux')) return 'Linux';
+  if (ua.includes('android')) return 'Android';
+  if (ua.includes('ios') || ua.includes('iphone')) return 'iOS';
+  return 'Other';
+};
+
+// Track login success
+app.post('/api/analytics/login', verifyToken, async (req, res) => {
+  try {
+    const click = new Click({
+      type: 'login',
+      location: 'login_success',
+      userId: req.user.id,
+      userRole: req.user.role,
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      deviceType: getDeviceType(req.headers['user-agent']),
+      metadata: {
+        loginMethod: 'email',
+        timestamp: new Date()
+      }
+    });
+    
+    await click.save();
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Login tracking error:', error);
+    res.status(500).json({ error: 'Tracking failed' });
+  }
+});
+
+// Track homepage download
+app.post('/api/analytics/download-homepage', async (req, res) => {
+  try {
+    const click = new Click({
+      type: 'download',
+      location: 'homepage_pc_app',
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      deviceType: getDeviceType(req.headers['user-agent']),
+      metadata: {
+        downloadType: 'pc_app',
+        source: 'homepage',
+        timestamp: new Date()
+      }
+    });
+    
+    await click.save();
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Download tracking error:', error);
+    res.status(500).json({ error: 'Tracking failed' });
+  }
+});
+
+// Track file view/download (protected)
+app.post('/api/analytics/file-activity', verifyToken, async (req, res) => {
+  try {
+    const { fileId, fileName, activityType, classCode, educatorId } = req.body;
+    
+    // Verify the student has access to this file
+    const user = await User.findById(req.user.id);
+    
+    if (user.role !== 'student') {
+      return res.status(403).json({ error: 'Only students can track file activities' });
+    }
+    
+    const activity = new FileActivity({
+      fileId,
+      fileName,
+      studentId: req.user.id,
+      studentName: user.fullName,
+      activityType,
+      classCode,
+      educatorId,
+      metadata: {
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        deviceType: getDeviceType(req.headers['user-agent']),
+        timestamp: new Date()
+      }
+    });
+    
+    await activity.save();
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('File activity tracking error:', error);
+    res.status(500).json({ error: 'Tracking failed' });
+  }
+});
+
+// Get device statistics
+app.get('/api/analytics/device-stats', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const deviceStats = await Click.aggregate([
+      {
+        $group: {
+          _id: '$deviceType',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+    
+    res.json({ success: true, data: deviceStats });
+  } catch (error) {
+    console.error('Device stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch device stats' });
+  }
+});
 
 // =====================
 // 📊 HEALTH CHECK
@@ -1133,6 +1296,7 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
 // =====================
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -1,4 +1,4 @@
-// backend/models/academicSettingSchema.js
+// backend/models/AcademicSetting.js
 const mongoose = require('mongoose');
 
 const academicSettingSchema = new mongoose.Schema({

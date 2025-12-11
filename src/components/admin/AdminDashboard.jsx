@@ -1,12 +1,11 @@
-// src/components/admin/AdminDashboard.jsx - CORRECTED VERSION
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
+  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell
 } from 'recharts';
-import { 
+import {
   FiUsers, FiBook, FiFileText, FiDownload, 
   FiTrendingUp, FiCalendar, FiFilter, FiDownload as FiDownloadIcon,
   FiLogOut, FiHome, FiBarChart2, FiActivity, FiEye, FiUpload,
@@ -19,64 +18,110 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [statistics, setStatistics] = useState(null);
-  const [userTrends, setUserTrends] = useState([]);
-  const [classTrends, setClassTrends] = useState([]);
-  const [activityTrends, setActivityTrends] = useState([]);
-  const [filter, setFilter] = useState({
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [filteredData, setFilteredData] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange, setTimeRange] = useState('30d');
+  const [error, setError] = useState(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
-    department: '',
-    role: ''
+    role: '',
+    classCode: '',
+    activityType: '',
+    deviceType: '',
+    browser: ''
   });
-  const [activeTab, setActiveTab] = useState('overview');
-  const [timeRange, setTimeRange] = useState('month');
-  const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [timeRange]);
-
+  // Fetch dashboard statistics
   const fetchDashboardData = async () => {
     try {
       setError(null);
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [
-        statsRes, 
-        userTrendsRes, 
-        classTrendsRes, 
-        activityTrendsRes
-      ] = await Promise.all([
+      const [statsRes] = await Promise.all([
         axios.get('http://localhost:5000/api/dashboard/statistics', { headers }),
-        axios.get(`http://localhost:5000/api/dashboard/user-trends?period=${timeRange}`, { headers }),
-        axios.get(`http://localhost:5000/api/dashboard/class-trends?period=${timeRange}`, { headers }),
-        axios.get(`http://localhost:5000/api/dashboard/activity-trends?period=${timeRange}`, { headers })
       ]);
 
       if (statsRes.data.success) setStatistics(statsRes.data.statistics);
-      if (userTrendsRes.data.success) setUserTrends(userTrendsRes.data.trends || []);
-      if (classTrendsRes.data.success) setClassTrends(classTrendsRes.data.creationTrends || []);
-      if (activityTrendsRes.data.success) setActivityTrends(activityTrendsRes.data.trends || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please check your connection.');
       
-      // Set empty/default data instead of fake data
+      // Fallback data
       setStatistics({
         users: { total: 0, byRole: [], active: 0 },
         classes: { total: 0, active: 0, inactive: 0, mostActive: [] },
         materials: { total: 0, byType: [], downloads: 0 },
         activities: { downloads: 0, views: 0, total: 0 }
       });
-      setUserTrends([]);
-      setClassTrends([]);
-      setActivityTrends([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Fetch analytics data
+  const fetchAnalyticsData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `http://localhost:5000/api/analytics/overview?period=${timeRange}`,
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-cache'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        setAnalyticsData(response.data.charts);
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      // Analytics might not be implemented yet, that's OK
+    }
+  };
+
+  // Fetch filtered data
+  const fetchFilteredData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'http://localhost:5000/api/analytics/filter',
+        {
+          params: {
+            type: activeTab,
+            ...filters,
+            page: 1,
+            limit: 50
+          },
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setFilteredData(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching filtered data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchAnalyticsData();
+  }, [timeRange]);
+
+  useEffect(() => {
+    if (activeTab !== 'overview' && activeTab !== 'export') {
+      fetchFilteredData();
+    }
+  }, [activeTab, filters]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -84,74 +129,33 @@ export default function AdminDashboard() {
     navigate('/login');
   };
 
-  const handleExport = async (type) => {
-    try {
-      setExporting(true);
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5000/api/dashboard/export/${type}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: filter,
-        responseType: 'blob'
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${type}_export_${Date.now()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Error exporting data. Please try again.');
-    } finally {
-      setExporting(false);
-    }
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
-  const handleFilter = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/dashboard/filter', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { ...filter, type: activeTab }
-      });
-
-      if (response.data.success) {
-        // Update the relevant tab data
-        switch(activeTab) {
-          case 'users':
-            setStatistics(prev => ({
-              ...prev,
-              filteredUsers: response.data.data
-            }));
-            break;
-          case 'classes':
-            setStatistics(prev => ({
-              ...prev,
-              filteredClasses: response.data.data
-            }));
-            break;
-          case 'activities':
-            setStatistics(prev => ({
-              ...prev,
-              filteredActivities: response.data.data
-            }));
-            break;
-        }
-      }
-    } catch (error) {
-      console.error('Filter error:', error);
-    }
+  const resetFilters = () => {
+    setFilters({
+      startDate: '',
+      endDate: '',
+      role: '',
+      classCode: '',
+      activityType: '',
+      deviceType: '',
+      browser: ''
+    });
   };
 
   const handleTimeRangeChange = (range) => {
     setTimeRange(range);
   };
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  // Chart colors
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-  if (loading) {
+  if (loading && !statistics) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center">
@@ -183,13 +187,33 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex items-center gap-4">
+              <div className="flex gap-2">
+                {['7d', '30d', '90d'].map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => handleTimeRangeChange(range)}
+                    className={`px-3 py-1 rounded-lg text-sm ${
+                      timeRange === range 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    {range === '7d' ? '7D' : range === '30d' ? '30D' : '90D'}
+                  </button>
+                ))}
+              </div>
+              
               <button
-                onClick={fetchDashboardData}
+                onClick={() => {
+                  fetchDashboardData();
+                  fetchAnalyticsData();
+                }}
                 className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition duration-200"
                 title="Refresh Data"
               >
                 <FiRefreshCw className="w-5 h-5" />
               </button>
+              
               <button
                 onClick={handleLogout}
                 className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200"
@@ -197,23 +221,6 @@ export default function AdminDashboard() {
                 <FiLogOut /> Logout
               </button>
             </div>
-          </div>
-
-          {/* Time Range Selector */}
-          <div className="mt-4 flex gap-2">
-            {['week', 'month', 'year'].map((range) => (
-              <button
-                key={range}
-                onClick={() => handleTimeRangeChange(range)}
-                className={`px-3 py-1 rounded-lg text-sm ${
-                  timeRange === range 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                {range.charAt(0).toUpperCase() + range.slice(1)}
-              </button>
-            ))}
           </div>
         </div>
       </header>
@@ -228,7 +235,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Stats Overview - REAL DATA ONLY */}
+        {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
@@ -299,66 +306,71 @@ export default function AdminDashboard() {
         </div>
 
         {/* Filter Section */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <FiFilter /> Filter & Export Data
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Start Date</label>
-              <input
-                type="date"
-                value={filter.startDate}
-                onChange={(e) => setFilter({...filter, startDate: e.target.value})}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">End Date</label>
-              <input
-                type="date"
-                value={filter.endDate}
-                onChange={(e) => setFilter({...filter, endDate: e.target.value})}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Role</label>
-              <select
-                value={filter.role}
-                onChange={(e) => setFilter({...filter, role: e.target.value})}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Roles</option>
-                <option value="student">Student</option>
-                <option value="educator">Educator</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Actions</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleFilter}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200"
-                >
-                  Apply Filter
-                </button>
-                <button
-                  onClick={() => setFilter({
-                    startDate: '',
-                    endDate: '',
-                    department: '',
-                    role: '',
-                    status: ''
-                  })}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition duration-200"
-                >
-                  Clear
-                </button>
+        <div className="mb-8">
+          <button
+            onClick={() => setFilterOpen(!filterOpen)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition duration-200 mb-4"
+          >
+            <FiFilter /> {filterOpen ? 'Hide Filters' : 'Show Filters'}
+          </button>
+          
+          {filterOpen && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={filters.startDate}
+                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={filters.endDate}
+                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">User Role</label>
+                  <select
+                    value={filters.role}
+                    onChange={(e) => handleFilterChange('role', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">All Roles</option>
+                    <option value="student">Student</option>
+                    <option value="educator">Educator</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Actions</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={fetchFilteredData}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200"
+                    >
+                      Apply Filters
+                    </button>
+                    <button
+                      onClick={resetFilters}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition duration-200"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -369,6 +381,7 @@ export default function AdminDashboard() {
               { id: 'users', label: 'Users', icon: <FiUsers /> },
               { id: 'classes', label: 'Classes', icon: <FiBook /> },
               { id: 'activities', label: 'Activities', icon: <FiActivity /> },
+              { id: 'charts', label: 'Charts', icon: <FiBarChart2 /> },
               { id: 'export', label: 'Export', icon: <FiDownloadIcon /> }
             ].map((tab) => (
               <button
@@ -390,108 +403,213 @@ export default function AdminDashboard() {
         <div className="mb-8">
           {activeTab === 'overview' && (
             <div className="space-y-8">
-              {/* User Registration Chart - REAL DATA */}
+              {/* Platform Metrics */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4">User Registration Trends</h3>
-                {userTrends.length > 0 ? (
+                <h3 className="text-lg font-bold mb-4 text-white">Platform Overview</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="p-4 bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-500/20 rounded-lg">
+                        <FiUsers className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">User Growth</p>
+                        <p className="text-xl font-bold text-white">
+                          {statistics?.users?.total || 0} Users
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-500/20 rounded-lg">
+                        <FiBook className="w-5 h-5 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">Class Engagement</p>
+                        <p className="text-xl font-bold text-white">
+                          {statistics?.classes?.active || 0} Active Classes
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/20 rounded-lg">
+                        <FiActivity className="w-5 h-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">Platform Activity</p>
+                        <p className="text-xl font-bold text-white">
+                          {statistics?.activities?.total || 0} Activities
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4 text-white">Recent Activity</h3>
+                <div className="space-y-3">
+                  {statistics?.classes?.mostActive?.slice(0, 5).map((cls, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${index < 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-400'}`}>
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium">{cls.className || `Class ${cls.classCode}`}</p>
+                          <p className="text-sm text-gray-400">{cls.classCode}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">{cls.studentCount || 0} students</p>
+                        <p className="text-sm text-gray-400">{cls.activityCount || 0} activities</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'charts' && (
+            <div className="space-y-8">
+              {/* User Role Distribution Chart */}
+              {statistics?.users?.byRole && statistics.users.byRole.length > 0 && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold mb-4 text-white">User Role Distribution</h3>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={userTrends}>
+                      <PieChart>
+                        <Pie
+                          data={statistics.users.byRole.map(role => ({
+                            name: role._id,
+                            value: role.count
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {statistics.users.byRole.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Activity Distribution Chart */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4 text-white">Activity Distribution</h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={[
+                        { name: 'Views', value: statistics?.activities?.views || 0 },
+                        { name: 'Downloads', value: statistics?.activities?.downloads || 0 }
+                      ]}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="name" stroke="#9CA3AF" />
+                      <YAxis stroke="#9CA3AF" />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      />
+                      <Bar dataKey="value" fill="#3B82F6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Line Chart Example */}
+              {analyticsData?.lineCharts?.loginTrends && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold mb-4 text-white">Login Trends</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analyticsData.lineCharts.loginTrends.data}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="_id" stroke="#9CA3AF" />
+                        <XAxis dataKey="date" stroke="#9CA3AF" />
                         <YAxis stroke="#9CA3AF" />
                         <Tooltip 
                           contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
                           labelStyle={{ color: '#9CA3AF' }}
                         />
-                        <Area 
+                        <Legend />
+                        <Line 
                           type="monotone" 
                           dataKey="total" 
-                          name="Total Users" 
+                          name="Total Logins" 
                           stroke="#3B82F6" 
-                          fill="#3B82F6" 
-                          fillOpacity={0.3} 
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          activeDot={{ r: 6 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="unique" 
+                          name="Unique Users" 
+                          stroke="#10B981" 
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Area Chart Example */}
+              {analyticsData?.areaCharts?.fileActivityTrends && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold mb-4 text-white">File Activity Trends</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={analyticsData.areaCharts.fileActivityTrends.data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="date" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                          labelStyle={{ color: '#9CA3AF' }}
+                        />
+                        <Legend />
+                        <Area 
+                          type="monotone" 
+                          dataKey="views" 
+                          name="Views" 
+                          stroke="#8B5CF6" 
+                          fill="#8B5CF6"
+                          fillOpacity={0.3}
+                          strokeWidth={2}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="downloads" 
+                          name="Downloads" 
+                          stroke="#EC4899" 
+                          fill="#EC4899"
+                          fillOpacity={0.3}
+                          strokeWidth={2}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                ) : (
-                  <div className="h-80 flex items-center justify-center">
-                    <p className="text-gray-500">No registration data available for the selected period</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Activity Distribution - REAL DATA */}
-              {statistics?.activities?.total > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                    <h3 className="text-lg font-bold mb-4">Activity Distribution</h3>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={[
-                              { name: 'Downloads', value: statistics?.activities?.downloads || 0 },
-                              { name: 'Views', value: statistics?.activities?.views || 0 }
-                            ].filter(item => item.value > 0)}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {COLORS.map((color, index) => (
-                              <Cell key={`cell-${index}`} fill={color} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                          />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Most Active Classes - REAL DATA */}
-                  {statistics?.classes?.mostActive?.length > 0 && (
-                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                      <h3 className="text-lg font-bold mb-4">Most Active Classes</h3>
-                      <div className="space-y-3">
-                        {statistics.classes.mostActive.slice(0, 5).map((cls, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition duration-200">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${index < 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-400'}`}>
-                                {index + 1}
-                              </div>
-                              <div>
-                                <p className="font-medium">{cls.className}</p>
-                                <p className="text-sm text-gray-400">{cls.classCode}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold">{cls.studentCount} students</p>
-                              <p className="text-sm text-gray-400">{cls.activityCount} activities</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* No Data Message */}
-              {(!statistics?.activities?.total || statistics.activities.total === 0) && (
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
-                  <FiActivity className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-bold mb-2">No Activity Data Yet</h3>
-                  <p className="text-gray-500">
-                    Activity data will appear here once users start using the platform.
-                  </p>
                 </div>
               )}
             </div>
@@ -499,27 +617,55 @@ export default function AdminDashboard() {
 
           {activeTab === 'users' && (
             <div className="space-y-8">
-              {/* User Role Distribution - REAL DATA */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4">User Role Distribution</h3>
-                {statistics?.users?.byRole?.length > 0 ? (
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={statistics.users.byRole}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="_id" stroke="#9CA3AF" />
-                        <YAxis stroke="#9CA3AF" />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                        />
-                        <Bar dataKey="count" name="Users" fill="#3B82F6" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                <h3 className="text-lg font-bold mb-4 text-white">User Management</h3>
+                {filteredData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-800">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Role
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Joined
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {filteredData.data.map((user, index) => (
+                          <tr key={index} className="hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {user.fullName || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {user.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                                user.role === 'educator' ? 'bg-green-500/20 text-green-400' :
+                                'bg-blue-500/20 text-blue-400'
+                              }`}>
+                                {user.role}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {new Date(user.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
-                  <div className="h-80 flex items-center justify-center">
-                    <p className="text-gray-500">No user data available</p>
-                  </div>
+                  <p className="text-gray-400">Use filters above to view user data</p>
                 )}
               </div>
             </div>
@@ -527,33 +673,59 @@ export default function AdminDashboard() {
 
           {activeTab === 'classes' && (
             <div className="space-y-8">
-              {/* Class Creation Trends - REAL DATA */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4">Class Creation Trends</h3>
-                {classTrends.length > 0 ? (
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={classTrends}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="_id" stroke="#9CA3AF" />
-                        <YAxis stroke="#9CA3AF" />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="total" 
-                          name="Classes Created" 
-                          stroke="#10B981" 
-                          strokeWidth={2} 
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                <h3 className="text-lg font-bold mb-4 text-white">Class Management</h3>
+                {filteredData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-800">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Class Code
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Class Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Educator
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Students
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {filteredData.data.map((cls, index) => (
+                          <tr key={index} className="hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {cls.classCode}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {cls.className}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {cls.educator?.fullName || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {cls.students?.length || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                cls.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                {cls.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
-                  <div className="h-80 flex items-center justify-center">
-                    <p className="text-gray-500">No class creation data available</p>
-                  </div>
+                  <p className="text-gray-400">Use filters above to view class data</p>
                 )}
               </div>
             </div>
@@ -561,27 +733,54 @@ export default function AdminDashboard() {
 
           {activeTab === 'activities' && (
             <div className="space-y-8">
-              {/* Activity Timeline - REAL DATA */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4">Activity Timeline</h3>
-                {activityTrends.length > 0 ? (
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={activityTrends}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="_id" stroke="#9CA3AF" />
-                        <YAxis stroke="#9CA3AF" />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                        />
-                        <Bar dataKey="total" name="Total Activities" fill="#8B5CF6" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                <h3 className="text-lg font-bold mb-4 text-white">Activity Logs</h3>
+                {filteredData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-800">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Activity Type
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            User
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            File/Resource
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Timestamp
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {filteredData.data.map((activity, index) => (
+                          <tr key={index} className="hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                activity.activityType === 'download' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-purple-500/20 text-purple-400'
+                              }`}>
+                                {activity.activityType}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {activity.studentName || activity.userId?.fullName || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {activity.fileName || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {new Date(activity.createdAt).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
-                  <div className="h-80 flex items-center justify-center">
-                    <p className="text-gray-500">No activity data available for the selected period</p>
-                  </div>
+                  <p className="text-gray-400">Use filters above to view activity data</p>
                 )}
               </div>
             </div>
@@ -589,58 +788,50 @@ export default function AdminDashboard() {
 
           {activeTab === 'export' && (
             <div className="space-y-8">
-              {/* Export Section */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h2 className="text-lg font-bold mb-4">Export Reports</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <button
-                    onClick={() => handleExport('users')}
-                    disabled={exporting || !statistics?.users?.total}
-                    className="bg-blue-500 hover:bg-blue-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setActiveTab('users');
+                      setTimeout(() => {
+                        alert('Export functionality would be implemented here');
+                      }, 100);
+                    }}
+                    className="bg-blue-500 hover:bg-blue-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200"
                   >
                     <FiUsers className="w-10 h-10 mb-3" />
                     <span className="font-bold">Export Users</span>
                     <span className="text-sm text-gray-300 mt-1">CSV Format</span>
-                    <span className="text-xs text-gray-400 mt-2">
-                      {statistics?.users?.total || 0} records
-                    </span>
                   </button>
                   
                   <button
-                    onClick={() => handleExport('classes')}
-                    disabled={exporting || !statistics?.classes?.total}
-                    className="bg-green-500 hover:bg-green-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setActiveTab('classes');
+                      setTimeout(() => {
+                        alert('Export functionality would be implemented here');
+                      }, 100);
+                    }}
+                    className="bg-green-500 hover:bg-green-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200"
                   >
                     <FiBook className="w-10 h-10 mb-3" />
                     <span className="font-bold">Export Classes</span>
                     <span className="text-sm text-gray-300 mt-1">CSV Format</span>
-                    <span className="text-xs text-gray-400 mt-2">
-                      {statistics?.classes?.total || 0} records
-                    </span>
                   </button>
                   
                   <button
-                    onClick={() => handleExport('activities')}
-                    disabled={exporting || !statistics?.activities?.total}
-                    className="bg-purple-500 hover:bg-purple-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setActiveTab('activities');
+                      setTimeout(() => {
+                        alert('Export functionality would be implemented here');
+                      }, 100);
+                    }}
+                    className="bg-purple-500 hover:bg-purple-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200"
                   >
                     <FiActivity className="w-10 h-10 mb-3" />
                     <span className="font-bold">Export Activities</span>
                     <span className="text-sm text-gray-300 mt-1">CSV Format</span>
-                    <span className="text-xs text-gray-400 mt-2">
-                      {statistics?.activities?.total || 0} records
-                    </span>
                   </button>
-                </div>
-                
-                <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-                  <h3 className="font-bold mb-2">Export Instructions</h3>
-                  <ul className="text-sm text-gray-400 space-y-1">
-                    <li>• Apply filters above to export specific data ranges</li>
-                    <li>• Exports include all available fields for each record</li>
-                    <li>• Files are downloaded as CSV format</li>
-                    <li>• Large exports may take a moment to process</li>
-                  </ul>
                 </div>
               </div>
             </div>

@@ -1,4 +1,3 @@
-// src/components/student/StudentFileSharing.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -6,8 +5,6 @@ const StudentFileSharing = ({ student }) => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
     if (student && student.enrolledClass) {
@@ -41,22 +38,33 @@ const StudentFileSharing = ({ student }) => {
     }
   };
 
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const handleDownloadFile = async (fileUrl, fileName) => {
+  const handleDownloadFile = async (fileUrl, fileId, fileName, educatorId) => {
     try {
-      // Direct download from Supabase public URL
-      window.open(fileUrl, '_blank');
+      const token = localStorage.getItem('token');
       
-      // Log download activity
-      logFileActivity('download', fileName);
+      // Track download activity
+      try {
+        await axios.post('http://localhost:5000/api/analytics/file-activity', {
+          fileId,
+          fileName,
+          activityType: 'download',
+          classCode: student?.enrolledClass?.classCode,
+          educatorId
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}` 
+          }
+        });
+      } catch (trackError) {
+        console.error('Error tracking download:', trackError);
+        // Continue with download even if tracking fails
+      }
+      
+      // Direct download from Supabase
+      window.open(fileUrl, '_blank');
     } catch (error) {
       console.error('Error downloading file:', error);
+      alert('Error downloading file. Please try again.');
     }
   };
 
@@ -81,48 +89,51 @@ const StudentFileSharing = ({ student }) => {
   };
 
   // Handle viewing file in browser
-  const handleViewFile = (fileUrl, fileName) => {
+  const handleViewFile = async (fileUrl, fileId, fileName, educatorId) => {
     if (!canViewInBrowser(fileName)) {
       alert('This file type cannot be viewed in the browser. Please download it instead.');
       return;
     }
     
-    // For PDFs and images, we can open them directly
-    const extension = fileName.split('.').pop().toLowerCase();
-    const isPdf = extension === 'pdf';
-    const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(extension);
-    
-    if (isPdf || isImage) {
-      window.open(fileUrl, '_blank');
-    } else {
-      // For other viewable files, we'll use Google Docs Viewer
-      const googleDocsViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-      window.open(googleDocsViewerUrl, '_blank');
-    }
-    
-    // Log the view activity
-    logFileActivity('view', fileName);
-  };
-  
-  // Log file activity (view or download)
-  const logFileActivity = async (action, fileName) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
-        'http://localhost:5000/api/files/log-activity',
-        { 
-          fileId: fileName, 
-          studentId: student?._id, 
-          studentName: student?.fullName,
-          action: action
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      
+      // Track view activity
+      try {
+        await axios.post('http://localhost:5000/api/analytics/file-activity', {
+          fileId,
+          fileName,
+          activityType: 'view',
+          classCode: student?.enrolledClass?.classCode,
+          educatorId
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}` 
+          }
+        });
+      } catch (trackError) {
+        console.error('Error tracking view:', trackError);
+        // Continue with view even if tracking fails
+      }
+      
+      // For PDFs and images, we can open them directly
+      const extension = fileName.split('.').pop().toLowerCase();
+      const isPdf = extension === 'pdf';
+      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(extension);
+      
+      if (isPdf || isImage) {
+        window.open(fileUrl, '_blank');
+      } else {
+        // For other viewable files, we'll use Google Docs Viewer
+        const googleDocsViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+        window.open(googleDocsViewerUrl, '_blank');
+      }
     } catch (error) {
-      console.error('Error logging file activity:', error);
+      console.error('Error viewing file:', error);
+      alert('Error viewing file. Please try downloading it instead.');
     }
   };
-
+  
   // Filter learning materials (files without type 'assignment')
   const learningMaterials = files.filter(file => file.type !== 'assignment');
 
@@ -173,7 +184,7 @@ const StudentFileSharing = ({ student }) => {
             learningMaterials.map((material) => (
               <div
                 key={material._id}
-                className="bg-gray-900 border border-gray-700 rounded-lg p-4"
+                className="bg-gray-900 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition duration-200"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -185,6 +196,7 @@ const StudentFileSharing = ({ student }) => {
                       </div>
                       <div>
                         <h4 className="text-white font-medium">{material.assignmentTitle || 'Learning Material'}</h4>
+                        <p className="text-gray-300 text-sm">{material.originalName}</p>
                         {material.assignmentDescription && (
                           <p className="text-gray-400 text-sm mt-1">{material.assignmentDescription}</p>
                         )}
@@ -213,11 +225,11 @@ const StudentFileSharing = ({ student }) => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 ml-4">
+                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                     {canViewInBrowser(material.originalName) && (
                       <button
-                        onClick={() => handleViewFile(material.url, material.originalName)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center"
+                        onClick={() => handleViewFile(material.url, material._id, material.originalName, material.uploadedBy)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center whitespace-nowrap"
                         title="View file"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -228,8 +240,8 @@ const StudentFileSharing = ({ student }) => {
                       </button>
                     )}
                     <button
-                      onClick={() => handleDownloadFile(material.url, material.originalName)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center"
+                      onClick={() => handleDownloadFile(material.url, material._id, material.originalName, material.uploadedBy)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center whitespace-nowrap"
                       title="Download file"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,7 +264,6 @@ const StudentFileSharing = ({ student }) => {
           )}
         </div>
       </div>
-
     </div>
   );
 };

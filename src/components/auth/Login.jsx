@@ -58,6 +58,13 @@ export default function Login() {
         localStorage.setItem('token', response.data.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
         
+        // Track successful login
+        await axios.post('http://localhost:5000/api/analytics/login', {}, {
+          headers: {
+            Authorization: `Bearer ${response.data.data.token}` 
+          }
+        });
+        
         // Clear fresh registration flag if it exists
         localStorage.removeItem('freshRegistration');
         

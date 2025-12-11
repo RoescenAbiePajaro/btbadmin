@@ -44,12 +44,12 @@ export default function HomePage() {
     setIsDownloadLoading(true);
     
     try {
-      await trackClick("download", "home_page");
+      // Track download
+      await axios.post('http://localhost:5000/api/analytics/download-homepage');
     } catch (error) {
       console.error("Error tracking download:", error);
     } finally {
       setIsDownloadLoading(false);
-      // Navigate to the URL in the same tab
       window.location.href = url;
     }
   };
