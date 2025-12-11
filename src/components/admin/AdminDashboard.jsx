@@ -1,11 +1,10 @@
-// src/components/admin/AdminDashboard.jsx - COMPLETE VERSION
-import React, { useState, useEffect, useCallback } from 'react';
+// src/components/admin/AdminDashboard.jsx - CORRECTED VERSION
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, ComposedChart,
-  ScatterChart, Scatter, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
+  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { 
   FiUsers, FiBook, FiFileText, FiDownload, 
@@ -13,9 +12,8 @@ import {
   FiLogOut, FiHome, FiBarChart2, FiActivity, FiEye, FiUpload,
   FiClock, FiGlobe, FiMonitor, FiUserCheck, FiDatabase,
   FiAlertCircle, FiCheckCircle, FiRefreshCw, FiSearch,
-  FiChevronUp, FiChevronDown, FiMoreVertical, FiSettings
+  FiChevronUp, FiChevronDown, FiMoreVertical
 } from 'react-icons/fi';
-import { motion } from 'framer-motion';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -24,21 +22,24 @@ export default function AdminDashboard() {
   const [userTrends, setUserTrends] = useState([]);
   const [classTrends, setClassTrends] = useState([]);
   const [activityTrends, setActivityTrends] = useState([]);
-  const [siteAnalytics, setSiteAnalytics] = useState(null);
-  const [realtimeData, setRealtimeData] = useState(null);
   const [filter, setFilter] = useState({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: '',
+    endDate: '',
     department: '',
-    role: '',
-    status: ''
+    role: ''
   });
   const [activeTab, setActiveTab] = useState('overview');
   const [timeRange, setTimeRange] = useState('month');
   const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState(null);
 
-  const fetchDashboardData = useCallback(async () => {
+  useEffect(() => {
+    fetchDashboardData();
+  }, [timeRange]);
+
+  const fetchDashboardData = async () => {
     try {
+      setError(null);
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
@@ -46,37 +47,36 @@ export default function AdminDashboard() {
         statsRes, 
         userTrendsRes, 
         classTrendsRes, 
-        activityTrendsRes,
-        siteAnalyticsRes,
-        realtimeRes
+        activityTrendsRes
       ] = await Promise.all([
         axios.get('http://localhost:5000/api/dashboard/statistics', { headers }),
         axios.get(`http://localhost:5000/api/dashboard/user-trends?period=${timeRange}`, { headers }),
         axios.get(`http://localhost:5000/api/dashboard/class-trends?period=${timeRange}`, { headers }),
-        axios.get(`http://localhost:5000/api/dashboard/activity-trends?period=${timeRange}`, { headers }),
-        axios.get(`http://localhost:5000/api/dashboard/site-analytics?period=${timeRange}`, { headers }),
-        axios.get('http://localhost:5000/api/dashboard/realtime', { headers })
+        axios.get(`http://localhost:5000/api/dashboard/activity-trends?period=${timeRange}`, { headers })
       ]);
 
       if (statsRes.data.success) setStatistics(statsRes.data.statistics);
-      if (userTrendsRes.data.success) setUserTrends(userTrendsRes.data.trends);
-      if (classTrendsRes.data.success) setClassTrends(classTrendsRes.data.creationTrends);
-      if (activityTrendsRes.data.success) setActivityTrends(activityTrendsRes.data.trends);
-      if (siteAnalyticsRes.data.success) setSiteAnalytics(siteAnalyticsRes.data);
-      if (realtimeRes.data.success) setRealtimeData(realtimeRes.data.realtime);
+      if (userTrendsRes.data.success) setUserTrends(userTrendsRes.data.trends || []);
+      if (classTrendsRes.data.success) setClassTrends(classTrendsRes.data.creationTrends || []);
+      if (activityTrendsRes.data.success) setActivityTrends(activityTrendsRes.data.trends || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please check your connection.');
+      
+      // Set empty/default data instead of fake data
+      setStatistics({
+        users: { total: 0, byRole: [], active: 0 },
+        classes: { total: 0, active: 0, inactive: 0, mostActive: [] },
+        materials: { total: 0, byType: [], downloads: 0 },
+        activities: { downloads: 0, views: 0, submissions: 0, total: 0 }
+      });
+      setUserTrends([]);
+      setClassTrends([]);
+      setActivityTrends([]);
     } finally {
       setLoading(false);
     }
-  }, [timeRange]);
-
-  useEffect(() => {
-    fetchDashboardData();
-    // Refresh data every 60 seconds
-    const interval = setInterval(fetchDashboardData, 60000);
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -149,34 +149,7 @@ export default function AdminDashboard() {
     setTimeRange(range);
   };
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
-  const StatCard = ({ title, value, icon, color, change, subtitle }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-gray-400 text-sm mb-2">{title}</p>
-          <p className="text-3xl font-bold" style={{ color }}>
-            {value}
-          </p>
-          {subtitle && <p className="text-gray-500 text-sm mt-1">{subtitle}</p>}
-          {change && (
-            <div className={`flex items-center gap-1 mt-2 text-sm ${change > 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {change > 0 ? <FiChevronUp /> : <FiChevronDown />}
-              {Math.abs(change)}%
-            </div>
-          )}
-        </div>
-        <div className={`p-3 rounded-full ${color} bg-opacity-10`}>
-          {icon}
-        </div>
-      </div>
-    </motion.div>
-  );
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   if (loading) {
     return (
@@ -207,9 +180,6 @@ export default function AdminDashboard() {
                 <FiDatabase className="text-blue-500" />
                 Admin Dashboard
               </h1>
-              <div className="text-sm text-gray-500">
-                Last updated: {new Date().toLocaleTimeString()}
-              </div>
             </div>
             
             <div className="flex items-center gap-4">
@@ -231,7 +201,7 @@ export default function AdminDashboard() {
 
           {/* Time Range Selector */}
           <div className="mt-4 flex gap-2">
-            {['day', 'week', 'month', 'year'].map((range) => (
+            {['week', 'month', 'year'].map((range) => (
               <button
                 key={range}
                 onClick={() => handleTimeRangeChange(range)}
@@ -249,43 +219,84 @@ export default function AdminDashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        {/* Stats Overview */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <FiAlertCircle className="text-red-400" />
+              <p className="text-red-300">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Overview - REAL DATA ONLY */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Users"
-            value={statistics?.users?.total || 0}
-            icon={<FiUsers className="w-6 h-6 text-blue-500" />}
-            color="#3B82F6"
-            change={12.5}
-            subtitle={`${statistics?.users?.active || 0} active`}
-          />
-          
-          <StatCard
-            title="Active Classes"
-            value={statistics?.classes?.active || 0}
-            icon={<FiBook className="w-6 h-6 text-green-500" />}
-            color="#10B981"
-            change={8.3}
-            subtitle={`${statistics?.classes?.total || 0} total`}
-          />
-          
-          <StatCard
-            title="Learning Materials"
-            value={statistics?.materials?.total || 0}
-            icon={<FiFileText className="w-6 h-6 text-yellow-500" />}
-            color="#F59E0B"
-            change={15.2}
-            subtitle={`${statistics?.materials?.downloads || 0} downloads`}
-          />
-          
-          <StatCard
-            title="Site Visits"
-            value={statistics?.analytics?.totalVisits || 0}
-            icon={<FiEye className="w-6 h-6 text-purple-500" />}
-            color="#8B5CF6"
-            change={5.7}
-            subtitle={`${statistics?.analytics?.uniqueVisitors || 0} unique`}
-          />
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Total Users</p>
+                <p className="text-3xl font-bold mt-2">
+                  {statistics?.users?.total || 0}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {statistics?.users?.byRole?.map(role => (
+                    <span key={role._id} className="text-xs px-2 py-1 bg-gray-800 rounded">
+                      {role._id}: {role.count}
+                    </span>
+                  )) || (
+                    <span className="text-gray-500 text-sm">No role data</span>
+                  )}
+                </div>
+              </div>
+              <FiUsers className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Active Classes</p>
+                <p className="text-3xl font-bold mt-2">
+                  {statistics?.classes?.active || 0}
+                </p>
+                <p className="text-gray-400 text-sm mt-2">
+                  Total: {statistics?.classes?.total || 0}
+                </p>
+              </div>
+              <FiBook className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Learning Materials</p>
+                <p className="text-3xl font-bold mt-2">
+                  {statistics?.materials?.total || 0}
+                </p>
+                <p className="text-gray-400 text-sm mt-2">
+                  Downloads: {statistics?.materials?.downloads || 0}
+                </p>
+              </div>
+              <FiFileText className="w-8 h-8 text-yellow-500" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Total Activities</p>
+                <p className="text-3xl font-bold mt-2">
+                  {statistics?.activities?.total || 0}
+                </p>
+                <div className="text-gray-400 text-sm mt-2 space-y-1">
+                  <div>Views: {statistics?.activities?.views || 0}</div>
+                  <div>Downloads: {statistics?.activities?.downloads || 0}</div>
+                  <div>Submissions: {statistics?.activities?.submissions || 0}</div>
+                </div>
+              </div>
+              <FiActivity className="w-8 h-8 text-purple-500" />
+            </div>
+          </div>
         </div>
 
         {/* Filter Section */}
@@ -326,45 +337,28 @@ export default function AdminDashboard() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Status</label>
-              <select
-                value={filter.status}
-                onChange={(e) => setFilter({...filter, status: e.target.value})}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+              <label className="block text-sm text-gray-400 mb-2">Actions</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleFilter}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200"
+                >
+                  Apply Filter
+                </button>
+                <button
+                  onClick={() => setFilter({
+                    startDate: '',
+                    endDate: '',
+                    department: '',
+                    role: '',
+                    status: ''
+                  })}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition duration-200"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={handleFilter}
-              className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200"
-            >
-              <FiSearch /> Apply Filter
-            </button>
-            <button
-              onClick={() => setFilter({
-                startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0],
-                department: '',
-                role: '',
-                status: ''
-              })}
-              className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition duration-200"
-            >
-              Clear Filters
-            </button>
-            <div className="flex-1"></div>
-            <button
-              onClick={() => handleExport('users')}
-              disabled={exporting}
-              className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200 disabled:opacity-50"
-            >
-              <FiDownloadIcon /> {exporting ? 'Exporting...' : 'Export CSV'}
-            </button>
           </div>
         </div>
 
@@ -376,8 +370,7 @@ export default function AdminDashboard() {
               { id: 'users', label: 'Users', icon: <FiUsers /> },
               { id: 'classes', label: 'Classes', icon: <FiBook /> },
               { id: 'activities', label: 'Activities', icon: <FiActivity /> },
-              { id: 'analytics', label: 'Analytics', icon: <FiTrendingUp /> },
-              { id: 'realtime', label: 'Real-time', icon: <FiClock /> }
+              { id: 'export', label: 'Export', icon: <FiDownloadIcon /> }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -398,121 +391,10 @@ export default function AdminDashboard() {
         <div className="mb-8">
           {activeTab === 'overview' && (
             <div className="space-y-8">
-              {/* User Registration Chart */}
+              {/* User Registration Chart - REAL DATA */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4">User Registration Trends</h3>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={userTrends}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                      <XAxis dataKey="_id" stroke="#9CA3AF" />
-                      <YAxis stroke="#9CA3AF" />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                        labelStyle={{ color: '#9CA3AF' }}
-                      />
-                      <Legend />
-                      <Bar dataKey="total" name="Total Registrations" fill="#3B82F6" />
-                      <Line type="monotone" dataKey="total" name="Trend" stroke="#10B981" strokeWidth={2} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Activity Distribution */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Activity Distribution</h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Downloads', value: statistics?.activities?.downloads || 0 },
-                            { name: 'Views', value: statistics?.activities?.views || 0 },
-                            { name: 'Submissions', value: statistics?.activities?.submissions || 0 }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {COLORS.map((color, index) => (
-                            <Cell key={`cell-${index}`} fill={color} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                        />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Most Active Classes */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Most Active Classes</h3>
-                  <div className="space-y-3">
-                    {statistics?.classes?.mostActive?.slice(0, 5).map((cls, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition duration-200">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${index < 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-400'}`}>
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="font-medium">{cls.className}</p>
-                            <p className="text-sm text-gray-400">{cls.classCode}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold">{cls.studentCount} students</p>
-                          <p className="text-sm text-gray-400">{cls.activityCount} activities</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'users' && (
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* User Role Distribution */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">User Role Distribution</h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart data={statistics?.users?.byRole?.map(role => ({
-                        role: role._id.charAt(0).toUpperCase() + role._id.slice(1),
-                        count: role.count,
-                        fullMark: Math.max(...statistics?.users?.byRole?.map(r => r.count) || [0])
-                      })) || []}>
-                        <PolarGrid />
-                        <PolarAngleAxis dataKey="role" />
-                        <PolarRadiusAxis />
-                        <Radar 
-                          name="Users" 
-                          dataKey="count" 
-                          stroke="#8884d8" 
-                          fill="#8884d8" 
-                          fillOpacity={0.6} 
-                        />
-                        <Tooltip />
-                        <Legend />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* User Growth */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">User Growth Over Time</h3>
+                {userTrends.length > 0 ? (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={userTrends}>
@@ -521,6 +403,7 @@ export default function AdminDashboard() {
                         <YAxis stroke="#9CA3AF" />
                         <Tooltip 
                           contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                          labelStyle={{ color: '#9CA3AF' }}
                         />
                         <Area 
                           type="monotone" 
@@ -533,108 +416,126 @@ export default function AdminDashboard() {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
+                ) : (
+                  <div className="h-80 flex items-center justify-center">
+                    <p className="text-gray-500">No registration data available for the selected period</p>
+                  </div>
+                )}
               </div>
 
-              {/* User Details Table */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4">User Details</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-800">
-                        <th className="text-left py-3 px-4 text-gray-400">Name</th>
-                        <th className="text-left py-3 px-4 text-gray-400">Email</th>
-                        <th className="text-left py-3 px-4 text-gray-400">Role</th>
-                        <th className="text-left py-3 px-4 text-gray-400">Status</th>
-                        <th className="text-left py-3 px-4 text-gray-400">Joined</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* Sample data - replace with actual data */}
-                      <tr className="border-b border-gray-800 hover:bg-gray-800">
-                        <td className="py-3 px-4">John Doe</td>
-                        <td className="py-3 px-4">john@example.com</td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
-                            Student
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                            Active
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">2024-01-15</td>
-                      </tr>
-                    </tbody>
-                  </table>
+              {/* Activity Distribution - REAL DATA */}
+              {statistics?.activities?.total > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                    <h3 className="text-lg font-bold mb-4">Activity Distribution</h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Downloads', value: statistics?.activities?.downloads || 0 },
+                              { name: 'Views', value: statistics?.activities?.views || 0 },
+                              { name: 'Submissions', value: statistics?.activities?.submissions || 0 }
+                            ].filter(item => item.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {COLORS.map((color, index) => (
+                              <Cell key={`cell-${index}`} fill={color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                          />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Most Active Classes - REAL DATA */}
+                  {statistics?.classes?.mostActive?.length > 0 && (
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                      <h3 className="text-lg font-bold mb-4">Most Active Classes</h3>
+                      <div className="space-y-3">
+                        {statistics.classes.mostActive.slice(0, 5).map((cls, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition duration-200">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${index < 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-400'}`}>
+                                {index + 1}
+                              </div>
+                              <div>
+                                <p className="font-medium">{cls.className}</p>
+                                <p className="text-sm text-gray-400">{cls.classCode}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold">{cls.studentCount} students</p>
+                              <p className="text-sm text-gray-400">{cls.activityCount} activities</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* No Data Message */}
+              {(!statistics?.activities?.total || statistics.activities.total === 0) && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
+                  <FiActivity className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold mb-2">No Activity Data Yet</h3>
+                  <p className="text-gray-500">
+                    Activity data will appear here once users start using the platform.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
-          {activeTab === 'classes' && (
+          {activeTab === 'users' && (
             <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Class Creation Trends */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Class Creation Trends</h3>
+              {/* User Role Distribution - REAL DATA */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">User Role Distribution</h3>
+                {statistics?.users?.byRole?.length > 0 ? (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={classTrends}>
+                      <BarChart data={statistics.users.byRole}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                         <XAxis dataKey="_id" stroke="#9CA3AF" />
                         <YAxis stroke="#9CA3AF" />
                         <Tooltip 
                           contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
                         />
-                        <Bar dataKey="total" name="Classes Created" fill="#10B981" />
+                        <Bar dataKey="count" name="Users" fill="#3B82F6" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
-
-                {/* Class Status */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Class Status Overview</h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Active', value: statistics?.classes?.active || 0 },
-                            { name: 'Inactive', value: statistics?.classes?.inactive || 0 }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          <Cell fill="#10B981" />
-                          <Cell fill="#EF4444" />
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                ) : (
+                  <div className="h-80 flex items-center justify-center">
+                    <p className="text-gray-500">No user data available</p>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
 
-          {activeTab === 'activities' && (
+          {activeTab === 'classes' && (
             <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Activity Timeline */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Activity Timeline</h3>
+              {/* Class Creation Trends - REAL DATA */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">Class Creation Trends</h3>
+                {classTrends.length > 0 ? (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={activityTrends}>
+                      <LineChart data={classTrends}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                         <XAxis dataKey="_id" stroke="#9CA3AF" />
                         <YAxis stroke="#9CA3AF" />
@@ -644,250 +545,129 @@ export default function AdminDashboard() {
                         <Line 
                           type="monotone" 
                           dataKey="total" 
-                          name="Total Activities" 
-                          stroke="#8B5CF6" 
+                          name="Classes Created" 
+                          stroke="#10B981" 
                           strokeWidth={2} 
                         />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
-
-                {/* Activity Heatmap */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Activity by Hour</h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis 
-                          type="number" 
-                          dataKey="hour" 
-                          name="Hour" 
-                          domain={[0, 23]} 
-                          stroke="#9CA3AF"
-                        />
-                        <YAxis 
-                          type="number" 
-                          dataKey="count" 
-                          name="Activities" 
-                          stroke="#9CA3AF"
-                        />
-                        <Tooltip 
-                          cursor={{ strokeDasharray: '3 3' }}
-                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                        />
-                        <Scatter name="Activities" data={[]} fill="#F59E0B" />
-                      </ScatterChart>
-                    </ResponsiveContainer>
+                ) : (
+                  <div className="h-80 flex items-center justify-center">
+                    <p className="text-gray-500">No class creation data available</p>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
 
-          {activeTab === 'analytics' && siteAnalytics && (
+          {activeTab === 'activities' && (
             <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Engagement Metrics */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Engagement Metrics</h3>
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Avg. Session Duration', value: siteAnalytics.engagement.averageSessionDuration, icon: <FiClock /> },
-                      { label: 'Pages per Session', value: siteAnalytics.engagement.pagesPerSession, icon: <FiFileText /> },
-                      { label: 'Bounce Rate', value: siteAnalytics.engagement.bounceRate, icon: <FiTrendingUp /> },
-                      { label: 'New Users', value: siteAnalytics.engagement.newUsers, icon: <FiUsers /> }
-                    ].map((metric, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-700 rounded-lg">
-                            {metric.icon}
-                          </div>
-                          <span className="text-gray-300">{metric.label}</span>
-                        </div>
-                        <span className="font-bold">{metric.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Device Distribution */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">Device Distribution</h3>
+              {/* Activity Timeline - REAL DATA */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">Activity Timeline</h3>
+                {activityTrends.length > 0 ? (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={siteAnalytics.devices}>
+                      <BarChart data={activityTrends}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="device" stroke="#9CA3AF" />
+                        <XAxis dataKey="_id" stroke="#9CA3AF" />
                         <YAxis stroke="#9CA3AF" />
                         <Tooltip 
                           contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
                         />
-                        <Bar dataKey="percentage" name="Percentage" fill="#3B82F6" />
+                        <Bar dataKey="total" name="Total Activities" fill="#8B5CF6" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
+                ) : (
+                  <div className="h-80 flex items-center justify-center">
+                    <p className="text-gray-500">No activity data available for the selected period</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {activeTab === 'realtime' && realtimeData && (
+          {activeTab === 'export' && (
             <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Today's Stats */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <FiCalendar /> Today's Activity
-                  </h3>
-                  <div className="space-y-3">
-                    {Object.entries(realtimeData.todaysStats).map(([key, value]) => (
-                      <div key={key} className="flex justify-between items-center p-2">
-                        <span className="text-gray-400 capitalize">
-                          {key.replace(/([A-Z])/g, ' $1').trim()}:
-                        </span>
-                        <span className="font-bold">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Growth Stats */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <FiTrendingUp /> Growth vs Yesterday
-                  </h3>
-                  <div className="space-y-3">
-                    {Object.entries(realtimeData.growthStats).map(([key, value]) => (
-                      <div key={key} className="flex justify-between items-center p-2">
-                        <span className="text-gray-400 capitalize">{key}:</span>
-                        <span className={`font-bold ${parseFloat(value) > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {value}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* System Status */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <FiDatabase /> System Status
-                  </h3>
-                  <div className="space-y-3">
-                    {Object.entries(realtimeData.systemStatus).map(([key, value]) => (
-                      <div key={key} className="flex justify-between items-center p-2">
-                        <span className="text-gray-400 capitalize">{key}:</span>
-                        <span className={`font-bold ${
-                          value === 'online' || value === '99.9%' ? 'text-green-500' : 'text-yellow-500'
-                        }`}>
-                          {value}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Recent Activities */}
+              {/* Export Section */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4">Recent Activities (Last Hour)</h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {realtimeData.recentActivities.map((activity, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded ${
-                          activity.activityType === 'download' ? 'bg-blue-500/20' :
-                          activity.activityType === 'view' ? 'bg-green-500/20' :
-                          'bg-yellow-500/20'
-                        }`}>
-                          {activity.activityType === 'download' ? <FiDownload /> :
-                           activity.activityType === 'view' ? <FiEye /> :
-                           <FiUpload />}
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {activity.studentId?.fullName || 'Unknown User'}
-                          </p>
-                          <p className="text-sm text-gray-400">
-                            {activity.activityType} • {activity.fileId?.name || 'File'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-400">
-                          {new Date(activity.createdAt).toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                <h2 className="text-lg font-bold mb-4">Export Reports</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={() => handleExport('users')}
+                    disabled={exporting || !statistics?.users?.total}
+                    className="bg-blue-500 hover:bg-blue-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FiUsers className="w-10 h-10 mb-3" />
+                    <span className="font-bold">Export Users</span>
+                    <span className="text-sm text-gray-300 mt-1">CSV Format</span>
+                    <span className="text-xs text-gray-400 mt-2">
+                      {statistics?.users?.total || 0} records
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleExport('classes')}
+                    disabled={exporting || !statistics?.classes?.total}
+                    className="bg-green-500 hover:bg-green-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FiBook className="w-10 h-10 mb-3" />
+                    <span className="font-bold">Export Classes</span>
+                    <span className="text-sm text-gray-300 mt-1">CSV Format</span>
+                    <span className="text-xs text-gray-400 mt-2">
+                      {statistics?.classes?.total || 0} records
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleExport('activities')}
+                    disabled={exporting || !statistics?.activities?.total}
+                    className="bg-purple-500 hover:bg-purple-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FiActivity className="w-10 h-10 mb-3" />
+                    <span className="font-bold">Export Activities</span>
+                    <span className="text-sm text-gray-300 mt-1">CSV Format</span>
+                    <span className="text-xs text-gray-400 mt-2">
+                      {statistics?.activities?.total || 0} records
+                    </span>
+                  </button>
+                </div>
+                
+                <div className="mt-6 p-4 bg-gray-800 rounded-lg">
+                  <h3 className="font-bold mb-2">Export Instructions</h3>
+                  <ul className="text-sm text-gray-400 space-y-1">
+                    <li>• Apply filters above to export specific data ranges</li>
+                    <li>• Exports include all available fields for each record</li>
+                    <li>• Files are downloaded as CSV format</li>
+                    <li>• Large exports may take a moment to process</li>
+                  </ul>
                 </div>
               </div>
             </div>
           )}
-        </div>
-
-        {/* Export Section */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
-          <h2 className="text-lg font-bold mb-4">Export Reports</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <button
-              onClick={() => handleExport('users')}
-              disabled={exporting}
-              className="bg-blue-500 hover:bg-blue-600 p-4 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50"
-            >
-              <FiUsers className="w-8 h-8 mb-2" />
-              <span>Export Users</span>
-              <span className="text-sm text-gray-300">CSV Format</span>
-            </button>
-            
-            <button
-              onClick={() => handleExport('classes')}
-              disabled={exporting}
-              className="bg-green-500 hover:bg-green-600 p-4 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50"
-            >
-              <FiBook className="w-8 h-8 mb-2" />
-              <span>Export Classes</span>
-              <span className="text-sm text-gray-300">CSV Format</span>
-            </button>
-            
-            <button
-              onClick={() => handleExport('activities')}
-              disabled={exporting}
-              className="bg-purple-500 hover:bg-purple-600 p-4 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50"
-            >
-              <FiActivity className="w-8 h-8 mb-2" />
-              <span>Export Activities</span>
-              <span className="text-sm text-gray-300">CSV Format</span>
-            </button>
-            
-            <button
-              onClick={() => handleExport('files')}
-              disabled={exporting}
-              className="bg-yellow-500 hover:bg-yellow-600 p-4 rounded-lg flex flex-col items-center justify-center transition duration-200 disabled:opacity-50"
-            >
-              <FiFileText className="w-8 h-8 mb-2" />
-              <span>Export Files</span>
-              <span className="text-sm text-gray-300">CSV Format</span>
-            </button>
-          </div>
         </div>
 
         {/* Footer Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-500">
           <div className="text-center">
-            Data last updated: {new Date().toLocaleString()}
+            <div className="flex items-center justify-center gap-2">
+              <FiDatabase className="w-4 h-4" />
+              <span>Data last updated: {new Date().toLocaleTimeString()}</span>
+            </div>
           </div>
           <div className="text-center">
-            Total records processed: {
-              (statistics?.users?.total || 0) + 
-              (statistics?.classes?.total || 0) + 
-              (statistics?.activities?.total || 0)
-            }
+            <div className="flex items-center justify-center gap-2">
+              <FiUserCheck className="w-4 h-4" />
+              <span>Total records: {statistics?.users?.total || 0} users</span>
+            </div>
           </div>
           <div className="text-center">
-            System uptime: {realtimeData?.systemStatus?.uptime || '99.9%'}
+            <div className="flex items-center justify-center gap-2">
+              <FiBook className="w-4 h-4" />
+              <span>Active classes: {statistics?.classes?.active || 0}</span>
+            </div>
           </div>
         </div>
       </div>

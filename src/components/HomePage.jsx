@@ -249,10 +249,6 @@ export default function HomePage() {
             Beyond The Brush
           </h2>
 
-          <p className="text-gray-300 text-sm md:text-base mb-8">
-            Digital painting platform with AI-powered tools for educators and students
-          </p>
-
           <div className="flex flex-col space-y-4">
             <button
               className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold text-base sm:text-lg transition duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -310,9 +306,6 @@ export default function HomePage() {
                   </svg>
                   Admin Registration
                 </button>
-                <p className="text-gray-400 text-xs mt-2 text-center">
-                  (No access code required for admins)
-                </p>
               </div>
             </div>
           </div>
