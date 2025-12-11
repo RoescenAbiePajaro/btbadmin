@@ -68,7 +68,7 @@ export default function AdminDashboard() {
         users: { total: 0, byRole: [], active: 0 },
         classes: { total: 0, active: 0, inactive: 0, mostActive: [] },
         materials: { total: 0, byType: [], downloads: 0 },
-        activities: { downloads: 0, views: 0, submissions: 0, total: 0 }
+        activities: { downloads: 0, views: 0, total: 0 }
       });
       setUserTrends([]);
       setClassTrends([]);
@@ -291,7 +291,6 @@ export default function AdminDashboard() {
                 <div className="text-gray-400 text-sm mt-2 space-y-1">
                   <div>Views: {statistics?.activities?.views || 0}</div>
                   <div>Downloads: {statistics?.activities?.downloads || 0}</div>
-                  <div>Submissions: {statistics?.activities?.submissions || 0}</div>
                 </div>
               </div>
               <FiActivity className="w-8 h-8 text-purple-500" />
@@ -434,8 +433,7 @@ export default function AdminDashboard() {
                           <Pie
                             data={[
                               { name: 'Downloads', value: statistics?.activities?.downloads || 0 },
-                              { name: 'Views', value: statistics?.activities?.views || 0 },
-                              { name: 'Submissions', value: statistics?.activities?.submissions || 0 }
+                              { name: 'Views', value: statistics?.activities?.views || 0 }
                             ].filter(item => item.value > 0)}
                             cx="50%"
                             cy="50%"

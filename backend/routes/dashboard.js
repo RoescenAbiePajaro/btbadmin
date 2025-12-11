@@ -64,10 +64,9 @@ router.get('/statistics', requireAdmin, async (req, res) => {
       }
     ]);
 
-    // Total downloads
+    // Total activity counts
     const totalDownloads = await Activity.countDocuments({ activityType: 'download' });
     const totalViews = await Activity.countDocuments({ activityType: 'view' });
-    const totalSubmissions = await Activity.countDocuments({ activityType: 'submission' });
 
     // User registration over time (last 30 days)
     const thirtyDaysAgo = new Date();
@@ -228,8 +227,7 @@ router.get('/statistics', requireAdmin, async (req, res) => {
         activities: {
           downloads: totalDownloads,
           views: totalViews,
-          submissions: totalSubmissions,
-          total: totalDownloads + totalViews + totalSubmissions
+          total: totalDownloads + totalViews
         },
         analytics: siteAnalytics,
         growth: growthMetrics
@@ -674,15 +672,6 @@ router.get('/activity-trends', requireAdmin, async (req, res) => {
                 input: "$activityTypes",
                 as: "type",
                 cond: { $eq: ["$$type", "view"] }
-              }
-            }
-          },
-          submissionCount: {
-            $size: {
-              $filter: {
-                input: "$activityTypes",
-                as: "type",
-                cond: { $eq: ["$$type", "submission"] }
               }
             }
           }

@@ -15,7 +15,7 @@ const activitySchema = new mongoose.Schema({
   },
   activityType: {
     type: String,
-    enum: ['download', 'submission', 'view'],
+    enum: ['download', 'view'],
     required: true
   },
   createdAt: {

@@ -18,7 +18,6 @@ const requiredModels = [
   'Activity.js',
   'User.js', 
   'File.js',
-  'Submission.js',
   'Class.js'
 ];
 

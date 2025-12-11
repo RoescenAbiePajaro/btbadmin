@@ -30,20 +30,9 @@ const fileSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  assignmentTitle: {
-    type: String,
-    default: ''
-  },
-  assignmentDescription: {
-    type: String,
-    default: ''
-  },
-  submissionDeadline: {
-    type: Date
-  },
   type: {
     type: String,
-    enum: ['assignment', 'material'],
+    enum: ['material'],
     default: 'material'
   },
   uploadedBy: {
@@ -57,16 +46,7 @@ const fileSchema = new mongoose.Schema({
   },
   supabaseId: {
     type: String
-  },
-  // Add submission tracking
-  submissionCount: {
-    type: Number,
-    default: 0
-  },
-  submissions: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Submission'
-  }]
+  }
 }, {
   timestamps: true
 });
