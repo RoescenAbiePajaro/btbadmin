@@ -1,4 +1,4 @@
-// backend/models/User.js
+// backend/models/User.js - Add admin role support
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -63,6 +63,11 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  // For admin registration without access code
+  adminRegistration: {
+    type: Boolean,
+    default: false
   }
 });
 

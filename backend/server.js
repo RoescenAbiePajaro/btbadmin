@@ -11,6 +11,7 @@ const AcademicSetting = require('./models/AcademicSetting');
 const AccessCode = require('./models/AccessCode');
 const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
+const dashboardRoutes = require('./routes/dashboard');
 
 // Load environment variables
 dotenv.config();
@@ -265,7 +266,66 @@ app.post('/api/auth/register/educator', async (req, res) => {
 });
 
 // =====================
-// 🔑 LOGIN ENDPOINT (ALL ROLES)
+// �‍💼 ADMIN REGISTRATION (No access code needed)
+// =====================
+app.post('/api/auth/register/admin', async (req, res) => {
+  try {
+    const { fullName, email, username, password, confirmPassword } = req.body;
+
+    // Validate required fields
+    if (!fullName || !email || !username || !password || !confirmPassword) {
+      return createToastResponse(res, 400, 'Please fill all required fields', 'error');
+    }
+
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      return createToastResponse(res, 400, 'Passwords do not match', 'error');
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { username }] 
+    });
+    
+    if (existingUser) {
+      const field = existingUser.email === email ? 'Email' : 'Username';
+      return createToastResponse(res, 400, `${field} already exists`, 'error');
+    }
+
+    // Create admin user
+    const admin = new User({
+      fullName,
+      email,
+      username,
+      password,
+      role: 'admin',
+      adminRegistration: true
+    });
+
+    await admin.save();
+
+    // Generate JWT token
+    const token = generateToken(admin);
+
+    return createToastResponse(res, 201, 'Admin account created successfully!', 'success', {
+      token,
+      user: {
+        id: admin._id,
+        fullName: admin.fullName,
+        email: admin.email,
+        username: admin.username,
+        role: admin.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin registration error:', error);
+    return createToastResponse(res, 500, 'Server error during registration', 'error');
+  }
+});
+
+// =====================
+// � LOGIN ENDPOINT (ALL ROLES)
 // =====================
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -1069,8 +1129,9 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
 // =====================
 // 🚀 SERVER START
 // =====================
-// 📁 FILE ROUTES
+// 📁 ROUTES
 // =====================
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
 
 const PORT = process.env.PORT || 5000;

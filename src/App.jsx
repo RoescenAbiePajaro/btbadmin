@@ -5,9 +5,11 @@ import HomePage from './components/HomePage';
 import RoleSelection from './components/auth/RoleSelection';
 import StudentRegistration from './components/auth/StudentRegistration';
 import EducatorRegistration from './components/auth/EducatorRegistration';
+import AdminRegistration from './components/auth/AdminRegistration';
 import Login from './components/auth/Login';
 import EducatorDashboard from './components/educator/EducatorDashboard';
 import StudentDashboard from './components/student/StudentDashboard';
+import AdminDashboard from './components/admin/AdminDashboard';
 import EmailVerification from './components/auth/EmailVerification';
 import Toast from './components/Toast';
 
@@ -50,6 +52,8 @@ const PublicOnlyRoute = ({ children }) => {
         return <Navigate to="/student/dashboard" replace />;
       } else if (user.role === 'educator') {
         return <Navigate to="/educator/dashboard" replace />;
+      } else if (user.role === 'admin') {
+        return <Navigate to="/admin/dashboard" replace />;
       }
     } catch (error) {
       console.error('Error parsing user data:', error);
@@ -98,6 +102,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/select-role" element={<PublicOnlyRoute><RoleSelection /></PublicOnlyRoute>} />
+        <Route path="/admin-register" element={<PublicOnlyRoute><AdminRegistration /></PublicOnlyRoute>} />
         
         {/* Registration Routes */}
         <Route path="/register/student" element={<PublicOnlyRoute><StudentRegistration /></PublicOnlyRoute>} />
@@ -123,6 +128,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['educator']}>
               <EducatorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Protected Routes - Admin */}
+        <Route 
+          path="/admin/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
             </ProtectedRoute>
           } 
         />
