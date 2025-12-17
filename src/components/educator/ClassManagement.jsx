@@ -57,18 +57,12 @@ export default function ClassManagement() {
         }
       );
       if (response.data.data?.classes) {
-        // Ensure each class has academic fields initialized
-        const classesWithDefaults = response.data.data.classes.map(cls => ({
-          ...cls,
-          school: cls.school || '',
-          course: cls.course || '',
-          year: cls.year || '',
-          block: cls.block || ''
-        }));
-        setClasses(classesWithDefaults);
+        // Backend should now return academic fields directly
+        setClasses(response.data.data.classes);
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
+      showToast('Failed to load classes', 'error');
     }
   };
 
@@ -107,6 +101,11 @@ export default function ClassManagement() {
     }
   };
 
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
+  };
+
   const handleGenerateCode = async (e) => {
     e.preventDefault();
     
@@ -143,6 +142,7 @@ export default function ClassManagement() {
         description: generateStartYear && generateEndYear 
           ? `Batch ${generateStartYear} - ${generateEndYear}` 
           : formData.description,
+        // Send academic fields to backend
         school: formData.school,
         course: formData.course,
         year: formData.year,
@@ -159,16 +159,7 @@ export default function ClassManagement() {
 
       if (response.data.data?.class) {
         const newClass = response.data.data.class;
-        // Ensure academic fields are included
-        const classWithAcademics = {
-          ...newClass,
-          school: formData.school,
-          course: formData.course,
-          year: formData.year,
-          block: formData.block
-        };
-        
-        setClasses([classWithAcademics, ...classes]);
+        setClasses([newClass, ...classes]);
         setGeneratedCode(newClass.classCode);
         setShowModal(false);
         
@@ -238,6 +229,7 @@ export default function ClassManagement() {
       const payload = {
         className: formData.className,
         description,
+        // Send academic fields to backend
         school: formData.school,
         course: formData.course,
         year: formData.year,
@@ -255,17 +247,8 @@ export default function ClassManagement() {
 
       if (response.data.data?.class) {
         const updatedClass = response.data.data.class;
-        // Ensure academic fields are preserved
-        const classWithAcademics = {
-          ...updatedClass,
-          school: formData.school,
-          course: formData.course,
-          year: formData.year,
-          block: formData.block
-        };
-        
         setClasses(classes.map(cls => 
-          cls._id === classWithAcademics._id ? classWithAcademics : cls
+          cls._id === updatedClass._id ? updatedClass : cls
         ));
         setShowEditModal(false);
         setEditingClass(null);
@@ -289,11 +272,6 @@ export default function ClassManagement() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const showToast = (message, type = 'info') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
   };
 
   const handleDeleteClass = (classItem) => {
@@ -518,7 +496,7 @@ export default function ClassManagement() {
         </div>
       </div>
 
-      {/* Classes Table - Updated to show academic info */}
+      {/* Classes Table - Shows academic info from database */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">

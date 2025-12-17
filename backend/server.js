@@ -637,7 +637,11 @@ app.post('/api/classes/generate-code', verifyToken, requireEducator, async (req,
       className: className || `Class ${classCode}`,
       description,
       educator: educatorId,
-      students: []
+      students: [],
+      school: req.body.school,
+      course: req.body.course,
+      year: req.body.year,
+      block: req.body.block
     });
 
     await newClass.save();
@@ -753,6 +757,10 @@ app.put('/api/classes/:id', verifyToken, requireEducator, async (req, res) => {
     if (className) classToUpdate.className = className;
     if (description !== undefined) classToUpdate.description = description;
     if (isActive !== undefined) classToUpdate.isActive = isActive;
+    if (req.body.school !== undefined) classToUpdate.school = req.body.school;
+    if (req.body.course !== undefined) classToUpdate.course = req.body.course;
+    if (req.body.year !== undefined) classToUpdate.year = req.body.year;
+    if (req.body.block !== undefined) classToUpdate.block = req.body.block;
 
     await classToUpdate.save();
 

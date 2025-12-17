@@ -1,4 +1,3 @@
-// backend/models/Class.js
 const mongoose = require('mongoose');
 
 const classSchema = new mongoose.Schema({
@@ -27,6 +26,24 @@ const classSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  // ADD THESE FIELDS
+  school: {
+    type: String,
+    trim: true
+  },
+  course: {
+    type: String,
+    trim: true
+  },
+  year: {
+    type: String,
+    trim: true
+  },
+  block: {
+    type: String,
+    trim: true
+  },
+  // END OF ADDED FIELDS
   isActive: {
     type: Boolean,
     default: true
