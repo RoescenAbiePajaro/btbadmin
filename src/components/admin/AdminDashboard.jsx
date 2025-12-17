@@ -1,3 +1,4 @@
+// src/components/admin/AdminDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -36,6 +37,36 @@ export default function AdminDashboard() {
     browser: ''
   });
 
+  // Helper function to extract views and downloads from analytics
+  const extractViewsAndDownloads = (analyticsData) => {
+    if (!analyticsData || !analyticsData.charts) {
+      return { views: 0, downloads: 0 };
+    }
+    
+    // Try to get data from different chart types
+    const areaChartData = analyticsData.charts.areaCharts?.fileActivityTrends?.data || [];
+    const pieChartData = analyticsData.charts.pieCharts?.activityTypeDistribution?.data || [];
+    
+    let views = 0;
+    let downloads = 0;
+    
+    // Extract from area chart
+    areaChartData.forEach(item => {
+      views += item.views || 0;
+      downloads += item.downloads || 0;
+    });
+    
+    // If no area chart data, try pie chart
+    if (views === 0 && downloads === 0 && pieChartData.length > 0) {
+      pieChartData.forEach(item => {
+        if (item.name === 'Views') views = item.value || 0;
+        if (item.name === 'Downloads') downloads = item.value || 0;
+      });
+    }
+    
+    return { views, downloads };
+  };
+
   // Fetch dashboard statistics
   const fetchDashboardData = async () => {
     try {
@@ -43,21 +74,44 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [statsRes] = await Promise.all([
+      const [statsRes, analyticsRes] = await Promise.all([
         axios.get('http://localhost:5000/api/dashboard/statistics', { headers }),
+        axios.get('http://localhost:5000/api/analytics/overview?period=30d', { headers })
       ]);
 
       if (statsRes.data.success) setStatistics(statsRes.data.statistics);
+      
+      // Extract file activity data from analytics
+      if (analyticsRes.data.success) {
+        const fileActivities = analyticsRes.data.charts.rawData?.fileActivities || 0;
+        const { views = 0, downloads = 0 } = extractViewsAndDownloads(analyticsRes.data);
+        
+        // Update statistics with detailed activity data
+        setStatistics(prev => ({
+          ...prev,
+          activities: {
+            ...prev.activities,
+            total: fileActivities,
+            views: views,
+            downloads: downloads,
+            fileActivityTrends: analyticsRes.data.charts.areaCharts?.fileActivityTrends?.data || []
+          }
+        }));
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please check your connection.');
       
-      // Fallback data
       setStatistics({
         users: { total: 0, byRole: [], active: 0 },
         classes: { total: 0, active: 0, inactive: 0, mostActive: [] },
-        materials: { total: 0, byType: [], downloads: 0 },
-        activities: { downloads: 0, views: 0, total: 0 }
+        materials: { total: 0, byType: [], downloads: 0, views: 0 },
+        activities: { 
+          downloads: 0, 
+          views: 0, 
+          total: 0,
+          fileActivityTrends: [] 
+        }
       });
     } finally {
       setLoading(false);
