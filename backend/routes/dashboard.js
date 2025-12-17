@@ -64,7 +64,7 @@ router.get('/statistics', requireAdmin, async (req, res) => {
       }
     ]);
 
-    // Total activity counts
+    // Learning Materials Activities
     const totalDownloads = await Activity.countDocuments({ activityType: 'download' });
     const totalViews = await Activity.countDocuments({ activityType: 'view' });
 

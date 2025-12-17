@@ -693,7 +693,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
           className: cls.className
         })),
         xLabel: 'Number of Students',
-        yLabel: 'Total Activities',
+        yLabel: 'Learning Materials Activities',
         zLabel: 'Engagement Rate (%)'
       },
       

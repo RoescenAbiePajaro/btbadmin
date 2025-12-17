@@ -37,34 +37,9 @@ export default function AdminDashboard() {
     browser: ''
   });
 
-  // Helper function to extract views and downloads from analytics
-  const extractViewsAndDownloads = (analyticsData) => {
-    if (!analyticsData || !analyticsData.charts) {
-      return { views: 0, downloads: 0 };
-    }
-    
-    // Try to get data from different chart types
-    const areaChartData = analyticsData.charts.areaCharts?.fileActivityTrends?.data || [];
-    const pieChartData = analyticsData.charts.pieCharts?.activityTypeDistribution?.data || [];
-    
-    let views = 0;
-    let downloads = 0;
-    
-    // Extract from area chart
-    areaChartData.forEach(item => {
-      views += item.views || 0;
-      downloads += item.downloads || 0;
-    });
-    
-    // If no area chart data, try pie chart
-    if (views === 0 && downloads === 0 && pieChartData.length > 0) {
-      pieChartData.forEach(item => {
-        if (item.name === 'Views') views = item.value || 0;
-        if (item.name === 'Downloads') downloads = item.value || 0;
-      });
-    }
-    
-    return { views, downloads };
+  // Helper function to get activity counts
+  const getActivityCounts = () => {
+    return { views: 0, downloads: 0 };
   };
 
   // Fetch dashboard statistics
@@ -81,20 +56,17 @@ export default function AdminDashboard() {
 
       if (statsRes.data.success) setStatistics(statsRes.data.statistics);
       
-      // Extract file activity data from analytics
       if (analyticsRes.data.success) {
-        const fileActivities = analyticsRes.data.charts.rawData?.fileActivities || 0;
-        const { views = 0, downloads = 0 } = extractViewsAndDownloads(analyticsRes.data);
+        const { views, downloads } = getActivityCounts();
         
-        // Update statistics with detailed activity data
+        // Update statistics with activity data
         setStatistics(prev => ({
           ...prev,
           activities: {
             ...prev.activities,
-            total: fileActivities,
+            total: 0,
             views: views,
-            downloads: downloads,
-            fileActivityTrends: analyticsRes.data.charts.areaCharts?.fileActivityTrends?.data || []
+            downloads: downloads
           }
         }));
       }
@@ -109,8 +81,7 @@ export default function AdminDashboard() {
         activities: { 
           downloads: 0, 
           views: 0, 
-          total: 0,
-          fileActivityTrends: [] 
+          total: 0
         }
       });
     } finally {
@@ -345,7 +316,7 @@ export default function AdminDashboard() {
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Activities</p>
+                <p className="text-gray-400 text-sm">Learning Materials Activities</p>
                 <p className="text-3xl font-bold mt-2">
                   {statistics?.activities?.total || 0}
                 </p>
@@ -431,10 +402,9 @@ export default function AdminDashboard() {
         <div className="mb-6 border-b border-gray-800">
           <div className="flex space-x-4 overflow-x-auto">
             {[
-              { id: 'overview', label: 'Overview', icon: <FiBarChart2 /> },
               { id: 'users', label: 'Users', icon: <FiUsers /> },
               { id: 'classes', label: 'Classes', icon: <FiBook /> },
-              { id: 'activities', label: 'Activities', icon: <FiActivity /> },
+              { id: 'activities', label: 'Learning Materials', icon: <FiActivity /> },
               { id: 'charts', label: 'Charts', icon: <FiBarChart2 /> },
               { id: 'export', label: 'Export', icon: <FiDownloadIcon /> }
             ].map((tab) => (
@@ -568,7 +538,7 @@ export default function AdminDashboard() {
 
               {/* Activity Distribution Chart */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Activity Distribution</h3>
+                <h3 className="text-lg font-bold mb-4 text-white">Learning Materials Distribution</h3>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -623,45 +593,6 @@ export default function AdminDashboard() {
                           activeDot={{ r: 6 }}
                         />
                       </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-
-              {/* Area Chart Example */}
-              {analyticsData?.areaCharts?.fileActivityTrends && (
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4 text-white">File Activity Trends</h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={analyticsData.areaCharts.fileActivityTrends.data}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="date" stroke="#9CA3AF" />
-                        <YAxis stroke="#9CA3AF" />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                          labelStyle={{ color: '#9CA3AF' }}
-                        />
-                        <Legend />
-                        <Area 
-                          type="monotone" 
-                          dataKey="views" 
-                          name="Views" 
-                          stroke="#8B5CF6" 
-                          fill="#8B5CF6"
-                          fillOpacity={0.3}
-                          strokeWidth={2}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="downloads" 
-                          name="Downloads" 
-                          stroke="#EC4899" 
-                          fill="#EC4899"
-                          fillOpacity={0.3}
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -788,15 +719,12 @@ export default function AdminDashboard() {
           {activeTab === 'activities' && (
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Activity Logs</h3>
+                <h3 className="text-lg font-bold mb-4 text-white">Learning Material Logs</h3>
                 {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-800">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Activity Type
-                          </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             User
                           </th>
