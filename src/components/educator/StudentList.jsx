@@ -166,7 +166,8 @@ const StudentList = () => {
     return classes.filter(classItem =>
       classSearchTerm === '' ||
       classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
-      classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
+      classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
+      (classItem.description && classItem.description.toLowerCase().includes(classSearchTerm.toLowerCase()))
     );
   };
 
@@ -225,7 +226,7 @@ const StudentList = () => {
           <input
             type="text"
             className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            placeholder="Search classes..."
+            placeholder="Search classes or batch..."
             value={classSearchTerm}
             onChange={(e) => {
               setClassSearchTerm(e.target.value);
@@ -234,27 +235,28 @@ const StudentList = () => {
           />
         </div>
 
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-2">
           {getPaginatedClasses().map((classItem) => (
             <button
               key={classItem._id}
               onClick={() => setSelectedClass(classItem._id)}
-              className={`px-4 py-3 rounded-lg min-w-[200px] text-left transition duration-200 ${
+              className={`p-4 rounded-lg text-left transition-all duration-200 border ${
                 selectedClass === classItem._id
-                  ? 'bg-pink-600 text-white'
-                  : 'bg-gray-900 hover:bg-gray-700 text-gray-300'
+                  ? 'border-pink-600 bg-pink-600/10 shadow-lg shadow-pink-500/20'
+                  : 'border-gray-700 bg-gray-900 hover:bg-gray-850 hover:border-gray-600'
               }`}
             >
-              <div className="font-medium">{classItem.className}</div>
-              <div className="flex items-center gap-2 text-sm opacity-80">
-                {classItem.classCode || 'No code'}
+              <div className="flex justify-between items-start mb-2">
+                <div className="font-medium text-white truncate" title={classItem.className}>
+                  {classItem.className}
+                </div>
                 {classItem.classCode && (
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCopyCode(classItem.classCode);
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:text-white transition-colors p-1 hover:bg-gray-800 rounded"
                     title="Copy class code"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -263,8 +265,40 @@ const StudentList = () => {
                   </button>
                 )}
               </div>
-              <div className="text-xs mt-2">
-                {classItem.students?.length || 0} students
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400">Code:</span>
+                    <span className="font-mono text-gray-300">{classItem.classCode || 'No code'}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.67 1.823l-.67.383m0 0A9 9 0 0112 21a9 9 0 01-6.3-2.197m13.67 1.823A9 9 0 0012 21a9 9 0 00-6.3-2.197" />
+                    </svg>
+                    <span>{classItem.students?.length || 0}</span>
+                  </div>
+                </div>
+                
+                {classItem.description && (
+                  <div className="text-xs">
+                    <div className="text-gray-400 mb-1">Batch:</div>
+                    <div className="px-2 py-1 bg-blue-900/30 text-blue-300 rounded border border-blue-800/50 truncate" title={classItem.description}>
+                      {classItem.description}
+                    </div>
+                  </div>
+                )}
+                
+                {!classItem.description && (
+                  <div className="text-xs text-gray-500 italic">No batch created</div>
+                )}
+                
+                <div className="flex items-center text-xs text-gray-500">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Created: {new Date(classItem.createdAt).toLocaleDateString()}
+                </div>
               </div>
             </button>
           ))}
@@ -329,8 +363,8 @@ const StudentList = () => {
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Class Information</h3>
               <div className="space-y-2 text-gray-300">
-                <div>
-                  <span className="text-gray-400">Class Code:</span>{' '}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">Class Code:</span>
                   <span className="font-mono text-white">{getSelectedClassInfo()?.classCode}</span>
                   <button 
                     onClick={() => handleCopyCode(getSelectedClassInfo()?.classCode)}
@@ -354,10 +388,20 @@ const StudentList = () => {
             </div>
             
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Batch</h3>
-              <p className="text-gray-300">
-                {getSelectedClassInfo()?.description || 'No Batch created'}
-              </p>
+              <h3 className="text-lg font-semibold text-white mb-2">Batch Information</h3>
+              <div className="space-y-2">
+                <p className={`px-3 py-2 rounded-lg border ${getSelectedClassInfo()?.description ? 'text-white bg-blue-900/30 border-blue-800/50' : 'text-gray-400 bg-gray-900/50 border-gray-700'}`}>
+                  {getSelectedClassInfo()?.description || 'No Batch created'}
+                </p>
+                {getSelectedClassInfo()?.description && (
+                  <div className="text-xs text-gray-400 flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Created: {new Date(getSelectedClassInfo()?.createdAt).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div>
@@ -365,13 +409,19 @@ const StudentList = () => {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => handleCopyCode(getSelectedClassInfo()?.classCode)}
-                  className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200 text-center"
+                  className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200 text-center flex items-center justify-center gap-2"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
                   Copy Class Code
                 </button>
                 <button
-                  className="bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded-lg transition duration-200 text-center"
+                  className="bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded-lg transition duration-200 text-center flex items-center justify-center gap-2"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
                   Export Student List
                 </button>
               </div>
@@ -388,6 +438,11 @@ const StudentList = () => {
             <p className="text-gray-400 text-sm">
               {students.length} student{students.length !== 1 ? 's' : ''} enrolled in this class
             </p>
+            {getSelectedClassInfo()?.description && (
+              <p className="text-sm text-blue-300 mt-1">
+                Batch: {getSelectedClassInfo()?.description}
+              </p>
+            )}
           </div>
           <div className="w-full sm:w-64">
             <div className="relative">
@@ -460,7 +515,7 @@ const StudentList = () => {
                       <td className="p-4">
                         <button
                           onClick={() => handleDeleteClick(student)}
-                          className="text-red-400 hover:text-red-300 transition-colors"
+                          className="text-red-400 hover:text-red-300 transition-colors p-1 hover:bg-red-500/10 rounded"
                           title="Remove from class"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

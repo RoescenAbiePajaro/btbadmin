@@ -69,8 +69,19 @@ const StudentFileSharing = ({ student }) => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Date not available';
     const date = new Date(dateString);
-    return date.toLocaleString();
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const formatFileSize = (bytes) => {
