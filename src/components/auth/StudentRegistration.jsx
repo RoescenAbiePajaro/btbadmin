@@ -398,6 +398,20 @@ export default function StudentRegistration() {
               <p className="mt-1 text-xs text-gray-500">
                 Enter the class code provided by your educator to join their class
               </p>
+              {formData.classCode && !classCodeLoading && !classInfo && !errors.classCode && (
+                <div className="mt-2 p-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                  <p className="text-yellow-300 text-xs">
+                    Validating class code...
+                  </p>
+                </div>
+              )}
+              {classInfo && !classCodeLoading && (
+                <div className="mt-2 p-2 bg-green-500/20 border border-green-500/50 rounded-lg">
+                  <p className="text-green-300 text-xs">
+                    Valid class code! You'll be joining {classInfo.className}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Academic Information */}
