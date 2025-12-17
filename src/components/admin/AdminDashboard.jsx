@@ -305,9 +305,10 @@ export default function AdminDashboard() {
                 <p className="text-3xl font-bold mt-2">
                   {statistics?.materials?.total || 0}
                 </p>
-                <p className="text-gray-400 text-sm mt-2">
-                  Downloads: {statistics?.materials?.downloads || 0}
-                </p>
+                <div className="text-gray-400 text-sm mt-2 space-y-1">
+                  <div>Views: {statistics?.activities?.views || 0}</div>
+                  <div>Downloads: {statistics?.activities?.downloads || 0}</div>
+                </div>
               </div>
               <FiFileText className="w-8 h-8 text-yellow-500" />
             </div>
@@ -316,14 +317,10 @@ export default function AdminDashboard() {
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Learning Materials Activities</p>
+                <p className="text-gray-400 text-sm">Platform Activity</p>
                 <p className="text-3xl font-bold mt-2">
                   {statistics?.activities?.total || 0}
                 </p>
-                <div className="text-gray-400 text-sm mt-2 space-y-1">
-                  <div>Views: {statistics?.activities?.views || 0}</div>
-                  <div>Downloads: {statistics?.activities?.downloads || 0}</div>
-                </div>
               </div>
               <FiActivity className="w-8 h-8 text-purple-500" />
             </div>

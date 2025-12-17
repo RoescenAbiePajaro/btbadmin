@@ -1,4 +1,4 @@
-// backend/routes/dashboard.js - COMPLETE VERSION
+// backend/routes/dashboard.js
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
