@@ -12,7 +12,11 @@ export default function ClassManagement() {
   const [editingClass, setEditingClass] = useState(null);
   const [formData, setFormData] = useState({
     className: '',
-    description: ''
+    description: '',
+    school: '',
+    course: '',
+    year: '',
+    block: ''
   });
   const [startYear, setStartYear] = useState('');
   const [endYear, setEndYear] = useState('');
@@ -28,9 +32,19 @@ export default function ClassManagement() {
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Academic settings state
+  const [academicSettings, setAcademicSettings] = useState({
+    schools: [],
+    courses: [],
+    years: [],
+    blocks: []
+  });
+  const [academicLoading, setAcademicLoading] = useState(false);
 
   useEffect(() => {
     fetchClasses();
+    fetchAcademicSettings();
   }, []);
 
   const fetchClasses = async () => {
@@ -43,15 +57,70 @@ export default function ClassManagement() {
         }
       );
       if (response.data.data?.classes) {
-        setClasses(response.data.data.classes);
+        // Ensure each class has academic fields initialized
+        const classesWithDefaults = response.data.data.classes.map(cls => ({
+          ...cls,
+          school: cls.school || '',
+          course: cls.course || '',
+          year: cls.year || '',
+          block: cls.block || ''
+        }));
+        setClasses(classesWithDefaults);
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
     }
   };
 
+  const fetchAcademicSettings = async () => {
+    try {
+      setAcademicLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Fetch all academic settings in parallel
+      const [schoolsRes, coursesRes, yearsRes, blocksRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/academic-settings/school', {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get('http://localhost:5000/api/academic-settings/course', {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get('http://localhost:5000/api/academic-settings/year', {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get('http://localhost:5000/api/academic-settings/block', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      setAcademicSettings({
+        schools: Array.isArray(schoolsRes.data) ? schoolsRes.data.filter(item => item.isActive) : [],
+        courses: Array.isArray(coursesRes.data) ? coursesRes.data.filter(item => item.isActive) : [],
+        years: Array.isArray(yearsRes.data) ? yearsRes.data.filter(item => item.isActive) : [],
+        blocks: Array.isArray(blocksRes.data) ? blocksRes.data.filter(item => item.isActive) : []
+      });
+    } catch (error) {
+      console.error('Error fetching academic settings:', error);
+      showToast('Failed to load academic settings', 'error');
+    } finally {
+      setAcademicLoading(false);
+    }
+  };
+
   const handleGenerateCode = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.className.trim()) {
+      showToast('Please enter a class name', 'error');
+      return;
+    }
+    
+    // Validate academic fields
+    if (!formData.school || !formData.course || !formData.year || !formData.block) {
+      showToast('Please select all academic fields (School, Course, Year, Block)', 'error');
+      return;
+    }
     
     // Validate batch information
     if (!generateStartYear || !generateEndYear) {
@@ -69,9 +138,20 @@ export default function ClassManagement() {
 
     try {
       const token = localStorage.getItem('token');
+      const payload = {
+        className: formData.className,
+        description: generateStartYear && generateEndYear 
+          ? `Batch ${generateStartYear} - ${generateEndYear}` 
+          : formData.description,
+        school: formData.school,
+        course: formData.course,
+        year: formData.year,
+        block: formData.block
+      };
+
       const response = await axios.post(
         `http://localhost:5000/api/classes/generate-code`,
-        formData,
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -79,10 +159,28 @@ export default function ClassManagement() {
 
       if (response.data.data?.class) {
         const newClass = response.data.data.class;
-        setClasses([newClass, ...classes]);
+        // Ensure academic fields are included
+        const classWithAcademics = {
+          ...newClass,
+          school: formData.school,
+          course: formData.course,
+          year: formData.year,
+          block: formData.block
+        };
+        
+        setClasses([classWithAcademics, ...classes]);
         setGeneratedCode(newClass.classCode);
         setShowModal(false);
-        setFormData({ className: '', description: '' });
+        
+        // Reset form data
+        setFormData({
+          className: '',
+          description: '',
+          school: '',
+          course: '',
+          year: '',
+          block: ''
+        });
         setGenerateStartYear('');
         setGenerateEndYear('');
         
@@ -100,24 +198,28 @@ export default function ClassManagement() {
   const handleEditClass = (classItem) => {
     setEditingClass(classItem);
     
+    // Extract academic settings from class item
+    const initialFormData = {
+      className: classItem.className,
+      description: classItem.description || '',
+      school: classItem.school || '',
+      course: classItem.course || '',
+      year: classItem.year || '',
+      block: classItem.block || ''
+    };
+    
     // Extract years from description if it follows the pattern "Batch YYYY - YYYY"
     const yearMatch = classItem.description?.match(/Batch (\d{4}) - (\d{4})/);
     if (yearMatch) {
       setStartYear(yearMatch[1]);
       setEndYear(yearMatch[2]);
-      setFormData({
-        className: classItem.className,
-        description: `Batch ${yearMatch[1]} - ${yearMatch[2]}`
-      });
+      initialFormData.description = `Batch ${yearMatch[1]} - ${yearMatch[2]}`;
     } else {
       setStartYear('');
       setEndYear('');
-      setFormData({
-        className: classItem.className,
-        description: classItem.description || ''
-      });
     }
     
+    setFormData(initialFormData);
     setShowEditModal(true);
   };
 
@@ -133,13 +235,19 @@ export default function ClassManagement() {
         ? `Batch ${startYear} - ${endYear}` 
         : formData.description;
       
+      const payload = {
+        className: formData.className,
+        description,
+        school: formData.school,
+        course: formData.course,
+        year: formData.year,
+        block: formData.block,
+        isActive: true
+      };
+
       const response = await axios.put(
         `http://localhost:5000/api/classes/${editingClass._id}`,
-        {
-          ...formData,
-          description,
-          isActive: true
-        },
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -147,12 +255,30 @@ export default function ClassManagement() {
 
       if (response.data.data?.class) {
         const updatedClass = response.data.data.class;
+        // Ensure academic fields are preserved
+        const classWithAcademics = {
+          ...updatedClass,
+          school: formData.school,
+          course: formData.course,
+          year: formData.year,
+          block: formData.block
+        };
+        
         setClasses(classes.map(cls => 
-          cls._id === updatedClass._id ? updatedClass : cls
+          cls._id === classWithAcademics._id ? classWithAcademics : cls
         ));
         setShowEditModal(false);
         setEditingClass(null);
-        setFormData({ className: '', description: '' });
+        
+        // Reset form data
+        setFormData({
+          className: '',
+          description: '',
+          school: '',
+          course: '',
+          year: '',
+          block: ''
+        });
         setStartYear('');
         setEndYear('');
         showToast('Class updated successfully!', 'success');
@@ -207,7 +333,14 @@ export default function ClassManagement() {
     setShowModal(false);
     setShowEditModal(false);
     setEditingClass(null);
-    setFormData({ className: '', description: '' });
+    setFormData({
+      className: '',
+      description: '',
+      school: '',
+      course: '',
+      year: '',
+      block: ''
+    });
     setStartYear('');
     setEndYear('');
     setGenerateStartYear('');
@@ -228,7 +361,11 @@ export default function ClassManagement() {
       return (
         classItem.className.toLowerCase().includes(searchLower) ||
         classItem.classCode.toLowerCase().includes(searchLower) ||
-        (classItem.description && classItem.description.toLowerCase().includes(searchLower))
+        (classItem.description && classItem.description.toLowerCase().includes(searchLower)) ||
+        (classItem.school && classItem.school.toLowerCase().includes(searchLower)) ||
+        (classItem.course && classItem.course.toLowerCase().includes(searchLower)) ||
+        (classItem.year && classItem.year.toLowerCase().includes(searchLower)) ||
+        (classItem.block && classItem.block.toLowerCase().includes(searchLower))
       );
     });
 
@@ -256,6 +393,28 @@ export default function ClassManagement() {
   const getTotalPages = () => {
     return Math.ceil(getSortedAndFilteredClasses().length / itemsPerPage);
   };
+
+  // Render dropdown options
+  const renderDropdown = (label, value, onChange, options, placeholder) => (
+    <div>
+      <label className="block text-gray-300 text-sm font-medium mb-2">
+        {label} <span className="text-red-400">*</span>
+      </label>
+      <select
+        value={value}
+        onChange={onChange}
+        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+        required
+      >
+        <option value="">{placeholder || `Select ${label}`}</option>
+        {options.map((option) => (
+          <option key={option._id} value={option.name}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 
   return (
     <div className="space-y-6 relative">
@@ -298,7 +457,7 @@ export default function ClassManagement() {
             <input
               type="text"
               className="block w-full pl-10 pr-10 py-2.5 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200 hover:border-gray-600"
-              placeholder="Search classes,batch, codes..."
+              placeholder="Search classes, school, course, year..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -359,7 +518,7 @@ export default function ClassManagement() {
         </div>
       </div>
 
-      {/* Classes Table */}
+      {/* Classes Table - Updated to show academic info */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -367,6 +526,10 @@ export default function ClassManagement() {
               <tr className="border-b border-gray-700">
                 <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Class Name</th>
                 <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Class Code</th>
+                <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">School</th>
+                <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Course</th>
+                <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Year</th>
+                <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Block</th>
                 <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Batch</th>
                 <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Students</th>
                 <th className="py-4 px-6 text-left text-sm font-medium text-gray-300">Status</th>
@@ -376,7 +539,7 @@ export default function ClassManagement() {
             <tbody className="divide-y divide-gray-700">
               {getSortedAndFilteredClasses().length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center">
+                  <td colSpan="10" className="py-12 text-center">
                     <p className="text-gray-400">
                       {searchTerm ? `No classes found matching "${searchTerm}"` : 'No classes found'}
                     </p>
@@ -390,6 +553,26 @@ export default function ClassManagement() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="text-gray-300 font-mono">{classItem.classCode}</div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="text-gray-300">
+                        {classItem.school || <span className="text-gray-500 italic">Not set</span>}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="text-gray-300">
+                        {classItem.course || <span className="text-gray-500 italic">Not set</span>}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="text-gray-300">
+                        {classItem.year || <span className="text-gray-500 italic">Not set</span>}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="text-gray-300">
+                        {classItem.block || <span className="text-gray-500 italic">Not set</span>}
+                      </div>
                     </td>
                     <td className="py-4 px-6">
                       <div className="text-gray-400 max-w-xs truncate" title={classItem.description || 'No Batch'}>
@@ -498,7 +681,7 @@ export default function ClassManagement() {
       {/* Edit Class Modal */}
       {showEditModal && editingClass && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-lg">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white">Edit Class</h3>
               <button
@@ -514,7 +697,7 @@ export default function ClassManagement() {
             <form onSubmit={handleUpdateClass} className="space-y-4">
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Class Name
+                  Class Name <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -524,6 +707,41 @@ export default function ClassManagement() {
                   placeholder="e.g., Computer Science 101"
                   required
                 />
+              </div>
+
+              {/* Academic Settings Dropdowns - Pre-filled with class data */}
+              <div className="grid grid-cols-2 gap-4">
+                {renderDropdown(
+                  "School", 
+                  formData.school, 
+                  (e) => setFormData({ ...formData, school: e.target.value }),
+                  academicSettings.schools,
+                  "Select School"
+                )}
+                {renderDropdown(
+                  "Course", 
+                  formData.course, 
+                  (e) => setFormData({ ...formData, course: e.target.value }),
+                  academicSettings.courses,
+                  "Select Course"
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {renderDropdown(
+                  "Year", 
+                  formData.year, 
+                  (e) => setFormData({ ...formData, year: e.target.value }),
+                  academicSettings.years,
+                  "Select Year"
+                )}
+                {renderDropdown(
+                  "Block", 
+                  formData.block, 
+                  (e) => setFormData({ ...formData, block: e.target.value }),
+                  academicSettings.blocks,
+                  "Select Block"
+                )}
               </div>
 
               <div>
@@ -666,7 +884,7 @@ export default function ClassManagement() {
       {/* Generate Code Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-lg">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white">Generate Class Code</h3>
               <button
@@ -682,7 +900,7 @@ export default function ClassManagement() {
             <form onSubmit={handleGenerateCode} className="space-y-4">
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Class Name
+                  Class Name <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -690,14 +908,50 @@ export default function ClassManagement() {
                   onChange={(e) => setFormData({ ...formData, className: e.target.value })}
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   placeholder="e.g., Computer Science 101"
+                  required
                 />
+              </div>
+
+              {/* Academic Settings Dropdowns */}
+              <div className="grid grid-cols-2 gap-4">
+                {renderDropdown(
+                  "School", 
+                  formData.school, 
+                  (e) => setFormData({ ...formData, school: e.target.value }),
+                  academicSettings.schools,
+                  "Select School"
+                )}
+                {renderDropdown(
+                  "Course", 
+                  formData.course, 
+                  (e) => setFormData({ ...formData, course: e.target.value }),
+                  academicSettings.courses,
+                  "Select Course"
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {renderDropdown(
+                  "Year", 
+                  formData.year, 
+                  (e) => setFormData({ ...formData, year: e.target.value }),
+                  academicSettings.years,
+                  "Select Year"
+                )}
+                {renderDropdown(
+                  "Block", 
+                  formData.block, 
+                  (e) => setFormData({ ...formData, block: e.target.value }),
+                  academicSettings.blocks,
+                  "Select Block"
+                )}
               </div>
 
               <div>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-gray-300 text-sm font-medium mb-2">
-                      Start Year
+                      Start Year <span className="text-red-400">*</span>
                     </label>
                     <select
                       value={generateStartYear}
@@ -712,6 +966,7 @@ export default function ClassManagement() {
                         }
                       }}
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      required
                     >
                       <option value="">Select Start Year</option>
                       {Array.from({ length: 10 }, (_, i) => {
@@ -726,7 +981,7 @@ export default function ClassManagement() {
                   </div>
                   <div>
                     <label className="block text-gray-300 text-sm font-medium mb-2">
-                      End Year
+                      End Year <span className="text-red-400">*</span>
                     </label>
                     <select
                       value={generateEndYear}
@@ -742,6 +997,7 @@ export default function ClassManagement() {
                       }}
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                       disabled={!generateStartYear}
+                      required
                     >
                       <option value="">Select End Year</option>
                       {generateStartYear &&
@@ -790,14 +1046,40 @@ export default function ClassManagement() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !formData.className.trim() || !generateStartYear || !generateEndYear}
+                  disabled={loading || !formData.className.trim() || !generateStartYear || !generateEndYear || !formData.school || !formData.course || !formData.year || !formData.block}
                   className={`flex-1 ${
-                    !formData.className.trim() || !generateStartYear || !generateEndYear
+                    !formData.className.trim() || !generateStartYear || !generateEndYear || !formData.school || !formData.course || !formData.year || !formData.block
                       ? 'bg-pink-600/50 cursor-not-allowed'
                       : 'bg-pink-600 hover:bg-pink-700'
-                  } text-white py-3 rounded-lg transition duration-200`}
+                  } text-white py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2`}
                 >
-                  {loading ? 'Generating...' : 'Generate Code'}
+                  {loading ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Generating...
+                    </>
+                  ) : (
+                    'Generate Code'
+                  )}
                 </button>
               </div>
             </form>
