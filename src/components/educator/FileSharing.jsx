@@ -433,6 +433,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   return (
     <div className="space-y-6">
       {viewingFile && renderFileModal()}
+      
       {/* Upload Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden transition-all duration-300 hover:border-pink-500/30">
         <div className="p-6 border-b border-gray-700">
@@ -500,7 +501,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   <option value="">Select a class</option>
                   {classCodes.map((classItem) => (
                     <option key={classItem._id} value={classItem.classCode}>
-                      {classItem.className} ({classItem.classCode})
+                      {classItem.className} ({classItem.classCode}) - {classItem.description || 'No batch'}
                     </option>
                   ))}
                 </select>
@@ -585,11 +586,12 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                     {classCodes
                       .filter(classItem => 
                         classItem.className.toLowerCase().includes(classSearchTerm.toLowerCase()) || 
-                        classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase())
+                        classItem.classCode.toLowerCase().includes(classSearchTerm.toLowerCase()) ||
+                        (classItem.description && classItem.description.toLowerCase().includes(classSearchTerm.toLowerCase()))
                       )
                       .map((classItem) => (
                         <option key={classItem._id} value={classItem.classCode}>
-                          {classItem.className} ({classItem.classCode})
+                          {classItem.className} ({classItem.classCode}) - {classItem.description || 'No batch'}
                         </option>
                       ))}
                   </select>
@@ -602,6 +604,11 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V19l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
                   Filtered by: {classCodes.find(c => c.classCode === filterClassCode)?.className || filterClassCode}
+                  {classCodes.find(c => c.classCode === filterClassCode)?.description && (
+                    <span className="text-gray-400 ml-2">
+                      ({classCodes.find(c => c.classCode === filterClassCode)?.description})
+                    </span>
+                  )}
                   <button 
                     onClick={() => handleFilterChange('')}
                     className="ml-2 text-gray-400 hover:text-white"
@@ -618,78 +625,90 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         
         <div className="divide-y divide-gray-700">
           {files.length > 0 ? (
-            files.map((file) => (
-              <div
-                key={file._id}
-                className="p-4 hover:bg-gray-750 transition-colors duration-200"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex-1 flex items-start sm:items-center gap-4">
-                    <div className="flex-shrink-0">
-                      {renderFilePreview(file)}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-white font-medium truncate">{file.name}</h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-400">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
-                          {classCodes.find(c => c.classCode === file.classCode)?.className || file.classCode}
-                        </span>
-                        <span>•</span>
-                        <span>{formatFileSize(file.size || 0)}</span>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          {formatDate(file.uploadedAt || file.createdAt)}
+            files.map((file) => {
+              const classItem = classCodes.find(c => c.classCode === file.classCode);
+              return (
+                <div
+                  key={file._id}
+                  className="p-4 hover:bg-gray-750 transition-colors duration-200"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1 flex items-start sm:items-center gap-4">
+                      <div className="flex-shrink-0">
+                        {renderFilePreview(file)}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-white font-medium truncate">{file.name}</h4>
+                        <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 mt-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
+                              {classItem?.className || file.classCode}
+                            </span>
+                            {classItem?.description && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+                                {classItem.description}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <span>•</span>
+                            <span>{formatFileSize(file.size || 0)}</span>
+                            <span>•</span>
+                            <div className="flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              {formatDate(file.uploadedAt || file.createdAt)}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center space-x-1">
+                    
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(file.url, file.name);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 mr-3"
+                          title="Download"
+                        >
+                          <i className="fas fa-download"></i>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewFile(file.url);
+                          }}
+                          className="text-green-600 hover:text-green-800 mr-3"
+                          title="View"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                      </div>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(file.url, file.name);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 mr-3"
-                        title="Download"
+                        onClick={() => handleDeleteFile(file._id)}
+                        disabled={deletingFiles[file._id]}
+                        className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <i className="fas fa-download"></i>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewFile(file.url);
-                        }}
-                        className="text-green-600 hover:text-green-800 mr-3"
-                        title="View"
-                      >
-                        <i className="fas fa-eye"></i>
+                        {deletingFiles[file._id] ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </>
+                        )}
                       </button>
                     </div>
-                    <button
-                      onClick={() => handleDeleteFile(file._id)}
-                      disabled={deletingFiles[file._id]}
-                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {deletingFiles[file._id] ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Delete
-                        </>
-                      )}
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-12">
               <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -711,45 +730,59 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         
         <div className="divide-y divide-gray-700">
           {recentActivities.length > 0 ? (
-            recentActivities.map((activity, index) => (
-              <div key={index} className="p-4 hover:bg-gray-750 transition-colors duration-200">
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    activity.type === 'upload' ? 'bg-pink-500/10 text-pink-400' :
-                    activity.type === 'download' ? 'bg-blue-500/10 text-blue-400' :
-                    'bg-green-500/10 text-green-400'
-                  }`}>
-                    {activity.type === 'upload' ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                    ) : activity.type === 'download' ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <h4 className="text-white font-medium">
-                        {activity.type === 'upload' ? 'File uploaded' : 
-                         activity.type === 'download' ? 'File downloaded' : 'File updated'}
-                      </h4>
-                      <span className="text-xs text-gray-500">
-                        {formatDate(activity.timestamp || new Date())}
-                      </span>
+            recentActivities.map((activity, index) => {
+              const classItem = classCodes.find(c => c.classCode === activity.classCode);
+              return (
+                <div key={index} className="p-4 hover:bg-gray-750 transition-colors duration-200">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      activity.type === 'upload' ? 'bg-pink-500/10 text-pink-400' :
+                      activity.type === 'download' ? 'bg-blue-500/10 text-blue-400' :
+                      'bg-green-500/10 text-green-400'
+                    }`}>
+                      {activity.type === 'upload' ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      ) : activity.type === 'download' ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      )}
                     </div>
-                    <p className="text-gray-400 text-sm mt-1">
-                      {activity.fileName} • {activity.classCode}
-                    </p>
+                    <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <h4 className="text-white font-medium">
+                          {activity.type === 'upload' ? 'File uploaded' : 
+                          activity.type === 'download' ? 'File downloaded' : 'File updated'}
+                        </h4>
+                        <span className="text-xs text-gray-500">
+                          {formatDate(activity.timestamp || new Date())}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <p className="text-gray-400 text-sm">
+                          {activity.fileName}
+                        </p>
+                        <span className="text-gray-500">•</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-700 text-gray-300">
+                          {classItem?.className || activity.classCode}
+                        </span>
+                        {classItem?.description && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-900/30 text-blue-300">
+                            {classItem.description}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-12">
               <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -761,6 +794,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           )}
         </div>
       </div>
+      
       {toast.show && (
         <Toast
           message={toast.message}
