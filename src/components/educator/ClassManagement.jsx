@@ -16,6 +16,9 @@ export default function ClassManagement() {
   });
   const [startYear, setStartYear] = useState('');
   const [endYear, setEndYear] = useState('');
+  const [generateStartYear, setGenerateStartYear] = useState('');
+  const [generateEndYear, setGenerateEndYear] = useState('');
+  const [batchError, setBatchError] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest'); // newest, oldest, a-z, z-a
@@ -49,7 +52,20 @@ export default function ClassManagement() {
 
   const handleGenerateCode = async (e) => {
     e.preventDefault();
+    
+    // Validate batch information
+    if (!generateStartYear || !generateEndYear) {
+      setBatchError('Please select both start and end years for the batch');
+      return;
+    }
+    
+    if (parseInt(generateEndYear) <= parseInt(generateStartYear)) {
+      setBatchError('End year must be after start year');
+      return;
+    }
+    
     setLoading(true);
+    setBatchError('');
 
     try {
       const token = localStorage.getItem('token');
@@ -67,6 +83,8 @@ export default function ClassManagement() {
         setGeneratedCode(newClass.classCode);
         setShowModal(false);
         setFormData({ className: '', description: '' });
+        setGenerateStartYear('');
+        setGenerateEndYear('');
         
         // Show success message
         showToast(`Class code generated: ${newClass.classCode}`, 'success');
@@ -192,6 +210,9 @@ export default function ClassManagement() {
     setFormData({ className: '', description: '' });
     setStartYear('');
     setEndYear('');
+    setGenerateStartYear('');
+    setGenerateEndYear('');
+    setBatchError('');
   };
 
   const copyToClipboard = (text) => {
@@ -200,11 +221,16 @@ export default function ClassManagement() {
   };
 
   const getSortedAndFilteredClasses = () => {
-    let filtered = classes.filter(classItem => 
-      searchTerm === '' || 
-      classItem.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      classItem.classCode.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    let filtered = classes.filter(classItem => {
+      if (searchTerm === '') return true;
+      
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        classItem.className.toLowerCase().includes(searchLower) ||
+        classItem.classCode.toLowerCase().includes(searchLower) ||
+        (classItem.description && classItem.description.toLowerCase().includes(searchLower))
+      );
+    });
 
     // Apply sorting
     switch(sortBy) {
@@ -272,7 +298,7 @@ export default function ClassManagement() {
             <input
               type="text"
               className="block w-full pl-10 pr-10 py-2.5 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200 hover:border-gray-600"
-              placeholder="Search classes or codes..."
+              placeholder="Search classes,batch, codes..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -366,8 +392,8 @@ export default function ClassManagement() {
                       <div className="text-gray-300 font-mono">{classItem.classCode}</div>
                     </td>
                     <td className="py-4 px-6">
-                      <div className="text-gray-400 max-w-xs truncate" title={classItem.description || 'No description'}>
-                        {classItem.description || 'No description'}
+                      <div className="text-gray-400 max-w-xs truncate" title={classItem.description || 'No Batch'}>
+                        {classItem.description || 'No Batch'}
                       </div>
                     </td>
                     <td className="py-4 px-6">
@@ -493,7 +519,7 @@ export default function ClassManagement() {
                 <input
                   type="text"
                   value={formData.className}
-                  onChange={(e) => setFormData({...formData, className: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, className: e.target.value })}
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   placeholder="e.g., Computer Science 101"
                   required
@@ -512,16 +538,16 @@ export default function ClassManagement() {
                         const year = e.target.value;
                         setStartYear(year);
                         if (year && endYear) {
-                          setFormData(prev => ({
+                          setFormData((prev) => ({
                             ...prev,
-                            description: `Batch ${year} - ${endYear}`
+                            description: `Batch ${year} - ${endYear}`,
                           }));
                         }
                       }}
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                     >
                       <option value="">Select Start Year</option>
-                      {Array.from({length: 10}, (_, i) => {
+                      {Array.from({ length: 10 }, (_, i) => {
                         const year = new Date().getFullYear() + i;
                         return (
                           <option key={`start-${year}`} value={year}>
@@ -541,9 +567,9 @@ export default function ClassManagement() {
                         const year = e.target.value;
                         setEndYear(year);
                         if (startYear && year) {
-                          setFormData(prev => ({
+                          setFormData((prev) => ({
                             ...prev,
-                            description: `Batch ${startYear} - ${year}`
+                            description: `Batch ${startYear} - ${year}`,
                           }));
                         }
                       }}
@@ -551,28 +577,41 @@ export default function ClassManagement() {
                       disabled={!startYear}
                     >
                       <option value="">Select End Year</option>
-                      {startYear && Array.from({length: 6}, (_, i) => {
-                        const year = parseInt(startYear) + i + 1;
-                        return (
-                          <option key={`end-${year}`} value={year}>
-                            {year}
-                          </option>
-                        );
-                      })}
+                      {startYear &&
+                        Array.from({ length: 6 }, (_, i) => {
+                          const year = parseInt(startYear) + i + 1;
+                          return (
+                            <option key={`end-${year}`} value={year}>
+                              {year}
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
                 </div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Batch {startYear && endYear && '(Auto-generated)'}
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className={`w-full bg-gray-900 border ${startYear && endYear ? 'border-gray-600 text-gray-400' : 'border-gray-700 text-white'} rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500`}
-                  rows="2"
-                  placeholder={startYear && endYear ? `Batch ${startYear} - ${endYear}` : "Enter class description..."}
-                  readOnly={!!(startYear && endYear)}
-                />
+                <div className="relative">
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Batch {startYear && endYear ? '(Auto-generated)' : ''}
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => !(startYear && endYear) && setFormData({ ...formData, description: e.target.value })}
+                    readOnly={!!(startYear && endYear)}
+                    className={`w-full bg-gray-900 border ${
+                      startYear && endYear 
+                        ? 'border-gray-600 text-gray-400 bg-gray-800/50 cursor-not-allowed' 
+                        : 'border-gray-700 text-white'
+                    } rounded-lg px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                    style={{ minHeight: '100px' }}
+                  />
+                  {startYear && endYear && (
+                    <div className="absolute right-3 top-9 text-gray-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
@@ -591,13 +630,32 @@ export default function ClassManagement() {
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Updating...
                     </>
-                  ) : 'Update Class'}
+                  ) : (
+                    'Update Class'
+                  )}
                 </button>
               </div>
             </form>
@@ -629,23 +687,97 @@ export default function ClassManagement() {
                 <input
                   type="text"
                   value={formData.className}
-                  onChange={(e) => setFormData({...formData, className: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, className: e.target.value })}
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   placeholder="e.g., Computer Science 101"
                 />
               </div>
 
               <div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Start Year
+                    </label>
+                    <select
+                      value={generateStartYear}
+                      onChange={(e) => {
+                        const year = e.target.value;
+                        setGenerateStartYear(year);
+                        if (year && generateEndYear) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            description: `Batch ${year} - ${generateEndYear}`,
+                          }));
+                        }
+                      }}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    >
+                      <option value="">Select Start Year</option>
+                      {Array.from({ length: 10 }, (_, i) => {
+                        const year = new Date().getFullYear() + i;
+                        return (
+                          <option key={`gen-start-${year}`} value={year}>
+                            {year}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      End Year
+                    </label>
+                    <select
+                      value={generateEndYear}
+                      onChange={(e) => {
+                        const year = e.target.value;
+                        setGenerateEndYear(year);
+                        if (generateStartYear && year) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            description: `Batch ${generateStartYear} - ${year}`,
+                          }));
+                        }
+                      }}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      disabled={!generateStartYear}
+                    >
+                      <option value="">Select End Year</option>
+                      {generateStartYear &&
+                        Array.from({ length: 6 }, (_, i) => {
+                          const year = parseInt(generateStartYear) + i + 1;
+                          return (
+                            <option key={`gen-end-${year}`} value={year}>
+                              {year}
+                            </option>
+                          );
+                        })}
+                    </select>
+                  </div>
+                </div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Batch
+                  Batch {generateStartYear && generateEndYear ? '(Auto-generated)' : ''}
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  rows="3"
-                  placeholder="Brief description of the class..."
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className={`w-full bg-gray-900 border ${
+                    generateStartYear && generateEndYear
+                      ? 'border-gray-600 text-gray-400'
+                      : 'border-gray-700 text-white'
+                  } rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                  rows="2"
+                  placeholder={
+                    generateStartYear && generateEndYear
+                      ? `Batch ${generateStartYear} - ${generateEndYear}`
+                      : "Enter batch information or use the year selectors above"
+                  }
+                  readOnly={!!(generateStartYear && generateEndYear)}
                 />
+                {batchError && (
+                  <p className="mt-2 text-sm text-red-400">{batchError}</p>
+                )}
               </div>
 
               <div className="flex gap-4 pt-4">
@@ -658,8 +790,12 @@ export default function ClassManagement() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !formData.className.trim()}
-                  className="flex-1 bg-pink-600 hover:bg-pink-700 text-white py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading || !formData.className.trim() || !generateStartYear || !generateEndYear}
+                  className={`flex-1 ${
+                    !formData.className.trim() || !generateStartYear || !generateEndYear
+                      ? 'bg-pink-600/50 cursor-not-allowed'
+                      : 'bg-pink-600 hover:bg-pink-700'
+                  } text-white py-3 rounded-lg transition duration-200`}
                 >
                   {loading ? 'Generating...' : 'Generate Code'}
                 </button>

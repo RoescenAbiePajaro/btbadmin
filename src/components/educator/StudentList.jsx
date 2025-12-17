@@ -356,7 +356,7 @@ const StudentList = () => {
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Batch</h3>
               <p className="text-gray-300">
-                {getSelectedClassInfo()?.description || 'No description available'}
+                {getSelectedClassInfo()?.description || 'No Batch created'}
               </p>
             </div>
             
