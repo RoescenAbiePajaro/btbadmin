@@ -72,9 +72,10 @@ export default function AdminDashboard() {
   };
 
   // Get school name by ID
-  const getSchoolName = (schoolId) => {
-    const school = academicSettings.schools.find(s => s._id === schoolId);
-    return school ? school.name : 'Not specified';
+  const getSchoolName = (identifier) => {
+    if (!identifier) return 'Not specified';
+    const school = academicSettings.schools.find(s => s._id === identifier);
+    return school ? school.name : identifier;
   };
 
   // Fetch dashboard statistics
