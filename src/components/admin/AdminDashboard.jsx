@@ -856,7 +856,7 @@ export default function AdminDashboard() {
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">User Management</h3>
-                {educatorFileSummary ? (
+                {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-800">
@@ -871,38 +871,65 @@ export default function AdminDashboard() {
                             Role
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            School
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             Joined
                           </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
-                        {filteredData.data.map((user, index) => (
-                          <tr key={index} className="hover:bg-gray-800">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {user.fullName || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {user.email}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
-                                user.role === 'educator' ? 'bg-green-500/20 text-green-400' :
-                                'bg-blue-500/20 text-blue-400'
-                              }`}>
-                                {user.role}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {new Date(user.createdAt).toLocaleDateString()}
+                        {filteredData.data && filteredData.data.length > 0 ? (
+                          filteredData.data.map((user, index) => (
+                            <tr key={user._id || index} className="hover:bg-gray-800">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                {user.fullName || 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                {user.email}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                                  user.role === 'educator' ? 'bg-green-500/20 text-green-400' :
+                                  'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {user.role}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                {user.school ? getSchoolName(user.school) : 'Not specified'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                }`}>
+                                  {user.isActive ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="px-6 py-4 text-center text-gray-400">
+                              No user data available
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <p className="text-gray-400">Use filters above to view user data</p>
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-gray-400">Loading user data...</p>
+                  </div>
                 )}
               </div>
             </div>
