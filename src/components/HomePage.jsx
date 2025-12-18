@@ -25,10 +25,9 @@ export default function HomePage() {
   // Track click function
   const trackClick = async (type, location) => {
     try {
-      await axios.post('http://localhost:5000/api/clicks', {
+      await axios.post('http://localhost:5000/api/analytics/page-visit', {
         type,
         location,
-        timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
         url: window.location.href
       });

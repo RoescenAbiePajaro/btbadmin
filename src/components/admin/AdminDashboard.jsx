@@ -408,7 +408,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -470,6 +470,30 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <FiHome className="w-8 h-8 text-purple-500" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Total Page Visits</p>
+                <p className="text-3xl font-bold mt-2">
+                  {analyticsData?.rawData?.platformMetrics?.pageVisits || 0}
+                </p>
+              </div>
+              <FiEye className="w-8 h-8 text-teal-500" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">PC App Downloads</p>
+                <p className="text-3xl font-bold mt-2">
+                  {analyticsData?.rawData?.platformMetrics?.totalDownloads || 0}
+                </p>
+              </div>
+              <FiDownload className="w-8 h-8 text-orange-500" />
             </div>
           </div>
         </div>
@@ -784,6 +808,42 @@ export default function AdminDashboard() {
                           dot={{ r: 4 }}
                           activeDot={{ r: 6 }}
                         />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {analyticsData?.lineCharts?.downloadTrends && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold mb-4 text-white">PC App Downloads</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analyticsData.lineCharts.downloadTrends.data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="date" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" />
+                        <Tooltip contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }} />
+                        <Legend />
+                        <Line type="monotone" dataKey="downloads" name="Downloads" stroke="#F59E0B" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {analyticsData?.lineCharts?.pageVisitTrends && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                  <h3 className="text-lg font-bold mb-4 text-white">Page Visits</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analyticsData.lineCharts.pageVisitTrends.data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="date" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" />
+                        <Tooltip contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }} />
+                        <Legend />
+                        <Line type="monotone" dataKey="visits" name="Visits" stroke="#22C55E" strokeWidth={2} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
