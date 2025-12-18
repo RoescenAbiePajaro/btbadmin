@@ -25,7 +25,13 @@ export default function AdminDashboard() {
   const [timeRange, setTimeRange] = useState('30d');
   const [error, setError] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
-  
+  const [academicSettings, setAcademicSettings] = useState({
+    schools: [],
+    courses: [],
+    years: [],
+    blocks: []
+  });
+
   // Filter states
   const [filters, setFilters] = useState({
     startDate: '',
@@ -40,6 +46,33 @@ export default function AdminDashboard() {
   // Helper function to get activity counts
   const getActivityCounts = () => {
     return { views: 0, downloads: 0 };
+  };
+
+  // Fetch academic settings for educators
+  const fetchAcademicSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Fetch all academic settings in parallel
+      const [schoolsRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/academic-settings/school', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      setAcademicSettings(prev => ({
+        ...prev,
+        schools: Array.isArray(schoolsRes.data) ? schoolsRes.data.filter(item => item.isActive) : []
+      }));
+    } catch (error) {
+      console.error('Error fetching academic settings:', error);
+    }
+  };
+
+  // Get school name by ID
+  const getSchoolName = (schoolId) => {
+    const school = academicSettings.schools.find(s => s._id === schoolId);
+    return school ? school.name : 'Not specified';
   };
 
   // Fetch dashboard statistics
@@ -139,6 +172,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchAcademicSettings();
+  }, []);
+
+  useEffect(() => {
     fetchAnalyticsData();
   }, [timeRange]);
 
@@ -286,7 +323,7 @@ export default function AdminDashboard() {
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Active Classes</p>
+                <p className="text-gray-400 text-sm">Classes</p>
                 <p className="text-3xl font-bold mt-2">
                   {statistics?.classes?.active || 0}
                 </p>
@@ -656,7 +693,89 @@ export default function AdminDashboard() {
           {activeTab === 'classes' && (
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Class Management</h3>
+                <h3 className="text-lg font-bold mb-4 text-white">Educator Classes Summary</h3>
+                {filteredData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-800">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Educator
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Total Classes
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Active Classes
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Total Students
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            School
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {Object.entries(
+                          filteredData.data.reduce((acc, cls) => {
+                            const educatorId = cls.educator?._id || 'unknown';
+                            if (!acc[educatorId]) {
+                              acc[educatorId] = {
+                                name: cls.educator?.fullName || 'N/A',
+                                email: cls.educator?.email || 'N/A',
+                                school: cls.school?.name || 'N/A',
+                                totalClasses: 0,
+                                activeClasses: 0,
+                                totalStudents: 0,
+                                classes: []
+                              };
+                            }
+                            acc[educatorId].totalClasses += 1;
+                            if (cls.isActive) {
+                              acc[educatorId].activeClasses += 1;
+                            }
+                            acc[educatorId].totalStudents += cls.students?.length || 0;
+                            acc[educatorId].classes.push(cls);
+                            return acc;
+                          }, {})
+                        ).map(([educatorId, data]) => (
+                          <tr key={educatorId} className="hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.totalClasses}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
+                                {data.activeClasses} Active
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.totalStudents}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.classes[0]?.school ? getSchoolName(data.classes[0].school) : 'Not specified'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-400">No class data available</p>
+                )}
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4 text-white">Class Details</h3>
                 {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
