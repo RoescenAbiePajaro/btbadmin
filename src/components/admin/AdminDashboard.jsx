@@ -23,6 +23,8 @@ export default function AdminDashboard() {
   const [filteredData, setFilteredData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [timeRange, setTimeRange] = useState('30d');
+  const [schoolTrends, setSchoolTrends] = useState(null);
+  const [schoolTrendPeriod, setSchoolTrendPeriod] = useState('month');
   const [error, setError] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [academicSettings, setAcademicSettings] = useState({
@@ -170,6 +172,25 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch school trends
+  const fetchSchoolTrends = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `http://localhost:5000/api/dashboard/school-trends?period=${schoolTrendPeriod}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setSchoolTrends(response.data.trends);
+      }
+    } catch (error) {
+      console.error('Error fetching school trends:', error);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     fetchAcademicSettings();
@@ -178,6 +199,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAnalyticsData();
   }, [timeRange]);
+
+  useEffect(() => {
+    fetchSchoolTrends();
+  }, [schoolTrendPeriod]);
 
   useEffect(() => {
     if (activeTab !== 'overview' && activeTab !== 'export') {
@@ -249,26 +274,11 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex gap-2">
-                {['7d', '30d', '90d'].map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => handleTimeRangeChange(range)}
-                    className={`px-3 py-1 rounded-lg text-sm ${
-                      timeRange === range 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    {range === '7d' ? '7D' : range === '30d' ? '30D' : '90D'}
-                  </button>
-                ))}
-              </div>
-              
               <button
                 onClick={() => {
                   fetchDashboardData();
                   fetchAnalyticsData();
+                  fetchSchoolTrends();
                 }}
                 className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition duration-200"
                 title="Refresh Data"
@@ -354,12 +364,12 @@ export default function AdminDashboard() {
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Platform Activity</p>
+                <p className="text-gray-400 text-sm">Total of School Created</p>
                 <p className="text-3xl font-bold mt-2">
-                  {statistics?.activities?.total || 0}
+                  {statistics?.schools?.total || 0}
                 </p>
               </div>
-              <FiActivity className="w-8 h-8 text-purple-500" />
+              <FiHome className="w-8 h-8 text-purple-500" />
             </div>
           </div>
         </div>
@@ -496,12 +506,12 @@ export default function AdminDashboard() {
                   <div className="p-4 bg-gray-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-purple-500/20 rounded-lg">
-                        <FiActivity className="w-5 h-5 text-purple-400" />
+                        <FiHome className="w-5 h-5 text-purple-400" />
                       </div>
                       <div>
-                        <p className="text-gray-400 text-sm">Platform Activity</p>
+                        <p className="text-gray-400 text-sm">Schools Created</p>
                         <p className="text-xl font-bold text-white">
-                          {statistics?.activities?.total || 0} Activities
+                          {statistics?.schools?.total || 0} Schools
                         </p>
                       </div>
                     </div>
@@ -537,6 +547,54 @@ export default function AdminDashboard() {
 
           {activeTab === 'charts' && (
             <div className="space-y-8">
+              {/* School Trends Chart */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">School Created Trends</h3>
+                  <div className="flex gap-2">
+                    {['week', 'month', 'year'].map((period) => (
+                      <button
+                        key={period}
+                        onClick={() => setSchoolTrendPeriod(period)}
+                        className={`px-3 py-1 rounded-lg text-sm capitalize ${
+                          schoolTrendPeriod === period
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        {period}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={schoolTrends || []}>
+                      <defs>
+                        <linearGradient id="colorSchools" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="_id" stroke="#9CA3AF" />
+                      <YAxis stroke="#9CA3AF" />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="count" 
+                        stroke="#8884d8" 
+                        fillOpacity={1} 
+                        fill="url(#colorSchools)" 
+                        name="Schools Created"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
               {/* User Role Distribution Chart */}
               {statistics?.users?.byRole && statistics.users.byRole.length > 0 && (
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -692,6 +750,21 @@ export default function AdminDashboard() {
 
           {activeTab === 'classes' && (
             <div className="space-y-8">
+              {/* Schools Summary Card */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-purple-500/20 rounded-xl">
+                    <FiHome className="w-8 h-8 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Total Schools</h3>
+                    <p className="text-3xl font-bold text-purple-400">
+                      {statistics?.schools?.total || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">Educator Classes Summary</h3>
                 {filteredData ? (

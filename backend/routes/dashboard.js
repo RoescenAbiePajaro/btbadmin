@@ -7,6 +7,7 @@ const Class = require('../models/Class');
 const File = require('../models/File');
 const Activity = require('../models/Activity');
 const AccessCode = require('../models/AccessCode');
+const AcademicSetting = require('../models/AcademicSetting');
 const { requireAdmin } = require('../middleware/admin');
 
 // Helper function to format dates for different periods
@@ -67,6 +68,9 @@ router.get('/statistics', requireAdmin, async (req, res) => {
     // Learning Materials Activities
     const totalDownloads = await Activity.countDocuments({ activityType: 'download' });
     const totalViews = await Activity.countDocuments({ activityType: 'view' });
+
+    // Total Schools Created
+    const totalSchools = await AcademicSetting.countDocuments({ type: 'school' });
 
     // User registration over time (last 30 days)
     const thirtyDaysAgo = new Date();
@@ -228,6 +232,9 @@ router.get('/statistics', requireAdmin, async (req, res) => {
           downloads: totalDownloads,
           views: totalViews,
           total: totalDownloads + totalViews
+        },
+        schools: {
+          total: totalSchools
         },
         analytics: siteAnalytics,
         growth: growthMetrics
@@ -1097,6 +1104,154 @@ router.get('/user-counts', async (req, res) => {
       success: false,
       error: 'Error fetching user counts'
     });
+  }
+});
+
+// Get school creation trends
+router.get('/school-trends', requireAdmin, async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+    const { start, end } = getDateRange(period);
+    
+    let groupFormat;
+    switch(period) {
+      case 'day': groupFormat = "%Y-%m-%d"; break;
+      case 'week': groupFormat = "%Y-%W"; break;
+      case 'month': groupFormat = "%Y-%m"; break;
+      case 'year': groupFormat = "%Y"; break;
+      default: groupFormat = "%Y-%m";
+    }
+
+    const trends = await AcademicSetting.aggregate([
+      {
+        $match: {
+          type: 'school',
+          createdAt: { $gte: start, $lte: end }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: groupFormat, date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      period,
+      trends
+    });
+  } catch (error) {
+    console.error('School trends error:', error);
+    res.status(500).json({ success: false, error: 'Error fetching school trends' });
+  }
+});
+
+// Get school creation trends
+router.get('/school-trends', requireAdmin, async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+    
+    let start = new Date();
+    let groupFormat;
+    
+    switch(period) {
+      case 'week': 
+        start.setMonth(start.getMonth() - 3); // Last 3 months by week
+        groupFormat = "%Y-%W"; 
+        break;
+      case 'month': 
+        start.setFullYear(start.getFullYear() - 1); // Last 1 year by month
+        groupFormat = "%Y-%m"; 
+        break;
+      case 'year': 
+        start.setFullYear(start.getFullYear() - 5); // Last 5 years
+        groupFormat = "%Y"; 
+        break;
+      default: 
+        start.setFullYear(start.getFullYear() - 1);
+        groupFormat = "%Y-%m";
+    }
+
+    const trends = await AcademicSetting.aggregate([
+      {
+        $match: {
+          type: 'school',
+          createdAt: { $gte: start }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: groupFormat, date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      period,
+      trends
+    });
+  } catch (error) {
+    console.error('School trends error:', error);
+    res.status(500).json({ success: false, error: 'Error fetching school trends' });
+  }
+});
+
+// Get school creation trends
+router.get('/school-trends', requireAdmin, async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+    
+    let start = new Date();
+    let groupFormat;
+    
+    switch(period) {
+      case 'week': 
+        start.setMonth(start.getMonth() - 3); // Last 3 months by week
+        groupFormat = "%Y-%W"; 
+        break;
+      case 'month': 
+        start.setFullYear(start.getFullYear() - 1); // Last 1 year by month
+        groupFormat = "%Y-%m"; 
+        break;
+      case 'year': 
+        start.setFullYear(start.getFullYear() - 5); // Last 5 years
+        groupFormat = "%Y"; 
+        break;
+      default: 
+        start.setFullYear(start.getFullYear() - 1);
+        groupFormat = "%Y-%m";
+    }
+
+    const trends = await AcademicSetting.aggregate([
+      {
+        $match: {
+          type: 'school',
+          createdAt: { $gte: start }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: groupFormat, date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      period,
+      trends
+    });
+  } catch (error) {
+    console.error('School trends error:', error);
+    res.status(500).json({ success: false, error: 'Error fetching school trends' });
   }
 });
 

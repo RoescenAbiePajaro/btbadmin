@@ -1,4 +1,3 @@
-// backend/models/AcademicSetting.js
 const mongoose = require('mongoose');
 
 const academicSettingSchema = new mongoose.Schema({
@@ -33,7 +32,13 @@ const academicSettingSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
+}, {
+  timestamps: true  // Add this to automatically manage createdAt and updatedAt
 });
 
 // Create compound index for unique settings per educator
