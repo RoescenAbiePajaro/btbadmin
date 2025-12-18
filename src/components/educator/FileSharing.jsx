@@ -11,14 +11,12 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [filterClassCode, setFilterClassCode] = useState('');
   const [classSearchTerm, setClassSearchTerm] = useState('');
   const [shareToClassCode, setShareToClassCode] = useState(selectedClassCode || '');
-  const [recentActivities, setRecentActivities] = useState([]);
   const [classCodes, setClassCodes] = useState([]);
   const [viewingFile, setViewingFile] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
   useEffect(() => {
     fetchClassCodes();
-    fetchRecentActivities();
   }, [educatorId]);
 
   useEffect(() => {
@@ -31,10 +29,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       fetchSharedFiles();
     }
   }, [selectedClassCode]);
-
-  useEffect(() => {
-    console.log('ClassCodes loaded:', classCodes);
-  }, [classCodes]);
 
   const fetchClassCodes = async () => {
     try {
@@ -64,19 +58,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       }
     } catch (error) {
       console.error('Error fetching class codes:', error.response?.data || error.message);
-    }
-  };
-
-  const fetchRecentActivities = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:5000/api/files/recent`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setRecentActivities(response.data.activities || []);
-    } catch (error) {
-      console.error('Error fetching recent activities:', error);
     }
   };
 
@@ -148,9 +129,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         setSelectedFile(null);
         document.getElementById('file-upload').value = '';
         
-        // Refresh recent activities
-        await fetchRecentActivities();
-        
         showToast('File shared successfully!', 'success');
       } else {
         throw new Error(response.data.error || 'Failed to upload file');
@@ -210,9 +188,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       if (response.data.success) {
         // Remove file from state
         setFiles(prevFiles => prevFiles.filter(file => file._id !== fileId));
-        
-        // Refresh recent activities
-        await fetchRecentActivities();
         
         showToast('File deleted successfully', 'success');
       } else {
@@ -525,7 +500,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           >
             {uploading ? (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
                 Uploading...
               </>
             ) : (
@@ -721,80 +696,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         </div>
       </div>
 
-      {/* Recent Activities Section */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-gray-700">
-          <h3 className="text-xl font-semibold text-white">Recent Activities</h3>
-          <p className="text-gray-400 text-sm">Latest file activities across all classes</p>
-        </div>
-        
-        <div className="divide-y divide-gray-700">
-          {recentActivities.length > 0 ? (
-            recentActivities.map((activity, index) => {
-              const classItem = classCodes.find(c => c.classCode === activity.classCode);
-              return (
-                <div key={index} className="p-4 hover:bg-gray-750 transition-colors duration-200">
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activity.type === 'upload' ? 'bg-pink-500/10 text-pink-400' :
-                      activity.type === 'download' ? 'bg-blue-500/10 text-blue-400' :
-                      'bg-green-500/10 text-green-400'
-                    }`}>
-                      {activity.type === 'upload' ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                      ) : activity.type === 'download' ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <h4 className="text-white font-medium">
-                          {activity.type === 'upload' ? 'File uploaded' : 
-                          activity.type === 'download' ? 'File downloaded' : 'File updated'}
-                        </h4>
-                        <span className="text-xs text-gray-500">
-                          {formatDate(activity.timestamp || new Date())}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <p className="text-gray-400 text-sm">
-                          {activity.fileName}
-                        </p>
-                        <span className="text-gray-500">•</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-700 text-gray-300">
-                          {classItem?.className || activity.classCode}
-                        </span>
-                        {classItem?.description && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-900/30 text-blue-300">
-                            {classItem.description}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="text-center py-12">
-              <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-gray-400">No recent activities</p>
-              <p className="text-gray-500 text-sm mt-1">Activities will appear here</p>
-            </div>
-          )}
-        </div>
-      </div>
-      
       {toast.show && (
         <Toast
           message={toast.message}
