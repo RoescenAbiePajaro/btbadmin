@@ -27,6 +27,9 @@ export default function AdminDashboard() {
   const [schoolTrendPeriod, setSchoolTrendPeriod] = useState('month');
   const [error, setError] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [educatorFileSummary, setEducatorFileSummary] = useState(null);
+  const [educatorClassSummary, setEducatorClassSummary] = useState(null);
+  const [educatorUsers, setEducatorUsers] = useState({});
   const [academicSettings, setAcademicSettings] = useState({
     schools: [],
     courses: [],
@@ -172,6 +175,94 @@ export default function AdminDashboard() {
       console.error('Error fetching filtered data:', error);
     }
   };
+  
+  const fetchEducatorFileSummary = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'http://localhost:5000/api/files/list',
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        const summary = Object.values(
+          (response.data.files || []).reduce((acc, file) => {
+            const key = file.uploadedBy || 'unknown';
+            if (!acc[key]) {
+              acc[key] = { educatorId: key, name: file.uploaderName || 'Unknown', total: 0 };
+            }
+            acc[key].total += 1;
+            return acc;
+          }, {})
+        ).sort((a, b) => b.total - a.total);
+        setEducatorFileSummary(summary);
+      } else {
+        setEducatorFileSummary([]);
+      }
+    } catch (error) {
+      console.error('Error fetching educator file summary:', error);
+      setEducatorFileSummary([]);
+    }
+  };
+  
+  const fetchEducatorClassSummary = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'http://localhost:5000/api/analytics/filter',
+        {
+          params: { type: 'classes', page: 1, limit: 200 },
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      if (response.data.success) {
+        const summaryMap = (response.data.data || []).reduce((acc, cls) => {
+          const key = cls.educator?._id || 'unknown';
+          if (!acc[key]) {
+            acc[key] = {
+              email: cls.educator?.email || 'N/A',
+              fullName: cls.educator?.fullName || 'Unknown',
+              totalStudents: 0,
+              school: cls.school || null
+            };
+          }
+          acc[key].totalStudents += cls.students?.length || 0;
+          if (!acc[key].school && cls.school) acc[key].school = cls.school;
+          return acc;
+        }, {});
+        setEducatorClassSummary(summaryMap);
+      } else {
+        setEducatorClassSummary({});
+      }
+    } catch (error) {
+      console.error('Error fetching educator class summary:', error);
+      setEducatorClassSummary({});
+    }
+  };
+
+  const fetchEducatorUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'http://localhost:5000/api/analytics/filter',
+        {
+          params: { type: 'users', role: 'educator', page: 1, limit: 1000 },
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      if (response.data.success) {
+        const map = (response.data.data || []).reduce((acc, user) => {
+          acc[user._id] = { email: user.email || 'N/A', school: user.school || null };
+          return acc;
+        }, {});
+        setEducatorUsers(map);
+      } else {
+        setEducatorUsers({});
+      }
+    } catch (error) {
+      console.error('Error fetching educator users:', error);
+      setEducatorUsers({});
+    }
+  };
 
   // Fetch school trends
   const fetchSchoolTrends = async () => {
@@ -210,7 +301,15 @@ export default function AdminDashboard() {
       fetchFilteredData();
     }
   }, [activeTab, filters]);
-
+  
+  useEffect(() => {
+    if (activeTab === 'activities') {
+      fetchEducatorFileSummary();
+      fetchEducatorClassSummary();
+      fetchEducatorUsers();
+    }
+  }, [activeTab]);
+  
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -697,7 +796,7 @@ export default function AdminDashboard() {
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">User Management</h3>
-                {filteredData ? (
+                {educatorFileSummary ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-800">
@@ -910,49 +1009,37 @@ export default function AdminDashboard() {
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">Learning Material Logs</h3>
-                {filteredData ? (
+                {educatorFileSummary ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-800">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            User
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            File/Resource
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Timestamp
-                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Educator</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Students</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">School</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Files Shared</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
-                        {filteredData.data.map((activity, index) => (
-                          <tr key={index} className="hover:bg-gray-800">
+                        {(educatorFileSummary || []).map((row) => (
+                          <tr key={row.educatorId} className="hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{row.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{educatorClassSummary?.[row.educatorId]?.email || 'N/A'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{educatorUsers?.[row.educatorId]?.email || 'N/A'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                activity.activityType === 'download' ? 'bg-blue-500/20 text-blue-400' :
-                                'bg-purple-500/20 text-purple-400'
-                              }`}>
-                                {activity.activityType}
-                              </span>
+                              {(educatorUsers?.[row.educatorId]?.school || educatorClassSummary?.[row.educatorId]?.school)
+                                ? getSchoolName(educatorUsers?.[row.educatorId]?.school || educatorClassSummary[row.educatorId]?.school)
+                                : 'Not specified'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {activity.studentName || activity.userId?.fullName || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {activity.fileName || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {new Date(activity.createdAt).toLocaleString()}
-                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{row.total}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <p className="text-gray-400">Use filters above to view activity data</p>
+                  <p className="text-gray-400">No files found</p>
                 )}
               </div>
             </div>
