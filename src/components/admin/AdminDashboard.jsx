@@ -715,29 +715,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Recent Activity */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Recent Activity</h3>
-                <div className="space-y-3">
-                  {statistics?.classes?.mostActive?.slice(0, 5).map((cls, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition duration-200">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${index < 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-400'}`}>
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium">{cls.className || `Class ${cls.classCode}`}</p>
-                          <p className="text-sm text-gray-400">{cls.classCode}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">{cls.studentCount || 0} students</p>
-                        <p className="text-sm text-gray-400">{cls.activityCount || 0} activities</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+             
+               
+             
             </div>
           )}
 
@@ -1009,20 +989,7 @@ export default function AdminDashboard() {
 
           {activeTab === 'classes' && (
             <div className="space-y-8">
-              {/* Schools Summary Card */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-purple-500/20 rounded-xl">
-                    <FiHome className="w-8 h-8 text-purple-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Total Schools</h3>
-                    <p className="text-3xl font-bold text-purple-400">
-                      {statistics?.schools?.total || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              
 
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">Educator Classes Summary</h3>
