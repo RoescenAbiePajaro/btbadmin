@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   const [educatorFileSummary, setEducatorFileSummary] = useState(null);
   const [educatorClassSummary, setEducatorClassSummary] = useState(null);
   const [educatorUsers, setEducatorUsers] = useState({});
+  const [educatorSharedFiles, setEducatorSharedFiles] = useState([]);
   const [academicSettings, setAcademicSettings] = useState({
     schools: [],
     courses: [],
@@ -264,6 +265,52 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch all shared files from educators
+  const fetchEducatorSharedFiles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'http://localhost:5000/api/files/list',
+        { 
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      if (response.data.success) {
+        // Group files by educator with their details
+        const filesByEducator = (response.data.files || []).reduce((acc, file) => {
+          if (file.uploadedBy && file.uploaderName) {
+            if (!acc[file.uploadedBy]) {
+              acc[file.uploadedBy] = {
+                educatorName: file.uploaderName,
+                educatorId: file.uploadedBy,
+                files: []
+              };
+            }
+            acc[file.uploadedBy].files.push({
+              id: file._id,
+              name: file.name || file.originalName,
+              originalName: file.originalName,
+              classCode: file.classCode,
+              uploadedAt: file.uploadedAt || file.createdAt,
+              size: file.size,
+              mimeType: file.mimeType,
+              url: file.url,
+              type: file.type || 'material'
+            });
+          }
+          return acc;
+        }, {});
+        
+        setEducatorSharedFiles(Object.values(filesByEducator));
+      } else {
+        setEducatorSharedFiles([]);
+      }
+    } catch (error) {
+      console.error('Error fetching educator shared files:', error);
+      setEducatorSharedFiles([]);
+    }
+  };
+
   // Fetch school trends
   const fetchSchoolTrends = async () => {
     try {
@@ -307,6 +354,7 @@ export default function AdminDashboard() {
       fetchEducatorFileSummary();
       fetchEducatorClassSummary();
       fetchEducatorUsers();
+      fetchEducatorSharedFiles();
     }
   }, [activeTab]);
   
@@ -1157,6 +1205,101 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <p className="text-gray-400">No learning material data available</p>
+                )}
+              </div>
+
+              {/* Educator Shared Files Section */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4 text-white">Educator Shared Files</h3>
+                {educatorSharedFiles.length > 0 ? (
+                  <div className="space-y-6">
+                    {educatorSharedFiles.map((educator) => (
+                      <div key={educator.educatorId} className="bg-gray-800 rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-blue-500/20 rounded-lg">
+                            <FiUsers className="w-5 h-5 text-blue-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-semibold">{educator.educatorName}</h4>
+                            <p className="text-gray-400 text-sm">{educator.files.length} files shared</p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {educator.files.map((file) => (
+                            <div key={file.id} className="bg-gray-700 rounded-lg p-3 hover:bg-gray-600 transition-colors">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                  {file.mimeType?.startsWith('image/') ? (
+                                    <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                      <FiFileText className="w-5 h-5 text-green-400" />
+                                    </div>
+                                  ) : file.mimeType === 'application/pdf' ? (
+                                    <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                                      <FiFileText className="w-5 h-5 text-red-400" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
+                                      <FiFileText className="w-5 h-5 text-gray-400" />
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-white font-medium text-sm truncate" title={file.name}>
+                                    {file.name}
+                                  </h5>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-900 text-blue-200">
+                                      {file.classCode}
+                                    </span>
+                                    <span className="text-xs text-gray-400">
+                                      {file.type === 'assignment' ? 'Assignment' : 'Material'}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    {new Date(file.uploadedAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => window.open(file.url, '_blank')}
+                                    className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                                    title="View file"
+                                  >
+                                    <FiEye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const link = document.createElement('a');
+                                      link.href = file.url;
+                                      link.download = file.originalName || file.name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }}
+                                    className="p-1 text-green-400 hover:text-green-300 transition-colors"
+                                    title="Download file"
+                                  >
+                                    <FiDownload className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="p-4 bg-gray-800 rounded-lg inline-block mb-4">
+                      <FiFileText className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-400">No shared files from educators found</p>
+                    <p className="text-gray-500 text-sm mt-1">Files shared by educators will appear here</p>
+                  </div>
                 )}
               </div>
             </div>
