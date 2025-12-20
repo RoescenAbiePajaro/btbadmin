@@ -570,6 +570,7 @@ export default function AdminDashboard() {
         <div className="mb-6 border-b border-gray-800">
           <div className="flex space-x-4 overflow-x-auto">
             {[
+              { id: 'overview', label: 'Overview', icon: <FiHome /> },
               { id: 'users', label: 'Users', icon: <FiUsers /> },
               { id: 'classes', label: 'Classes', icon: <FiBook /> },
               { id: 'activities', label: 'Learning Materials', icon: <FiActivity /> },
