@@ -1,4 +1,4 @@
-// backend/models/User.js - Add admin role support
+// backend/models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 

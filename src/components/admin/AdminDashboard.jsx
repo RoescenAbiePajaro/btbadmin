@@ -1096,37 +1096,66 @@ export default function AdminDashboard() {
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">Learning Material Logs</h3>
-                {educatorFileSummary ? (
+                {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-800">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Educator</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Students</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">School</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Files Shared</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Students</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
-                        {(educatorFileSummary || []).map((row) => (
-                          <tr key={row.educatorId} className="hover:bg-gray-800">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{row.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{educatorClassSummary?.[row.educatorId]?.email || 'N/A'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{educatorUsers?.[row.educatorId]?.email || 'N/A'}</td>
+                        {Object.entries(
+                          (filteredData.data || []).reduce((acc, file) => {
+                            const educatorId = file.uploadedBy || file.educator?._id || 'unknown';
+                            if (!acc[educatorId]) {
+                              acc[educatorId] = {
+                                name: file.educator?.fullName || file.uploaderName || 'N/A',
+                                email: file.educator?.email || 'N/A',
+                                school: file.school || file.educator?.school || null,
+                                totalFiles: 0,
+                                totalStudents: 0,
+                                files: []
+                              };
+                            }
+                            acc[educatorId].totalFiles += 1;
+                            acc[educatorId].files.push(file);
+                            
+                            // Get total students from educatorClassSummary if available
+                            if (educatorClassSummary?.[educatorId]?.totalStudents) {
+                              acc[educatorId].totalStudents = educatorClassSummary[educatorId].totalStudents;
+                            }
+                            
+                            return acc;
+                          }, {})
+                        ).map(([educatorId, data]) => (
+                          <tr key={educatorId} className="hover:bg-gray-800">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {(educatorUsers?.[row.educatorId]?.school || educatorClassSummary?.[row.educatorId]?.school)
-                                ? getSchoolName(educatorUsers?.[row.educatorId]?.school || educatorClassSummary[row.educatorId]?.school)
-                                : 'Not specified'}
+                              {data.name}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{row.total}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.school ? getSchoolName(data.school) : 'Not specified'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.totalFiles}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.totalStudents || 0}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <p className="text-gray-400">No files found</p>
+                  <p className="text-gray-400">No learning material data available</p>
                 )}
               </div>
             </div>
@@ -1135,7 +1164,6 @@ export default function AdminDashboard() {
           {activeTab === 'export' && (
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h2 className="text-lg font-bold mb-4">Export Reports</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <button
                     onClick={() => {
