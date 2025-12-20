@@ -31,6 +31,7 @@ export default function AdminDashboard() {
   const [educatorClassSummary, setEducatorClassSummary] = useState(null);
   const [educatorUsers, setEducatorUsers] = useState({});
   const [educatorSharedFiles, setEducatorSharedFiles] = useState([]);
+  const [classCodes, setClassCodes] = useState([]);
   const [academicSettings, setAcademicSettings] = useState({
     schools: [],
     courses: [],
@@ -265,6 +266,27 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch all class codes for admin view
+  const fetchAllClassCodes = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'http://localhost:5000/api/classes/all',
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setClassCodes(response.data.classes || []);
+      } else {
+        console.warn('Failed to fetch class codes:', response.data.error);
+        setClassCodes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching all class codes:', error);
+      setClassCodes([]);
+    }
+  };
+
   // Fetch all shared files from educators
   const fetchEducatorSharedFiles = async () => {
     try {
@@ -355,6 +377,7 @@ export default function AdminDashboard() {
       fetchEducatorClassSummary();
       fetchEducatorUsers();
       fetchEducatorSharedFiles();
+      fetchAllClassCodes();
     }
   }, [activeTab]);
   
@@ -1024,6 +1047,12 @@ export default function AdminDashboard() {
                             Total Students
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Class Code
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Class Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             School
                           </th>
                         </tr>
@@ -1071,6 +1100,12 @@ export default function AdminDashboard() {
                               {data.totalStudents}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.classes.map(cls => cls.classCode || 'N/A').join(', ')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.classes.map(cls => cls.className || 'N/A').join(', ')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               {data.classes[0]?.school ? getSchoolName(data.classes[0].school) : 'Not specified'}
                             </td>
                           </tr>
@@ -1080,62 +1115,6 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <p className="text-gray-400">No class data available</p>
-                )}
-              </div>
-
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Class Details</h3>
-                {filteredData ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-800">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Class Code
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Class Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Educator
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Students
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-800">
-                        {filteredData.data.map((cls, index) => (
-                          <tr key={index} className="hover:bg-gray-800">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {cls.classCode}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {cls.className}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {cls.educator?.fullName || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {cls.students?.length || 0}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                cls.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                              }`}>
-                                {cls.isActive ? 'Active' : 'Inactive'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-gray-400">Use filters above to view class data</p>
                 )}
               </div>
             </div>
@@ -1250,9 +1229,21 @@ export default function AdminDashboard() {
                                     {file.name}
                                   </h5>
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-900 text-blue-200">
-                                      {file.classCode}
-                                    </span>
+                                    {(() => {
+                                      const classItem = classCodes.find(c => c.classCode === file.classCode);
+                                      return (
+                                        <>
+                                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
+                                            {classItem?.className || file.classCode}
+                                          </span>
+                                          {classItem?.description && (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+                                              {classItem.description}
+                                            </span>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                     <span className="text-xs text-gray-400">
                                       {file.type === 'assignment' ? 'Assignment' : 'Material'}
                                     </span>
