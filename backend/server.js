@@ -567,7 +567,6 @@ app.post('/api/auth/login', async (req, res) => {
     return createToastResponse(res, 500, 'Server error during login', 'error');
   }
 });
-
 // =====================
 // 🏫 CLASS MANAGEMENT
 // =====================
@@ -594,7 +593,13 @@ app.get('/api/classes/validate/:code', async (req, res) => {
       classCode: classObj.classCode,
       className: classObj.className,
       educatorId: classObj.educator._id,
-      educatorName: classObj.educator.fullName || classObj.educator.username
+      educatorName: classObj.educator.fullName || classObj.educator.username,
+      academicData: {
+        school: classObj.school || '',
+        course: classObj.course || '',
+        year: classObj.year || '',
+        block: classObj.block || ''
+      }
     });
   } catch (error) {
     console.error('Validate class code error:', error);

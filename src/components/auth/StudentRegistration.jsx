@@ -9,19 +9,15 @@ export default function StudentRegistration() {
   const [loading, setLoading] = useState(false);
   const [classCodeLoading, setClassCodeLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [academicOptions, setAcademicOptions] = useState({
-    school: [],
-    course: [],
-    years: [],
-    blocks: []
-  });
-
+  
+  // Remove academicOptions state since we don't need dropdowns anymore
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     username: '',
     password: '',
     confirmPassword: '',
+    // REMOVE THESE - Will be auto-populated
     school: '',
     course: '',
     year: '',
@@ -32,18 +28,24 @@ export default function StudentRegistration() {
   const [errors, setErrors] = useState({});
   const [classEducatorId, setClassEducatorId] = useState(null);
   const [classInfo, setClassInfo] = useState(null);
+  const [academicData, setAcademicData] = useState({
+    school: '',
+    course: '',
+    year: '',
+    block: ''
+  });
 
-  // Validate class code and get educator info
+  // Validate class code and get educator info with academic data
   useEffect(() => {
     const validateClassCode = async () => {
       if (!formData.classCode || formData.classCode.length < 4) {
         setClassEducatorId(null);
         setClassInfo(null);
-        setAcademicOptions({
-          school: [],
-          course: [],
-          years: [],
-          blocks: []
+        setAcademicData({
+          school: '',
+          course: '',
+          year: '',
+          block: ''
         });
         setErrors(prev => ({ ...prev, classCode: '' }));
         return;
@@ -61,19 +63,44 @@ export default function StudentRegistration() {
             className: response.data.className,
             educatorName: response.data.educatorName
           });
-          setErrors(prev => ({ ...prev, classCode: '' }));
           
-          await fetchAcademicOptionsForEducator(response.data.educatorId);
+          // SET ACADEMIC DATA FROM CLASS
+          if (response.data.academicData) {
+            setAcademicData(response.data.academicData);
+            
+            // Also update formData with academic values
+            setFormData(prev => ({
+              ...prev,
+              school: response.data.academicData.school,
+              course: response.data.academicData.course,
+              year: response.data.academicData.year,
+              block: response.data.academicData.block
+            }));
+          }
+          
+          setErrors(prev => ({ ...prev, classCode: '' }));
         } else {
           setErrors(prev => ({ ...prev, classCode: response.data.message }));
           setClassEducatorId(null);
           setClassInfo(null);
+          setAcademicData({
+            school: '',
+            course: '',
+            year: '',
+            block: ''
+          });
         }
       } catch (error) {
         console.error('Error validating class code:', error);
         setErrors(prev => ({ ...prev, classCode: 'Invalid class code' }));
         setClassEducatorId(null);
         setClassInfo(null);
+        setAcademicData({
+          school: '',
+          course: '',
+          year: '',
+          block: ''
+        });
       } finally {
         setClassCodeLoading(false);
       }
@@ -86,33 +113,6 @@ export default function StudentRegistration() {
     return () => clearTimeout(timer);
   }, [formData.classCode]);
 
-  // Fetch academic options for specific educator
-  const fetchAcademicOptionsForEducator = async (educatorId) => {
-    try {
-      const [schoolRes, courseRes, yearsRes, blocksRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/academic-settings/school/educator/${educatorId}`),
-        axios.get(`http://localhost:5000/api/academic-settings/course/educator/${educatorId}`),
-        axios.get(`http://localhost:5000/api/academic-settings/year/educator/${educatorId}`),
-        axios.get(`http://localhost:5000/api/academic-settings/block/educator/${educatorId}`)
-      ]);
-
-      setAcademicOptions({
-        school: schoolRes.data.map(item => item.name),
-        course: courseRes.data.map(item => item.name),
-        years: yearsRes.data.map(item => item.name),
-        blocks: blocksRes.data.map(item => item.name)
-      });
-    } catch (error) {
-      console.error('Error fetching academic options for educator:', error);
-      setAcademicOptions({
-        school: [],
-        course: [],
-        years: [],
-        blocks: []
-      });
-    }
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     
@@ -120,11 +120,19 @@ export default function StudentRegistration() {
       setFormData(prev => ({
         ...prev,
         [name]: value,
+        // Reset academic fields when class code changes
         school: '',
         course: '',
         year: '',
         block: ''
       }));
+      // Reset academic data when class code changes
+      setAcademicData({
+        school: '',
+        course: '',
+        year: '',
+        block: ''
+      });
     } else {
       setFormData(prev => ({
         ...prev,
@@ -157,6 +165,11 @@ export default function StudentRegistration() {
     if (!formData.classCode.trim()) newErrors.classCode = 'Class code is required';
     else if (!classEducatorId) newErrors.classCode = 'Please enter a valid class code';
     
+    // Check if academic data is available
+    if (classEducatorId && (!formData.school || !formData.course || !formData.year || !formData.block)) {
+      newErrors.classCode = 'Class does not have complete academic information. Please contact your educator.';
+    }
+    
     return newErrors;
   };
 
@@ -180,6 +193,7 @@ export default function StudentRegistration() {
           email: formData.email,
           username: formData.username,
           password: formData.password,
+          // Academic data is already set in formData from class validation
           school: formData.school,
           course: formData.course,
           year: formData.year,
@@ -202,6 +216,13 @@ export default function StudentRegistration() {
           year: '',
           block: '',
           classCode: ''
+        });
+        
+        setAcademicData({
+          school: '',
+          course: '',
+          year: '',
+          block: ''
         });
         
         setErrors({});
@@ -414,92 +435,58 @@ export default function StudentRegistration() {
               )}
             </div>
 
-            {/* Academic Information */}
-            <div className="bg-black border border-gray-800 rounded-xl p-4 mb-6">
-              <h3 className="text-white font-medium mb-3">Class Information</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {/* School */}
-                <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">
-                    School
-                  </label>
-                  <select
-                    name="school"
-                    value={formData.school}
-                    onChange={handleChange}
-                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    disabled={!classEducatorId}
-                  >
-                    <option value="">Select School</option>
-                    {academicOptions.school.map(school => (
-                      <option key={school} value={school}>{school}</option>
-                    ))}
-                  </select>
-                </div>
+            {/* Academic Information - DISPLAY ONLY (no dropdowns) */}
+            {classEducatorId && (
+              <div className="bg-black border border-gray-800 rounded-xl p-4 mb-6">
+                <h3 className="text-white font-medium mb-3">Class Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* School - Display only */}
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      School
+                    </label>
+                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
+                      {academicData.school || 'Not specified'}
+                    </div>
+                  </div>
 
-                {/* Course */}
-                <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">
-                    Course
-                  </label>
-                  <select
-                    name="course"
-                    value={formData.course}
-                    onChange={handleChange}
-                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    disabled={!classEducatorId}
-                  >
-                    <option value="">Select Course</option>
-                    {academicOptions.course.map(course => (
-                      <option key={course} value={course}>{course}</option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Course - Display only */}
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Course
+                    </label>
+                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
+                      {academicData.course || 'Not specified'}
+                    </div>
+                  </div>
 
-                {/* Year */}
-                <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">
-                    Year
-                  </label>
-                  <select
-                    name="year"
-                    value={formData.year}
-                    onChange={handleChange}
-                    className="w-1/2 bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    disabled={!classEducatorId}
-                  >
-                    <option value="">Select Year</option>
-                    {academicOptions.years.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Year - Display only */}
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Year
+                    </label>
+                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
+                      {academicData.year || 'Not specified'}
+                    </div>
+                  </div>
 
-                {/* Block */}
-                <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">
-                    Block
-                  </label>
-                  <select
-                    name="block"
-                    value={formData.block}
-                    onChange={handleChange}
-                    className="w-1/2 bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    disabled={!classEducatorId}
-                  >
-                    <option value="">Select Block</option>
-                    {academicOptions.blocks.map(block => (
-                      <option key={block} value={block}>{block}</option>
-                    ))}
-                  </select>
+                  {/* Block - Display only */}
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Block
+                    </label>
+                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
+                      {academicData.block || 'Not specified'}
+                    </div>
+                  </div>
                 </div>
+                {(!academicData.school || !academicData.course || !academicData.year || !academicData.block) && (
+                  <p className="mt-2 text-xs text-yellow-400">
+                    Note: This class has incomplete academic information. Please contact your educator if needed.
+                  </p>
+                )}
               </div>
-              {!classEducatorId && formData.classCode && (
-                <p className="mt-2 text-xs text-yellow-400">
-                  Please enter a valid class code to select academic information
-                </p>
-              )}
-            </div>
+            )}
 
             {/* Submit Button */}
             <button
