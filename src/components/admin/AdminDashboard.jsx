@@ -812,7 +812,8 @@ export default function AdminDashboard() {
                     <BarChart
                       data={[
                         { name: 'Views', value: statistics?.activities?.views || 0 },
-                        { name: 'Downloads', value: statistics?.activities?.downloads || 0 }
+                        { name: 'Downloads', value: statistics?.activities?.downloads || 0 },
+                        { name: 'Total Files', value: statistics?.materials?.total || 0 }
                       ]}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
