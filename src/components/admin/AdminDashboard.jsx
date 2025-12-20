@@ -1014,12 +1014,6 @@ export default function AdminDashboard() {
                             Total Students
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Class Code
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Class Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             School
                           </th>
                         </tr>
@@ -1065,12 +1059,6 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               {data.totalStudents}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {data.classes.map(cls => cls.classCode || 'N/A').join(', ')}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {data.classes.map(cls => cls.className || 'N/A').join(', ')}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               {data.classes[0]?.school ? getSchoolName(data.classes[0].school) : 'Not specified'}
