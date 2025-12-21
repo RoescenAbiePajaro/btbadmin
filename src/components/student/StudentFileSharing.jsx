@@ -5,10 +5,12 @@ const StudentFileSharing = ({ student }) => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [classInfo, setClassInfo] = useState(null);
 
   useEffect(() => {
     if (student && student.enrolledClass) {
       fetchFiles();
+      fetchClassInfo();
     }
   }, [student]);
 
@@ -35,6 +37,26 @@ const StudentFileSharing = ({ student }) => {
       setError(error.response?.data?.error || 'Error fetching files');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchClassInfo = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `http://localhost:5000/api/classes/by-code/${student?.enrolledClass?.classCode}`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        setClassInfo(response.data.class);
+      }
+    } catch (error) {
+      console.error('Error fetching class info:', error);
     }
   };
 
@@ -219,7 +241,7 @@ const StudentFileSharing = ({ student }) => {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        Posted: {formatDate(material.uploadedAt)}
+                        Posted: {formatDate(material.createdAt)}
                       </div>
                       <div className="flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
