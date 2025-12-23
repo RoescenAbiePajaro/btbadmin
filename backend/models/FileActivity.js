@@ -1,4 +1,4 @@
-// backend/models/fileActivitySchema.js
+// backend/models/FileActivity.js
 const mongoose = require('mongoose');
 
 const fileActivitySchema = new mongoose.Schema({
