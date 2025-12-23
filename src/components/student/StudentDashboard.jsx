@@ -7,63 +7,90 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [forceRefresh, setForceRefresh] = useState(0);
+  const [forceRefresh, setForceRefresh] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showJoinClassModal, setShowJoinClassModal] = useState(false);
   const [joinClassCode, setJoinClassCode] = useState('');
   const [joinClassLoading, setJoinClassLoading] = useState(false);
   const [joinClassError, setJoinClassError] = useState('');
   const [joinClassInfo, setJoinClassInfo] = useState(null);
-  const [joinSuccess, setJoinSuccess] = useState(false);
 
-  // Function to fetch fresh user data from server
-  const fetchFreshUserData = async () => {
+  const fetchUserData = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+
+    if (!token || !userData) {
+      navigate('/login');
+      return null;
+    }
+
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return null;
-      }
-
+      // Always fetch fresh user data from server
       const response = await axios.get('http://localhost:5000/api/auth/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.data?.user) {
         const userData = response.data.data.user;
-        console.log('Fresh user data fetched:', userData);
+        console.log('Fetched fresh user data:', userData);
         
         // Update localStorage with fresh data
         localStorage.setItem('user', JSON.stringify(userData));
         return userData;
+      } else {
+        // Fallback to localStorage data
+        const parsedUser = JSON.parse(userData);
+        if (parsedUser.role !== 'student') {
+          navigate('/login');
+          return null;
+        }
+        return parsedUser;
       }
-      return null;
     } catch (error) {
-      console.error('Error fetching fresh user data:', error);
-      return null;
+      console.error('Error fetching user data:', error);
+      // Fallback to localStorage data
+      try {
+        const parsedUser = JSON.parse(userData);
+        if (parsedUser.role !== 'student') {
+          navigate('/login');
+          return null;
+        }
+        return parsedUser;
+      } catch (parseError) {
+        console.error('Error parsing user data:', parseError);
+        navigate('/login');
+        return null;
+      }
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    const isFreshRegistration = localStorage.getItem('freshRegistration');
+    
+    if (isFreshRegistration === 'true') {
+      console.log('Fresh registration detected, forcing reload...');
+      localStorage.removeItem('freshRegistration');
+      setForceRefresh(true);
+    }
+  }, []);
 
   useEffect(() => {
     const loadUserData = async () => {
-      setLoading(true);
-      const userData = await fetchFreshUserData();
+      const userData = await fetchUserData();
       if (userData) {
         setUser(userData);
-        console.log('User state updated with fresh data:', userData);
+        console.log('User state set:', userData);
       }
       setLoading(false);
     };
 
     loadUserData();
-  }, [navigate, forceRefresh]);
+  }, [fetchUserData, forceRefresh]);
 
-  // Debug logging
   useEffect(() => {
     console.log('Current user state:', user);
+    console.log('Enrolled class:', user?.enrolledClass);
     console.log('Enrolled class details:', user?.enrolledClassDetails);
-    console.log('Enrolled class object:', user?.enrolledClass);
-    console.log('Has enrolledClass in DB:', !!user?.enrolledClass);
   }, [user]);
 
   const handleJoinClass = async () => {
@@ -74,7 +101,6 @@ export default function StudentDashboard() {
 
     setJoinClassLoading(true);
     setJoinClassError('');
-    setJoinSuccess(false);
 
     try {
       const token = localStorage.getItem('token');
@@ -102,95 +128,41 @@ export default function StudentDashboard() {
       const joinResponse = await axios.post(
         'http://localhost:5000/api/classes/join',
         { classCode: joinClassCode.toUpperCase() },
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log('Join class response:', joinResponse.data);
-
-      if (joinResponse.data.data?.user) {
-        // Success! Update local state with the response data
-        const updatedUser = joinResponse.data.data.user;
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-        setJoinSuccess(true);
+      if (joinResponse.data.success) {
+        // Force refresh user data from server
+        const userResponse = await axios.get('http://localhost:5000/api/auth/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         
-        // Show success message
-        setTimeout(() => {
-          alert(`Successfully joined class: ${validateResponse.data.className}!`);
-        }, 100);
+        if (userResponse.data.data?.user) {
+          const updatedUser = userResponse.data.data.user;
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+          console.log('User updated after joining class:', updatedUser);
+        }
         
         // Close modal and reset
-        setTimeout(() => {
-          setShowJoinClassModal(false);
-          setJoinClassCode('');
-          setJoinClassInfo(null);
-          setJoinClassLoading(false);
-          
-          // Force refresh to update UI
-          setForceRefresh(prev => prev + 1);
-        }, 500);
+        setShowJoinClassModal(false);
+        setJoinClassCode('');
+        setJoinClassInfo(null);
         
-      } else if (joinResponse.data.toast?.type === 'error') {
-        // Server returned an error
-        setJoinClassError(joinResponse.data.toast.message || 'Failed to join class');
-        setJoinClassLoading(false);
+        // Show success message
+        alert('Successfully joined class!');
+        
+        // Force refresh to update UI
+        setForceRefresh(true);
       } else {
-        // Generic error
-        setJoinClassError('Failed to join class. Please try again.');
-        setJoinClassLoading(false);
+        setJoinClassError(joinResponse.data.message || 'Failed to join class');
       }
     } catch (error) {
       console.error('Join class error:', error);
-      
-      // Handle specific error cases
-      if (error.response) {
-        // Server responded with error status
-        const errorMessage = error.response.data?.toast?.message || 
-                           error.response.data?.message || 
-                           error.response.data?.error ||
-                           'Failed to join class';
-        
-        // Check if student is already enrolled
-        if (errorMessage.includes('already enrolled') || errorMessage.includes('already in this class')) {
-          // Student is already enrolled, fetch fresh data to update UI
-          const freshData = await fetchFreshUserData();
-          if (freshData) {
-            setUser(freshData);
-            setJoinClassError('You are already enrolled in this class.');
-          } else {
-            setJoinClassError(errorMessage);
-          }
-        } else {
-          setJoinClassError(errorMessage);
-        }
-      } else if (error.request) {
-        // Request was made but no response
-        setJoinClassError('Network error. Please check your connection and try again.');
-      } else {
-        // Something else happened
-        setJoinClassError('An unexpected error occurred. Please try again.');
-      }
-      
+      setJoinClassError(error.response?.data?.message || 'Failed to join class');
+    } finally {
       setJoinClassLoading(false);
     }
-  };
-
-  // Function to manually refresh user data
-  const refreshUserData = async () => {
-    setLoading(true);
-    const freshData = await fetchFreshUserData();
-    if (freshData) {
-      setUser(freshData);
-      alert('User data refreshed successfully!');
-    } else {
-      alert('Failed to refresh user data. Please try logging in again.');
-    }
-    setLoading(false);
   };
 
   const handleLogout = () => {
@@ -228,44 +200,13 @@ export default function StudentDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-white">Student Dashboard</h1>
               <p className="text-gray-400">Welcome, {user.fullName}</p>
-              {user.enrolledClassDetails ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-green-400">
-                    Joined: {user.enrolledClassDetails.className} ({user.enrolledClassDetails.classCode})
-                  </span>
-                  <button
-                    onClick={refreshUserData}
-                    className="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded transition duration-200"
-                    title="Refresh data"
-                  >
-                    ↻
-                  </button>
-                </div>
-              ) : user.enrolledClass ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-yellow-400">
-                    Class data needs refresh
-                  </span>
-                  <button
-                    onClick={refreshUserData}
-                    className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-2 rounded transition duration-200"
-                    title="Refresh to see class details"
-                  >
-                    Refresh
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm text-red-400 mt-1">Not enrolled in any class</p>
+              {user.enrolledClassDetails && (
+                <p className="text-sm text-green-400 mt-1">
+                  Joined in: {user.enrolledClassDetails.className} ({user.enrolledClassDetails.classCode})
+                </p>
               )}
             </div>
             <div className="flex items-center gap-4">
-              <button
-                onClick={refreshUserData}
-                className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200"
-                title="Refresh user data"
-              >
-                Refresh
-              </button>
               <button
                 onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200"
@@ -289,10 +230,8 @@ export default function StudentDashboard() {
                   setJoinClassCode('');
                   setJoinClassError('');
                   setJoinClassInfo(null);
-                  setJoinSuccess(false);
                 }}
                 className="text-gray-400 hover:text-white"
-                disabled={joinClassLoading}
               >
                 ✕
               </button>
@@ -309,11 +248,9 @@ export default function StudentDashboard() {
                   setJoinClassCode(e.target.value.toUpperCase());
                   setJoinClassError('');
                   setJoinClassInfo(null);
-                  setJoinSuccess(false);
                 }}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                 placeholder="Enter class code (e.g., ABCD12)"
-                disabled={joinClassLoading}
               />
               <p className="mt-1 text-xs text-gray-500">
                 Enter the class code provided by your educator
@@ -340,58 +277,22 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {joinSuccess && (
-              <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <p className="text-green-300 text-sm">Successfully joined class!</p>
-                </div>
-                <p className="text-green-400 text-xs mt-1">
-                  Redirecting...
-                </p>
-              </div>
-            )}
-
             {joinClassError && (
               <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-red-300 text-sm">{joinClassError}</p>
-                </div>
-                {joinClassError.includes('already enrolled') && (
-                  <button
-                    onClick={refreshUserData}
-                    className="mt-2 text-xs bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded transition duration-200"
-                  >
-                    Refresh My Status
-                  </button>
-                )}
+                <p className="text-red-300 text-sm">{joinClassError}</p>
               </div>
             )}
 
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  if (!joinClassLoading) {
-                    setShowJoinClassModal(false);
-                    setJoinClassCode('');
-                    setJoinClassError('');
-                    setJoinClassInfo(null);
-                    setJoinSuccess(false);
-                  }
-                }}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={joinClassLoading}
+                onClick={() => setShowJoinClassModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition duration-200"
               >
-                {joinSuccess ? 'Close' : 'Cancel'}
+                Cancel
               </button>
               <button
                 onClick={handleJoinClass}
-                disabled={joinClassLoading || !joinClassCode.trim() || joinSuccess}
+                disabled={joinClassLoading || !joinClassCode.trim()}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {joinClassLoading ? (
@@ -401,13 +302,6 @@ export default function StudentDashboard() {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Joining...
-                  </>
-                ) : joinSuccess ? (
-                  <>
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Success!
                   </>
                 ) : (
                   'Join Class'
@@ -451,16 +345,7 @@ export default function StudentDashboard() {
             <div className="grid md:grid-cols-3 gap-6">
               {/* User Info Card */}
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-semibold text-white">Your Information</h3>
-                  <button
-                    onClick={refreshUserData}
-                    className="text-gray-400 hover:text-white text-sm"
-                    title="Refresh data"
-                  >
-                    ↻ Refresh
-                  </button>
-                </div>
+                <h3 className="text-lg font-semibold text-white mb-4">Your Information</h3>
                 <div className="space-y-3">
                   <div>
                     <span className="text-gray-400">Full Name:</span>
@@ -506,16 +391,7 @@ export default function StudentDashboard() {
 
               {/* Class Info Card */}
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-semibold text-white">Class Information</h3>
-                  <button
-                    onClick={refreshUserData}
-                    className="text-gray-400 hover:text-white text-sm"
-                    title="Refresh class info"
-                  >
-                    ↻ Refresh
-                  </button>
-                </div>
+                <h3 className="text-lg font-semibold text-white mb-4">Class Information</h3>
                 {user.enrolledClassDetails ? (
                   <div className="space-y-3">
                     <div>
@@ -532,28 +408,6 @@ export default function StudentDashboard() {
                         <p className="text-white">{user.enrolledClassDetails.educatorName}</p>
                       </div>
                     )}
-                    <div className="pt-3">
-                      <button
-                        onClick={() => setActiveTab('files')}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
-                      >
-                        Go to Learning Materials
-                      </button>
-                    </div>
-                  </div>
-                ) : user.enrolledClass ? (
-                  <div className="space-y-3">
-                    <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-3">
-                      <p className="text-yellow-300 text-sm">
-                        Class data needs to be refreshed. Click the Refresh button above.
-                      </p>
-                    </div>
-                    <button
-                      onClick={refreshUserData}
-                      className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg transition duration-200"
-                    >
-                      Refresh Class Data
-                    </button>
                   </div>
                 ) : (
                   <div className="text-center py-4">
@@ -594,15 +448,6 @@ export default function StudentDashboard() {
                     </svg>
                     Go to File Sharing
                   </button>
-                  <button
-                    onClick={refreshUserData}
-                    className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Refresh All Data
-                  </button>
                   <a
                     href="https://mega.nz/file/8Ndx0Qpb#O-1yE6KF8KdndwiOiOuQTLGvDuKKviplPToqwy-sa1w"
                     target="_blank"
@@ -620,24 +465,9 @@ export default function StudentDashboard() {
           <div className="space-y-8">
             {/* File Sharing Content */}
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-white">
-                    File Sharing
-                  </h3>
-                  {user.enrolledClassDetails && (
-                    <p className="text-gray-400 text-sm mt-1">
-                      Class: {user.enrolledClassDetails.className} ({user.enrolledClassDetails.classCode})
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={refreshUserData}
-                  className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200"
-                >
-                  Refresh
-                </button>
-              </div>
+              <h3 className="text-xl font-semibold text-white mb-4">
+                File Sharing
+              </h3>
               
               {user.enrolledClassDetails ? (
                 <div className="text-center py-8">
@@ -646,37 +476,13 @@ export default function StudentDashboard() {
                   </svg>
                   <p className="text-white mb-2">Welcome to File Sharing</p>
                   <p className="text-gray-400 text-sm mb-4">
-                    You can view and download learning materials from your educator
-                  </p>
-                  <div className="flex gap-3 justify-center">
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
-                    >
-                      Refresh Page
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('overview')}
-                      className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200"
-                    >
-                      Back to Overview
-                    </button>
-                  </div>
-                </div>
-              ) : user.enrolledClass ? (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-yellow-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <p className="text-white mb-2">Class Data Needs Refresh</p>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Your class information needs to be refreshed to access files
+                    You can view and download files from your educator in: {user.enrolledClassDetails.className}
                   </p>
                   <button
-                    onClick={refreshUserData}
-                    className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg transition duration-200"
+                    onClick={() => window.location.reload()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
                   >
-                    Refresh Class Data
+                    Refresh Files
                   </button>
                 </div>
               ) : (
