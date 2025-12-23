@@ -131,7 +131,7 @@ export default function StudentDashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (joinResponse.data.success) {
+      if (joinResponse.data.toast?.type === 'success') {
         // Force refresh user data from server
         const userResponse = await axios.get('http://localhost:5000/api/auth/profile', {
           headers: { Authorization: `Bearer ${token}` }
@@ -155,11 +155,10 @@ export default function StudentDashboard() {
         // Force refresh to update UI
         setForceRefresh(true);
       } else {
-        setJoinClassError(joinResponse.data.message || 'Failed to join class');
+        setJoinClassError(joinResponse.data.toast?.message || 'Failed to join class');
       }
     } catch (error) {
-      console.error('Join class error:', error);
-      setJoinClassError(error.response?.data?.message || 'Failed to join class');
+      setJoinClassError(error.response?.data?.toast?.message || 'Failed to join class');
     } finally {
       setJoinClassLoading(false);
     }
