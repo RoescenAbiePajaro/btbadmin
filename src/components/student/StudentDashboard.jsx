@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import StudentFileSharing from './StudentFileSharing'; // Import the component
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -460,49 +461,8 @@ export default function StudentDashboard() {
             </div>
           </>
         ) : (
-          // File Sharing Tab
-          <div className="space-y-8">
-            {/* File Sharing Content */}
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-xl font-semibold text-white mb-4">
-                File Sharing
-              </h3>
-              
-              {user.enrolledClassDetails ? (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p className="text-white mb-2">Welcome to File Sharing</p>
-                  <p className="text-gray-400 text-sm mb-4">
-                    You can view and download files from your educator in: {user.enrolledClassDetails.className}
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
-                  >
-                    Refresh Files
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p className="text-white mb-2">You need to join a class first</p>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Join a class to access files shared by your educator
-                  </p>
-                  <button
-                    onClick={() => setShowJoinClassModal(true)}
-                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition duration-200"
-                  >
-                    Join a Class
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          // File Sharing Tab - Render the StudentFileSharing component
+          <StudentFileSharing student={user} />
         )}
       </div>
     </div>
