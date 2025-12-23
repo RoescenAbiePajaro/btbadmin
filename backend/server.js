@@ -11,6 +11,7 @@ const AcademicSetting = require('./models/AcademicSetting');
 const AccessCode = require('./models/AccessCode');
 const Click = require('./models/Click');
 const FileActivity = require('./models/FileActivity');
+const File = require('./models/File'); // Import File model
 const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
@@ -524,6 +525,12 @@ app.post('/api/auth/login', async (req, res) => {
           className: classObj.className,
           educatorName: classObj.educator.fullName || classObj.educator.username
         };
+        // Also add enrolledClass object for compatibility
+        userData.enrolledClass = {
+          _id: classObj._id,
+          classCode: classObj.classCode,
+          className: classObj.className
+        };
       }
     }
 
@@ -581,6 +588,57 @@ app.get('/api/classes/validate/:code', async (req, res) => {
   }
 });
 
+// Get class by code (for student file sharing)
+app.get('/api/classes/by-code/:code', verifyToken, async (req, res) => {
+  try {
+    const classCode = req.params.code.toUpperCase();
+    
+    const classObj = await Class.findOne({ 
+      classCode,
+      isActive: true 
+    }).populate('educator', 'fullName username');
+    
+    if (!classObj) {
+      return res.status(404).json({
+        success: false,
+        error: 'Class not found'
+      });
+    }
+    
+    // Check if user has access to this class
+    const user = await User.findById(req.user.id);
+    
+    if (user.role === 'student') {
+      // Student can only access their enrolled class
+      if (!user.enrolledClass || user.enrolledClass.toString() !== classObj._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this class'
+        });
+      }
+    } else if (user.role === 'educator') {
+      // Educator can only access their own classes
+      if (classObj.educator._id.toString() !== user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this class'
+        });
+      }
+    }
+    
+    return res.json({
+      success: true,
+      class: classObj
+    });
+  } catch (error) {
+    console.error('Get class by code error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error fetching class'
+    });
+  }
+});
+
 // Student join class
 app.post('/api/classes/join', verifyToken, async (req, res) => {
   try {
@@ -595,7 +653,7 @@ app.post('/api/classes/join', verifyToken, async (req, res) => {
     const classObj = await Class.findOne({ 
       classCode: classCode.toUpperCase(),
       isActive: true 
-    });
+    }).populate('educator', 'fullName username');
 
     if (!classObj) {
       return createToastResponse(res, 404, 'Class not found', 'error');
@@ -620,15 +678,35 @@ app.post('/api/classes/join', verifyToken, async (req, res) => {
     student.enrolledClass = classObj._id;
     await student.save();
 
-    // Populate class info for response
-    const populatedClass = await Class.findById(classObj._id).populate('educator', 'fullName username');
+    // Get updated student data with class info
+    const updatedStudent = await User.findById(studentId)
+      .select('-password')
+      .populate({
+        path: 'enrolledClass',
+        select: 'classCode className',
+        populate: {
+          path: 'educator',
+          select: 'fullName username'
+        }
+      });
+
+    // Prepare response data
+    const userData = updatedStudent.toObject();
+    if (userData.enrolledClass) {
+      userData.enrolledClassDetails = {
+        classCode: userData.enrolledClass.classCode,
+        className: userData.enrolledClass.className,
+        educatorName: userData.enrolledClass.educator?.fullName || userData.enrolledClass.educator?.username
+      };
+    }
 
     return createToastResponse(res, 200, 'Successfully joined class!', 'success', {
+      user: userData,
       class: {
-        id: populatedClass._id,
-        classCode: populatedClass.classCode,
-        className: populatedClass.className,
-        educatorName: populatedClass.educator.fullName || populatedClass.educator.username
+        id: classObj._id,
+        classCode: classObj.classCode,
+        className: classObj.className,
+        educatorName: classObj.educator.fullName || classObj.educator.username
       }
     });
 
@@ -1327,7 +1405,7 @@ app.get('/api/auth/profile', verifyToken, async (req, res) => {
       .select('-password -emailVerificationToken -emailVerificationExpires')
       .populate({
         path: 'enrolledClass',
-        select: 'classCode className',
+        select: 'classCode className educator',
         populate: {
           path: 'educator',
           select: 'fullName username'
@@ -1346,6 +1424,12 @@ app.get('/api/auth/profile', verifyToken, async (req, res) => {
         classCode: user.enrolledClass.classCode,
         className: user.enrolledClass.className,
         educatorName: user.enrolledClass.educator?.fullName || user.enrolledClass.educator?.username
+      };
+      // Also add enrolledClass object for compatibility
+      userData.enrolledClass = {
+        _id: user.enrolledClass._id,
+        classCode: user.enrolledClass.classCode,
+        className: user.enrolledClass.className
       };
     }
 
@@ -1374,14 +1458,163 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
       req.user.id,
       updateData,
       { new: true, select: '-password -emailVerificationToken -emailVerificationExpires' }
-    );
+    ).populate({
+      path: 'enrolledClass',
+      select: 'classCode className educator',
+      populate: {
+        path: 'educator',
+        select: 'fullName username'
+      }
+    });
+
+    // Prepare user data with class details
+    const userData = user.toObject();
+    
+    if (user.enrolledClass) {
+      userData.enrolledClassDetails = {
+        classCode: user.enrolledClass.classCode,
+        className: user.enrolledClass.className,
+        educatorName: user.enrolledClass.educator?.fullName || user.enrolledClass.educator?.username
+      };
+      userData.enrolledClass = {
+        _id: user.enrolledClass._id,
+        classCode: user.enrolledClass.classCode,
+        className: user.enrolledClass.className
+      };
+    }
 
     return createToastResponse(res, 200, 'Profile updated successfully', 'success', {
-      user
+      user: userData
     });
   } catch (error) {
     console.error('Update profile error:', error);
     return createToastResponse(res, 500, 'Server error updating profile', 'error');
+  }
+});
+
+// =====================
+// 📁 FILE MANAGEMENT ENDPOINTS (CRITICAL FIXES)
+// =====================
+
+// Get files with proper student filtering
+app.get('/api/files/list', verifyToken, async (req, res) => {
+  try {
+    const { classCode } = req.query;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    let query = {};
+    
+    console.log('Files list request:', { userId, userRole, classCode });
+    
+    // If user is student, they should only see files from their enrolled class
+    if (userRole === 'student') {
+      const user = await User.findById(userId);
+      
+      if (!user.enrolledClass) {
+        return res.json({
+          success: true,
+          files: [],
+          message: 'You are not enrolled in any class'
+        });
+      }
+      
+      // Get the class to get the classCode
+      const classObj = await Class.findById(user.enrolledClass);
+      if (!classObj) {
+        return res.json({
+          success: true,
+          files: [],
+          message: 'Your enrolled class was not found'
+        });
+      }
+      
+      // Always filter by student's enrolled class
+      query.classCode = classObj.classCode;
+      console.log('Student query:', query);
+    }
+    // If user is educator, show only their uploaded files
+    else if (userRole === 'educator') {
+      query.uploadedBy = userId;
+      
+      // If classCode is provided, also filter by it
+      if (classCode) {
+        query.classCode = classCode.toUpperCase();
+      }
+    }
+    
+    const files = await File.find(query)
+      .sort({ createdAt: -1 })
+      .populate('uploadedBy', 'username fullName');
+    
+    console.log(`Found ${files.length} files for query:`, query);
+    
+    res.status(200).json({
+      success: true,
+      count: files.length,
+      files: files
+    });
+  } catch (error) {
+    console.error('Error listing files:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error listing files',
+      details: error.message
+    });
+  }
+});
+
+// Get files by class with access control
+app.get('/api/files/class/:classCode', verifyToken, async (req, res) => {
+  try {
+    const { classCode } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    console.log('Files by class request:', { userId, userRole, classCode });
+    
+    // Verify user has access to this class
+    if (userRole === 'educator') {
+      const educatorClasses = await Class.find({ educator: userId });
+      const hasAccess = educatorClasses.some(c => c.classCode === classCode.toUpperCase());
+      
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this class'
+        });
+      }
+    } else if (userRole === 'student') {
+      const user = await User.findById(userId);
+      const classObj = await Class.findOne({ classCode: classCode.toUpperCase() });
+      
+      if (!classObj || !user.enrolledClass || user.enrolledClass.toString() !== classObj._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this class'
+        });
+      }
+    }
+    
+    const files = await File.find({ 
+      classCode: classCode.toUpperCase()
+    })
+    .sort({ createdAt: -1 })
+    .populate('uploadedBy', 'username fullName');
+    
+    console.log(`Found ${files.length} files for class: ${classCode}`);
+    
+    res.json({ 
+      success: true, 
+      count: files.length,
+      files: files 
+    });
+  } catch (error) {
+    console.error('Error fetching files by class:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Error fetching files' 
+    });
   }
 });
 
@@ -1398,4 +1631,9 @@ app.use('/api/analytics', analyticsRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('File sharing endpoints available:');
+  console.log('  GET  /api/files/list - Get files (with classCode query param)');
+  console.log('  GET  /api/files/class/:classCode - Get files by class');
+  console.log('  POST /api/classes/join - Join class endpoint');
+  console.log('  GET  /api/auth/profile - Get user profile with class info');
 });

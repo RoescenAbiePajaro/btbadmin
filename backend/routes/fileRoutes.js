@@ -165,25 +165,33 @@ router.get('/list', verifyToken, async (req, res) => {
     
     let query = {};
     
+    // If classCode is provided in query, use it
     if (classCode) {
       query.classCode = classCode.toUpperCase();
     }
     
-    // If user is educator, show only their uploaded files
-    if (userRole === 'educator') {
-      query.uploadedBy = userId;
-    }
-    // If user is student, show files from their enrolled class
-    else if (userRole === 'student') {
+    // If user is student, they should only see files from their enrolled class
+    if (userRole === 'student') {
       const user = await User.findById(userId).populate('enrolledClass');
-      if (user.enrolledClass) {
-        query.classCode = user.enrolledClass.classCode;
-      } else {
+      
+      if (!user.enrolledClass) {
         return res.json({
           success: true,
           files: [],
           message: 'You are not enrolled in any class'
         });
+      }
+      
+      // Always filter by student's enrolled class
+      query.classCode = user.enrolledClass.classCode;
+    }
+    // If user is educator, show only their uploaded files
+    else if (userRole === 'educator') {
+      query.uploadedBy = userId;
+      
+      // If classCode is provided, also filter by it
+      if (classCode) {
+        query.classCode = classCode.toUpperCase();
       }
     }
     
