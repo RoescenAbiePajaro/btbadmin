@@ -299,14 +299,14 @@ app.get('/api/auth/roles', (req, res) => {
 });
 
 // =====================
-// 📝 STUDENT REGISTRATION
+// 📝 STUDENT REGISTRATION (UPDATED - No class code required)
 // =====================
 app.post('/api/auth/register/student', async (req, res) => {
   try {
-    const { fullName, email, username, password, school, course, year, block, classCode } = req.body;
+    const { fullName, email, username, password, school, course, year, block } = req.body;
 
     // Validate required fields
-    if (!fullName || !email || !username || !password || !classCode) {
+    if (!fullName || !email || !username || !password) {
       return createToastResponse(res, 400, 'Please fill all required fields', 'error');
     }
 
@@ -320,35 +320,21 @@ app.post('/api/auth/register/student', async (req, res) => {
       return createToastResponse(res, 400, `${field} already exists`, 'error');
     }
 
-    // Find class by code
-    const classObj = await Class.findOne({ 
-      classCode: classCode.toUpperCase(),
-      isActive: true 
-    });
-    
-    if (!classObj) {
-      return createToastResponse(res, 400, 'Invalid class code', 'error');
-    }
-
-    // Create student
+    // Create student without enrolled class
     const student = new User({
       fullName,
       email,
       username,
       password,
       role: 'student',
-      school,
-      course,
-      year,
-      block,
-      enrolledClass: classObj._id
+      school: school || '',
+      course: course || '',
+      year: year || '',
+      block: block || '',
+      enrolledClass: null // Student will join class later
     });
 
     await student.save();
-
-    // Add student to class
-    classObj.students.push(student._id);
-    await classObj.save();
 
     // Generate JWT token
     const token = generateToken(student);
@@ -365,11 +351,7 @@ app.post('/api/auth/register/student', async (req, res) => {
         course: student.course,
         year: student.year,
         block: student.block,
-        enrolledClass: {
-          id: classObj._id,
-          classCode: classObj.classCode,
-          className: classObj.className
-        }
+        enrolledClass: null
       }
     });
 
@@ -429,7 +411,7 @@ app.post('/api/auth/register/educator', async (req, res) => {
 });
 
 // =====================
-// �‍💼 ADMIN REGISTRATION (No access code needed)
+// 👨‍💼 ADMIN REGISTRATION (No access code needed)
 // =====================
 app.post('/api/auth/register/admin', async (req, res) => {
   try {
@@ -488,7 +470,7 @@ app.post('/api/auth/register/admin', async (req, res) => {
 });
 
 // =====================
-// � LOGIN ENDPOINT (ALL ROLES)
+// 🔐 LOGIN ENDPOINT (ALL ROLES)
 // =====================
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -526,35 +508,23 @@ app.post('/api/auth/login', async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       username: user.username,
-      role: user.role
+      role: user.role,
+      school: user.school,
+      course: user.course,
+      year: user.year,
+      block: user.block
     };
 
-    // Add role-specific data
-    if (user.role === 'student') {
-      userData = {
-        ...userData,
-        school: user.school,
-        course: user.course,
-        year: user.year,
-        block: user.block,
-        enrolledClass: user.enrolledClass
-      };
-      
-      // Populate class info if exists
-      if (user.enrolledClass) {
-        const classObj = await Class.findById(user.enrolledClass);
-        if (classObj) {
-          userData.enrolledClassDetails = {
-            classCode: classObj.classCode,
-            className: classObj.className
-          };
-        }
+    // Add class info if student is enrolled
+    if (user.role === 'student' && user.enrolledClass) {
+      const classObj = await Class.findById(user.enrolledClass).populate('educator', 'fullName username');
+      if (classObj) {
+        userData.enrolledClassDetails = {
+          classCode: classObj.classCode,
+          className: classObj.className,
+          educatorName: classObj.educator.fullName || classObj.educator.username
+        };
       }
-    } else if (user.role === 'educator') {
-      userData = {
-        ...userData,
-        // Email verification not required
-      };
     }
 
     return createToastResponse(res, 200, 'Login successful!', 'success', {
@@ -567,6 +537,7 @@ app.post('/api/auth/login', async (req, res) => {
     return createToastResponse(res, 500, 'Server error during login', 'error');
   }
 });
+
 // =====================
 // 🏫 CLASS MANAGEMENT
 // =====================
@@ -607,6 +578,99 @@ app.get('/api/classes/validate/:code', async (req, res) => {
       valid: false,
       message: 'Server error validating class code'
     });
+  }
+});
+
+// Student join class
+app.post('/api/classes/join', verifyToken, async (req, res) => {
+  try {
+    const { classCode } = req.body;
+    const studentId = req.user.id;
+
+    if (!classCode) {
+      return createToastResponse(res, 400, 'Class code is required', 'error');
+    }
+
+    // Find class
+    const classObj = await Class.findOne({ 
+      classCode: classCode.toUpperCase(),
+      isActive: true 
+    });
+
+    if (!classObj) {
+      return createToastResponse(res, 404, 'Class not found', 'error');
+    }
+
+    // Check if student is already enrolled in any class
+    const student = await User.findById(studentId);
+    if (student.enrolledClass) {
+      return createToastResponse(res, 400, 'You are already enrolled in a class', 'error');
+    }
+
+    // Check if student is already in this class
+    if (classObj.students.includes(studentId)) {
+      return createToastResponse(res, 400, 'You are already enrolled in this class', 'error');
+    }
+
+    // Add student to class
+    classObj.students.push(studentId);
+    await classObj.save();
+
+    // Update student's enrolled class
+    student.enrolledClass = classObj._id;
+    await student.save();
+
+    // Populate class info for response
+    const populatedClass = await Class.findById(classObj._id).populate('educator', 'fullName username');
+
+    return createToastResponse(res, 200, 'Successfully joined class!', 'success', {
+      class: {
+        id: populatedClass._id,
+        classCode: populatedClass.classCode,
+        className: populatedClass.className,
+        educatorName: populatedClass.educator.fullName || populatedClass.educator.username
+      }
+    });
+
+  } catch (error) {
+    console.error('Join class error:', error);
+    return createToastResponse(res, 500, 'Server error joining class', 'error');
+  }
+});
+
+// Student leave class
+app.post('/api/classes/leave', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    
+    // Get student
+    const student = await User.findById(studentId);
+    if (!student.enrolledClass) {
+      return createToastResponse(res, 400, 'You are not enrolled in any class', 'error');
+    }
+    
+    // Find the class
+    const classObj = await Class.findById(student.enrolledClass);
+    if (!classObj) {
+      // If class doesn't exist, just remove the enrollment
+      student.enrolledClass = null;
+      await student.save();
+      return createToastResponse(res, 200, 'Successfully left class', 'success');
+    }
+    
+    // Remove student from class
+    classObj.students = classObj.students.filter(id => id.toString() !== studentId);
+    await classObj.save();
+    
+    // Remove class from student
+    student.enrolledClass = null;
+    await student.save();
+    
+    return createToastResponse(res, 200, 'Successfully left class', 'success');
+    
+  } catch (error) {
+    console.error('Leave class error:', error);
+    return createToastResponse(res, 500, 'Server error leaving class', 'error');
   }
 });
 
@@ -1260,14 +1324,33 @@ app.post('/api/clicks', async (req, res) => {
 app.get('/api/auth/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .select('-password -emailVerificationToken -emailVerificationExpires');
+      .select('-password -emailVerificationToken -emailVerificationExpires')
+      .populate({
+        path: 'enrolledClass',
+        select: 'classCode className',
+        populate: {
+          path: 'educator',
+          select: 'fullName username'
+        }
+      });
 
     if (!user) {
       return createToastResponse(res, 404, 'User not found', 'error');
     }
 
+    // Prepare user data with class details
+    const userData = user.toObject();
+    
+    if (user.enrolledClass) {
+      userData.enrolledClassDetails = {
+        classCode: user.enrolledClass.classCode,
+        className: user.enrolledClass.className,
+        educatorName: user.enrolledClass.educator?.fullName || user.enrolledClass.educator?.username
+      };
+    }
+
     return createToastResponse(res, 200, 'Profile fetched successfully', 'success', {
-      user
+      user: userData
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -1303,14 +1386,15 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
 });
 
 // =====================
-// 🚀 SERVER START
-// =====================
 // 📁 ROUTES
 // =====================
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+// =====================
+// 🚀 SERVER START
+// =====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

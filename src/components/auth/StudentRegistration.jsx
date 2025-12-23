@@ -1,5 +1,4 @@
-// src/components/auth/StudentRegistration.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -7,138 +6,29 @@ import axios from 'axios';
 export default function StudentRegistration() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [classCodeLoading, setClassCodeLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   
-  // Remove academicOptions state since we don't need dropdowns anymore
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     username: '',
     password: '',
     confirmPassword: '',
-    // REMOVE THESE - Will be auto-populated
-    school: '',
-    course: '',
-    year: '',
-    block: '',
-    classCode: ''
-  });
-
-  const [errors, setErrors] = useState({});
-  const [classEducatorId, setClassEducatorId] = useState(null);
-  const [classInfo, setClassInfo] = useState(null);
-  const [academicData, setAcademicData] = useState({
     school: '',
     course: '',
     year: '',
     block: ''
   });
 
-  // Validate class code and get educator info with academic data
-  useEffect(() => {
-    const validateClassCode = async () => {
-      if (!formData.classCode || formData.classCode.length < 4) {
-        setClassEducatorId(null);
-        setClassInfo(null);
-        setAcademicData({
-          school: '',
-          course: '',
-          year: '',
-          block: ''
-        });
-        setErrors(prev => ({ ...prev, classCode: '' }));
-        return;
-      }
-
-      setClassCodeLoading(true);
-      try {
-        const response = await axios.get(
-          `http://localhost:5000/api/classes/validate/${formData.classCode.toUpperCase()}`
-        );
-
-        if (response.data.valid) {
-          setClassEducatorId(response.data.educatorId);
-          setClassInfo({
-            className: response.data.className,
-            educatorName: response.data.educatorName
-          });
-          
-          // SET ACADEMIC DATA FROM CLASS
-          if (response.data.academicData) {
-            setAcademicData(response.data.academicData);
-            
-            // Also update formData with academic values
-            setFormData(prev => ({
-              ...prev,
-              school: response.data.academicData.school,
-              course: response.data.academicData.course,
-              year: response.data.academicData.year,
-              block: response.data.academicData.block
-            }));
-          }
-          
-          setErrors(prev => ({ ...prev, classCode: '' }));
-        } else {
-          setErrors(prev => ({ ...prev, classCode: response.data.message }));
-          setClassEducatorId(null);
-          setClassInfo(null);
-          setAcademicData({
-            school: '',
-            course: '',
-            year: '',
-            block: ''
-          });
-        }
-      } catch (error) {
-        console.error('Error validating class code:', error);
-        setErrors(prev => ({ ...prev, classCode: 'Invalid class code' }));
-        setClassEducatorId(null);
-        setClassInfo(null);
-        setAcademicData({
-          school: '',
-          course: '',
-          year: '',
-          block: ''
-        });
-      } finally {
-        setClassCodeLoading(false);
-      }
-    };
-
-    const timer = setTimeout(() => {
-      validateClassCode();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [formData.classCode]);
+  const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    if (name === 'classCode') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        // Reset academic fields when class code changes
-        school: '',
-        course: '',
-        year: '',
-        block: ''
-      }));
-      // Reset academic data when class code changes
-      setAcademicData({
-        school: '',
-        course: '',
-        year: '',
-        block: ''
-      });
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -160,14 +50,6 @@ export default function StudentRegistration() {
     
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
-    }
-    
-    if (!formData.classCode.trim()) newErrors.classCode = 'Class code is required';
-    else if (!classEducatorId) newErrors.classCode = 'Please enter a valid class code';
-    
-    // Check if academic data is available
-    if (classEducatorId && (!formData.school || !formData.course || !formData.year || !formData.block)) {
-      newErrors.classCode = 'Class does not have complete academic information. Please contact your educator.';
     }
     
     return newErrors;
@@ -193,12 +75,10 @@ export default function StudentRegistration() {
           email: formData.email,
           username: formData.username,
           password: formData.password,
-          // Academic data is already set in formData from class validation
           school: formData.school,
           course: formData.course,
           year: formData.year,
-          block: formData.block,
-          classCode: formData.classCode.toUpperCase()
+          block: formData.block
         }
       );
 
@@ -211,14 +91,6 @@ export default function StudentRegistration() {
           username: '',
           password: '',
           confirmPassword: '',
-          school: '',
-          course: '',
-          year: '',
-          block: '',
-          classCode: ''
-        });
-        
-        setAcademicData({
           school: '',
           course: '',
           year: '',
@@ -267,20 +139,9 @@ export default function StudentRegistration() {
               Student Registration
             </h2>
             <p className="text-gray-400 text-sm">
-              Create an account to join your class
+              Create an account to join classes later
             </p>
           </div>
-
-          {classInfo && (
-            <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg">
-              <p className="text-blue-300 text-sm">
-                Joining: <span className="font-semibold">{classInfo.className}</span>
-              </p>
-              <p className="text-blue-400 text-xs mt-1">
-                Educator: {classInfo.educatorName}
-              </p>
-            </div>
-          )}
 
           {successMessage && (
             <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
@@ -386,112 +247,79 @@ export default function StudentRegistration() {
               )}
             </div>
 
-            {/* Class Code */}
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
-                Class Code *
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  name="classCode"
-                  value={formData.classCode}
-                  onChange={handleChange}
-                  className={`w-full bg-black/50 border ${errors.classCode ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 uppercase`}
-                  placeholder="Enter class code (e.g., ABCD12)"
-                />
-                {classCodeLoading && (
-                  <div className="absolute right-3 top-3">
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-400"></div>
-                  </div>
-                )}
-                {classInfo && !classCodeLoading && (
-                  <div className="absolute right-3 top-3">
-                    <svg className="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
+            {/* Academic Information */}
+            <div className="bg-black border border-gray-800 rounded-xl p-4 mb-6">
+              <h3 className="text-white font-medium mb-3">Academic Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {/* School */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    School
+                  </label>
+                  <input
+                    type="text"
+                    name="school"
+                    value={formData.school}
+                    onChange={handleChange}
+                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="Enter your school"
+                  />
+                </div>
+
+                {/* Course */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Course
+                  </label>
+                  <input
+                    type="text"
+                    name="course"
+                    value={formData.course}
+                    onChange={handleChange}
+                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="Enter your course"
+                  />
+                </div>
+
+                {/* Year */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Year
+                  </label>
+                  <input
+                    type="text"
+                    name="year"
+                    value={formData.year}
+                    onChange={handleChange}
+                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="Enter your year"
+                  />
+                </div>
+
+                {/* Block */}
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Block
+                  </label>
+                  <input
+                    type="text"
+                    name="block"
+                    value={formData.block}
+                    onChange={handleChange}
+                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    placeholder="Enter your block"
+                  />
+                </div>
               </div>
-              {errors.classCode && (
-                <p className="mt-1 text-sm text-red-400">{errors.classCode}</p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                Enter the class code provided by your educator to join their class
+              <p className="mt-3 text-xs text-gray-500">
+                You can join a class later from your dashboard
               </p>
-              {formData.classCode && !classCodeLoading && !classInfo && !errors.classCode && (
-                <div className="mt-2 p-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
-                  <p className="text-yellow-300 text-xs">
-                    Validating class code...
-                  </p>
-                </div>
-              )}
-              {classInfo && !classCodeLoading && (
-                <div className="mt-2 p-2 bg-green-500/20 border border-green-500/50 rounded-lg">
-                  <p className="text-green-300 text-xs">
-                    Valid class code! You'll be joining {classInfo.className}
-                  </p>
-                </div>
-              )}
             </div>
-
-            {/* Academic Information - DISPLAY ONLY (no dropdowns) */}
-            {classEducatorId && (
-              <div className="bg-black border border-gray-800 rounded-xl p-4 mb-6">
-                <h3 className="text-white font-medium mb-3">Class Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {/* School - Display only */}
-                  <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                      School
-                    </label>
-                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
-                      {academicData.school || 'Not specified'}
-                    </div>
-                  </div>
-
-                  {/* Course - Display only */}
-                  <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                      Course
-                    </label>
-                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
-                      {academicData.course || 'Not specified'}
-                    </div>
-                  </div>
-
-                  {/* Year - Display only */}
-                  <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                      Year
-                    </label>
-                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
-                      {academicData.year || 'Not specified'}
-                    </div>
-                  </div>
-
-                  {/* Block - Display only */}
-                  <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                      Block
-                    </label>
-                    <div className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white">
-                      {academicData.block || 'Not specified'}
-                    </div>
-                  </div>
-                </div>
-                {(!academicData.school || !academicData.course || !academicData.year || !academicData.block) && (
-                  <p className="mt-2 text-xs text-yellow-400">
-                    Note: This class has incomplete academic information. Please contact your educator if needed.
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || successMessage || !classEducatorId}
+              disabled={loading || successMessage}
               className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -504,8 +332,6 @@ export default function StudentRegistration() {
                 </>
               ) : successMessage ? (
                 'Registration Successful!'
-              ) : !classEducatorId ? (
-                'Enter Valid Class Code First'
               ) : (
                 'Create Student Account'
               )}
