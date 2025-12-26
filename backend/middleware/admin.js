@@ -1,3 +1,5 @@
+// bcakend/middleware/admin.js
+const { AuthAdminApi } = require('@supabase/supabase-js');
 const { verifyToken } = require('./auth');
 
 const requireAdmin = async (req, res, next) => {

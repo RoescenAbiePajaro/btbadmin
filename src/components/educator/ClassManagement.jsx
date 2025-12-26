@@ -265,6 +265,9 @@ export default function ClassManagement() {
         setStartYear('');
         setEndYear('');
         showToast('Class updated successfully!', 'success');
+        
+        // Refresh classes to ensure latest data
+        fetchClasses();
       }
     } catch (error) {
       console.error('Error updating class:', error);
