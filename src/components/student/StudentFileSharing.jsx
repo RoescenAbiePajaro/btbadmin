@@ -160,7 +160,14 @@ const StudentFileSharing = ({ student, onClassChange }) => {
         console.error('Error tracking download:', trackError);
       }
       
-      window.open(fileUrl, '_blank');
+      // Create a temporary link element to trigger download
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = fileName || 'download';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error('Error downloading file:', error);
       alert('Error downloading file. Please try again.');
@@ -168,8 +175,32 @@ const StudentFileSharing = ({ student, onClassChange }) => {
   };
 
   const handleViewFile = async (fileUrl, fileId, fileName, educatorId) => {
-    // Keep your existing view file logic
-    // ... (same as before)
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Track view activity
+      try {
+        await axios.post('http://localhost:5000/api/analytics/file-activity', {
+          fileId,
+          fileName,
+          activityType: 'view',
+          classCode: currentClassCode,
+          educatorId
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}` 
+          }
+        });
+      } catch (trackError) {
+        console.error('Error tracking view:', trackError);
+      }
+      
+      // Open file in new tab for viewing
+      window.open(fileUrl, '_blank');
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      alert('Error viewing file. Please try again.');
+    }
   };
 
   const formatDate = (dateString) => {

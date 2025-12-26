@@ -1,4 +1,3 @@
-// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -332,7 +331,9 @@ app.post('/api/auth/register/student', async (req, res) => {
       course: course || '',
       year: year || '',
       block: block || '',
-      enrolledClass: null // Student will join class later
+      enrolledClass: null, // Student will join class later
+      classes: [],
+      classCodes: []
     });
 
     await student.save();
@@ -352,7 +353,9 @@ app.post('/api/auth/register/student', async (req, res) => {
         course: student.course,
         year: student.year,
         block: student.block,
-        enrolledClass: null
+        enrolledClass: null,
+        classes: [],
+        classCodes: []
       }
     });
 
@@ -514,6 +517,7 @@ app.post('/api/auth/login', async (req, res) => {
       course: user.course,
       year: user.year,
       block: user.block,
+      enrolledClass: user.enrolledClass,
       classes: user.classes,
       classCodes: user.classCodes
     };
@@ -547,11 +551,6 @@ app.post('/api/auth/login', async (req, res) => {
             className: classObj.className,
             educatorName: classObj.educator.fullName || classObj.educator.username,
             educatorId: classObj.educator._id
-          };
-          userData.enrolledClass = {
-            _id: classObj._id,
-            classCode: classObj.classCode,
-            className: classObj.className
           };
         }
       }
@@ -662,7 +661,7 @@ app.get('/api/classes/by-code/:code', verifyToken, async (req, res) => {
   }
 });
 
-// Student join class - REMOVE ALL ENROLLMENT CHECKS
+// Student join class - UPDATED FOR MULTIPLE CLASSES
 app.post('/api/classes/join', verifyToken, async (req, res) => {
   try {
     const { classCode } = req.body;
@@ -687,8 +686,7 @@ app.post('/api/classes/join', verifyToken, async (req, res) => {
     // Get student
     const student = await User.findById(studentId);
     
-    // ONLY check if student is already in THIS SPECIFIC class
-    // REMOVE ALL OTHER CHECKS
+    // Check if student is already in THIS SPECIFIC class
     const isAlreadyInThisClass = student.classes && student.classes.some(clsId => 
       clsId && clsId.toString() === classObj._id.toString()
     );
@@ -717,47 +715,54 @@ app.post('/api/classes/join', verifyToken, async (req, res) => {
       await classObj.save();
     }
 
-    // Get updated student data with ALL classes
-    const updatedStudent = await User.findById(studentId)
-      .select('-password')
-      .populate({
-        path: 'enrolledClass',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      })
-      .populate({
-        path: 'classes',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      });
+    // Get ALL classes for the student with populated educator info
+    const allClassPromises = student.classes.map(classId => 
+      Class.findById(classId)
+        .populate('educator', 'fullName username')
+        .select('classCode className educator')
+    );
+    
+    const allClasses = await Promise.all(allClassPromises);
 
     // Prepare response data
-    const userData = updatedStudent.toObject();
-    
+    const userData = {
+      id: student._id,
+      fullName: student.fullName,
+      email: student.email,
+      username: student.username,
+      role: student.role,
+      school: student.school,
+      course: student.course,
+      year: student.year,
+      block: student.block,
+      enrolledClass: student.enrolledClass,
+      classes: student.classes,
+      classCodes: student.classCodes
+    };
+
     // Current enrolled class details
-    if (userData.enrolledClass) {
-      userData.enrolledClassDetails = {
-        classCode: userData.enrolledClass.classCode,
-        className: userData.enrolledClass.className,
-        educatorName: userData.enrolledClass.educator?.fullName || userData.enrolledClass.educator?.username,
-        educatorId: userData.enrolledClass.educator?._id
-      };
+    if (student.enrolledClass) {
+      const currentClass = allClasses.find(cls => 
+        cls._id.toString() === student.enrolledClass.toString()
+      );
+      if (currentClass) {
+        userData.enrolledClassDetails = {
+          classCode: currentClass.classCode,
+          className: currentClass.className,
+          educatorName: currentClass.educator?.fullName || currentClass.educator?.username,
+          educatorId: currentClass.educator?._id
+        };
+      }
     }
 
     // All enrolled classes details
-    userData.allClasses = userData.classes ? userData.classes.map(cls => ({
+    userData.allClasses = allClasses.map(cls => ({
       id: cls._id,
       classCode: cls.classCode,
       className: cls.className,
       educatorName: cls.educator?.fullName || cls.educator?.username,
       educatorId: cls.educator?._id
-    })) : [];
+    }));
 
     return createToastResponse(res, 200, 'Successfully joined class!', 'success', {
       user: userData,
@@ -800,8 +805,8 @@ app.post('/api/student/switch-class', verifyToken, async (req, res) => {
     const student = await User.findById(studentId);
     
     // Check if student is enrolled in this class
-    const isEnrolled = student.classes.some(clsId => 
-      clsId.toString() === classObj._id.toString()
+    const isEnrolled = student.classes && student.classes.some(clsId => 
+      clsId && clsId.toString() === classObj._id.toString()
     );
 
     if (!isEnrolled) {
@@ -812,39 +817,48 @@ app.post('/api/student/switch-class', verifyToken, async (req, res) => {
     student.enrolledClass = classObj._id;
     await student.save();
 
-    // Get updated student data
-    const updatedStudent = await User.findById(studentId)
-      .select('-password')
-      .populate({
-        path: 'enrolledClass',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      })
-      .populate({
-        path: 'classes',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      });
-
-    // Prepare response
-    const userData = updatedStudent.toObject();
+    // Get ALL classes for the student with populated educator info
+    const allClassPromises = student.classes.map(classId => 
+      Class.findById(classId)
+        .populate('educator', 'fullName username')
+        .select('classCode className educator')
+    );
     
-    if (userData.enrolledClass) {
-      userData.enrolledClassDetails = {
-        classCode: userData.enrolledClass.classCode,
-        className: userData.enrolledClass.className,
-        educatorName: userData.enrolledClass.educator?.fullName || userData.enrolledClass.educator?.username,
-        educatorId: userData.enrolledClass.educator?._id
-      };
+    const allClasses = await Promise.all(allClassPromises);
+
+    // Prepare response data
+    const userData = {
+      id: student._id,
+      fullName: student.fullName,
+      email: student.email,
+      username: student.username,
+      role: student.role,
+      school: student.school,
+      course: student.course,
+      year: student.year,
+      block: student.block,
+      enrolledClass: student.enrolledClass,
+      classes: student.classes,
+      classCodes: student.classCodes
+    };
+
+    // Current enrolled class details
+    if (student.enrolledClass) {
+      const currentClass = allClasses.find(cls => 
+        cls._id.toString() === student.enrolledClass.toString()
+      );
+      if (currentClass) {
+        userData.enrolledClassDetails = {
+          classCode: currentClass.classCode,
+          className: currentClass.className,
+          educatorName: currentClass.educator?.fullName || currentClass.educator?.username,
+          educatorId: currentClass.educator?._id
+        };
+      }
     }
 
-    userData.allClasses = userData.classes.map(cls => ({
+    // All enrolled classes details
+    userData.allClasses = allClasses.map(cls => ({
       id: cls._id,
       classCode: cls.classCode,
       className: cls.className,
@@ -866,10 +880,7 @@ app.post('/api/student/switch-class', verifyToken, async (req, res) => {
 app.post('/api/classes/leave', verifyToken, requireStudent, async (req, res) => {
   try {
     const studentId = req.user.id;
-    const { classCode } = req.body; // Now accept classCode parameter
-    
-    // Get student
-    const student = await User.findById(studentId);
+    const { classCode } = req.body;
     
     if (!classCode) {
       return createToastResponse(res, 400, 'Class code is required', 'error');
@@ -885,9 +896,12 @@ app.post('/api/classes/leave', verifyToken, requireStudent, async (req, res) => 
       return createToastResponse(res, 404, 'Class not found', 'error');
     }
     
+    // Get student
+    const student = await User.findById(studentId);
+    
     // Check if student is enrolled in this class
-    const isInClass = student.classes.some(clsId => 
-      clsId.toString() === classObj._id.toString()
+    const isInClass = student.classes && student.classes.some(clsId => 
+      clsId && clsId.toString() === classObj._id.toString()
     );
     
     if (!isInClass) {
@@ -913,43 +927,55 @@ app.post('/api/classes/leave', verifyToken, requireStudent, async (req, res) => 
     classObj.students = classObj.students.filter(id => id.toString() !== studentId);
     await classObj.save();
     
-    // Get updated student data
-    const updatedStudent = await User.findById(studentId)
-      .select('-password')
-      .populate({
-        path: 'enrolledClass',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      })
-      .populate({
-        path: 'classes',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      });
+    // Get ALL classes for the student with populated educator info
+    const allClassPromises = student.classes.map(classId => 
+      Class.findById(classId)
+        .populate('educator', 'fullName username')
+        .select('classCode className educator')
+    );
     
-    const userData = updatedStudent.toObject();
-    
-    if (userData.enrolledClass) {
-      userData.enrolledClassDetails = {
-        classCode: userData.enrolledClass.classCode,
-        className: userData.enrolledClass.className,
-        educatorName: userData.enrolledClass.educator?.fullName || userData.enrolledClass.educator?.username
-      };
+    const allClasses = await Promise.all(allClassPromises);
+
+    // Prepare response data
+    const userData = {
+      id: student._id,
+      fullName: student.fullName,
+      email: student.email,
+      username: student.username,
+      role: student.role,
+      school: student.school,
+      course: student.course,
+      year: student.year,
+      block: student.block,
+      enrolledClass: student.enrolledClass,
+      classes: student.classes,
+      classCodes: student.classCodes
+    };
+
+    // Current enrolled class details
+    if (student.enrolledClass) {
+      const currentClass = allClasses.find(cls => 
+        cls._id.toString() === student.enrolledClass.toString()
+      );
+      if (currentClass) {
+        userData.enrolledClassDetails = {
+          classCode: currentClass.classCode,
+          className: currentClass.className,
+          educatorName: currentClass.educator?.fullName || currentClass.educator?.username,
+          educatorId: currentClass.educator?._id
+        };
+      }
     }
-    
-    userData.allClasses = userData.classes.map(cls => ({
+
+    // All enrolled classes details
+    userData.allClasses = allClasses.map(cls => ({
       id: cls._id,
       classCode: cls.classCode,
       className: cls.className,
-      educatorName: cls.educator?.fullName || cls.educator?.username
+      educatorName: cls.educator?.fullName || cls.educator?.username,
+      educatorId: cls.educator?._id
     }));
-    
+
     return createToastResponse(res, 200, 'Successfully left class', 'success', {
       user: userData
     });
@@ -1223,8 +1249,6 @@ app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEduc
     const { classId, studentId } = req.params;
     const educatorId = req.user.id;
 
-    console.log(`Delete attempt - Educator: ${educatorId}, Class: ${classId}, Student: ${studentId}`);
-
     // Verify educator owns this class
     const classObj = await Class.findOne({
       _id: classId,
@@ -1232,37 +1256,48 @@ app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEduc
     });
 
     if (!classObj) {
-      console.log('Class not found or educator mismatch');
       return createToastResponse(res, 404, 'Class not found or access denied', 'error');
     }
 
     // Check if student exists
     const student = await User.findById(studentId);
     if (!student) {
-      console.log('Student not found');
       return createToastResponse(res, 404, 'Student not found', 'error');
     }
 
     // Check if student is enrolled in this class
     const isStudentInClass = classObj.students.some(id => id.toString() === studentId);
     if (!isStudentInClass) {
-      console.log('Student not enrolled in this class');
       return createToastResponse(res, 404, 'Student not found in this class', 'error');
     }
 
     // Remove student from class array
     classObj.students = classObj.students.filter(id => id.toString() !== studentId);
     
-    // Update student's enrolledClass to null
-    student.enrolledClass = null;
+    // Remove class from student's classes array
+    if (student.classes) {
+      student.classes = student.classes.filter(clsId => 
+        clsId.toString() !== classId
+      );
+    }
+    
+    // Remove class code from student's classCodes array
+    if (student.classCodes) {
+      student.classCodes = student.classCodes.filter(code => 
+        code !== classObj.classCode
+      );
+    }
+    
+    // If student's current enrolled class is this class, set to null
+    if (student.enrolledClass && student.enrolledClass.toString() === classId) {
+      student.enrolledClass = null;
+    }
     
     // Save both changes
     await Promise.all([
       classObj.save(),
       student.save()
     ]);
-
-    console.log(`Student ${studentId} removed from class ${classId}`);
 
     return createToastResponse(res, 200, 'Student removed from class successfully', 'success', {
       class: {
@@ -1280,6 +1315,60 @@ app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEduc
   } catch (error) {
     console.error('Remove student error:', error);
     return createToastResponse(res, 500, 'Server error removing student', 'error');
+  }
+});
+
+// Get all enrolled classes for student
+app.get('/api/student/classes', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    
+    const student = await User.findById(studentId)
+      .select('classes enrolledClass')
+      .populate({
+        path: 'classes',
+        select: 'classCode className educator',
+        populate: {
+          path: 'educator',
+          select: 'fullName username'
+        }
+      })
+      .populate({
+        path: 'enrolledClass',
+        select: 'classCode className educator',
+        populate: {
+          path: 'educator',
+          select: 'fullName username'
+        }
+      });
+
+    if (!student) {
+      return createToastResponse(res, 404, 'Student not found', 'error');
+    }
+
+    const allClasses = student.classes.map(cls => ({
+      id: cls._id,
+      classCode: cls.classCode,
+      className: cls.className,
+      educatorName: cls.educator?.fullName || cls.educator?.username,
+      educatorId: cls.educator?._id,
+      isCurrent: student.enrolledClass && student.enrolledClass._id.toString() === cls._id.toString()
+    }));
+
+    return createToastResponse(res, 200, 'Classes fetched successfully', 'success', {
+      classes: allClasses,
+      currentClass: student.enrolledClass ? {
+        id: student.enrolledClass._id,
+        classCode: student.enrolledClass.classCode,
+        className: student.enrolledClass.className,
+        educatorName: student.enrolledClass.educator?.fullName || student.enrolledClass.educator?.username,
+        educatorId: student.enrolledClass.educator?._id
+      } : null
+    });
+
+  } catch (error) {
+    console.error('Get student classes error:', error);
+    return createToastResponse(res, 500, 'Server error fetching classes', 'error');
   }
 });
 
@@ -1601,56 +1690,55 @@ app.post('/api/clicks', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// =====================
 // 👤 USER PROFILE
 // =====================
 
-// Get current user profile - INCLUDE ALL CLASSES
+// Get current user profile - UPDATED FOR MULTIPLE CLASSES
 app.get('/api/auth/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .select('-password')
-      .populate({
-        path: 'enrolledClass',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      })
-      .populate({
-        path: 'classes',
-        select: 'classCode className educator',
-        populate: {
-          path: 'educator',
-          select: 'fullName username'
-        }
-      });
+      .select('-password');
 
     if (!user) {
       return createToastResponse(res, 404, 'User not found', 'error');
     }
 
+    // Get ALL classes for the student
+    let allClasses = [];
+    if (user.classes && user.classes.length > 0) {
+      allClasses = await Class.find({ 
+        _id: { $in: user.classes },
+        isActive: true 
+      }).populate('educator', 'fullName username');
+    }
+
     // Prepare user data with class details
     const userData = user.toObject();
     
-    // Current enrolled class details
+    // Current enrolled class details (if any)
     if (user.enrolledClass) {
-      userData.enrolledClassDetails = {
-        classCode: user.enrolledClass.classCode,
-        className: user.enrolledClass.className,
-        educatorName: user.enrolledClass.educator?.fullName || user.enrolledClass.educator?.username,
-        educatorId: user.enrolledClass.educator?._id
-      };
+      const currentClass = await Class.findById(user.enrolledClass)
+        .populate('educator', 'fullName username');
+      if (currentClass) {
+        userData.enrolledClassDetails = {
+          classCode: currentClass.classCode,
+          className: currentClass.className,
+          educatorName: currentClass.educator?.fullName || currentClass.educator?.username,
+          educatorId: currentClass.educator?._id
+        };
+      }
     }
 
     // All enrolled classes details
-    userData.allClasses = user.classes ? user.classes.map(cls => ({
+    userData.allClasses = allClasses.map(cls => ({
       id: cls._id,
       classCode: cls.classCode,
       className: cls.className,
       educatorName: cls.educator?.fullName || cls.educator?.username,
       educatorId: cls.educator?._id
-    })) : [];
+    }));
 
     return createToastResponse(res, 200, 'Profile fetched successfully', 'success', {
       user: userData
@@ -1676,31 +1764,43 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       updateData,
-      { new: true, select: '-password -emailVerificationToken -emailVerificationExpires' }
-    ).populate({
-      path: 'enrolledClass',
-      select: 'classCode className educator',
-      populate: {
-        path: 'educator',
-        select: 'fullName username'
-      }
-    });
+      { new: true, select: '-password' }
+    );
+
+    // Get ALL classes for the student
+    let allClasses = [];
+    if (user.classes && user.classes.length > 0) {
+      allClasses = await Class.find({ 
+        _id: { $in: user.classes },
+        isActive: true 
+      }).populate('educator', 'fullName username');
+    }
 
     // Prepare user data with class details
     const userData = user.toObject();
     
+    // Current enrolled class details (if any)
     if (user.enrolledClass) {
-      userData.enrolledClassDetails = {
-        classCode: user.enrolledClass.classCode,
-        className: user.enrolledClass.className,
-        educatorName: user.enrolledClass.educator?.fullName || user.enrolledClass.educator?.username
-      };
-      userData.enrolledClass = {
-        _id: user.enrolledClass._id,
-        classCode: user.enrolledClass.classCode,
-        className: user.enrolledClass.className
-      };
+      const currentClass = await Class.findById(user.enrolledClass)
+        .populate('educator', 'fullName username');
+      if (currentClass) {
+        userData.enrolledClassDetails = {
+          classCode: currentClass.classCode,
+          className: currentClass.className,
+          educatorName: currentClass.educator?.fullName || currentClass.educator?.username,
+          educatorId: currentClass.educator?._id
+        };
+      }
     }
+
+    // All enrolled classes details
+    userData.allClasses = allClasses.map(cls => ({
+      id: cls._id,
+      classCode: cls.classCode,
+      className: cls.className,
+      educatorName: cls.educator?.fullName || cls.educator?.username,
+      educatorId: cls.educator?._id
+    }));
 
     return createToastResponse(res, 200, 'Profile updated successfully', 'success', {
       user: userData
@@ -1712,10 +1812,10 @@ app.put('/api/auth/profile', verifyToken, async (req, res) => {
 });
 
 // =====================
-// 📁 FILE MANAGEMENT ENDPOINTS (CRITICAL FIXES)
+// 📁 FILE MANAGEMENT ENDPOINTS (UPDATED FOR MULTIPLE CLASSES)
 // =====================
 
-// Get files with proper student filtering
+// Get files with proper student filtering - UPDATED
 app.get('/api/files/list', verifyToken, async (req, res) => {
   try {
     const { classCode } = req.query;
@@ -1726,7 +1826,7 @@ app.get('/api/files/list', verifyToken, async (req, res) => {
     
     console.log('Files list request:', { userId, userRole, classCode });
     
-    // If user is student, they should only see files from their enrolled class
+    // If user is student, they should only see files from their CURRENT enrolled class
     if (userRole === 'student') {
       const user = await User.findById(userId);
       
@@ -1738,18 +1838,18 @@ app.get('/api/files/list', verifyToken, async (req, res) => {
         });
       }
       
-      // Get the class to get the classCode
-      const classObj = await Class.findById(user.enrolledClass);
-      if (!classObj) {
+      // Get the current class
+      const currentClass = await Class.findById(user.enrolledClass);
+      if (!currentClass) {
         return res.json({
           success: true,
           files: [],
-          message: 'Your enrolled class was not found'
+          message: 'Your current class was not found'
         });
       }
       
-      // Always filter by student's enrolled class
-      query.classCode = classObj.classCode;
+      // Always filter by student's CURRENT enrolled class
+      query.classCode = currentClass.classCode;
       console.log('Student query:', query);
     }
     // If user is educator, show only their uploaded files
@@ -1783,7 +1883,7 @@ app.get('/api/files/list', verifyToken, async (req, res) => {
   }
 });
 
-// Get files by class with access control
+// Get files by class with access control - UPDATED
 app.get('/api/files/class/:classCode', verifyToken, async (req, res) => {
   try {
     const { classCode } = req.params;
@@ -1805,12 +1905,25 @@ app.get('/api/files/class/:classCode', verifyToken, async (req, res) => {
       }
     } else if (userRole === 'student') {
       const user = await User.findById(userId);
-      const classObj = await Class.findOne({ classCode: classCode.toUpperCase() });
       
-      if (!classObj || !user.enrolledClass || user.enrolledClass.toString() !== classObj._id.toString()) {
+      // Student must be enrolled in this class
+      const classObj = await Class.findOne({ classCode: classCode.toUpperCase() });
+      if (!classObj) {
+        return res.status(404).json({
+          success: false,
+          error: 'Class not found'
+        });
+      }
+      
+      // Check if student is enrolled in this class
+      const isEnrolled = user.classes && user.classes.some(clsId => 
+        clsId && clsId.toString() === classObj._id.toString()
+      );
+      
+      if (!isEnrolled) {
         return res.status(403).json({
           success: false,
-          error: 'Access denied to this class'
+          error: 'You are not enrolled in this class'
         });
       }
     }
@@ -1837,6 +1950,70 @@ app.get('/api/files/class/:classCode', verifyToken, async (req, res) => {
   }
 });
 
+// Get files from all enrolled classes (student only)
+app.get('/api/files/all-classes', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    if (userRole !== 'student') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only students can access this endpoint'
+      });
+    }
+    
+    const user = await User.findById(userId);
+    
+    if (!user.classes || user.classes.length === 0) {
+      return res.json({
+        success: true,
+        files: [],
+        message: 'You are not enrolled in any classes'
+      });
+    }
+    
+    // Get all class codes from user's enrolled classes
+    const classObjs = await Class.find({ 
+      _id: { $in: user.classes },
+      isActive: true 
+    });
+    
+    const classCodes = classObjs.map(cls => cls.classCode);
+    
+    // Get files from all enrolled classes
+    const files = await File.find({ 
+      classCode: { $in: classCodes }
+    })
+    .sort({ createdAt: -1 })
+    .populate('uploadedBy', 'username fullName');
+    
+    // Group files by class code
+    const filesByClass = {};
+    classCodes.forEach(classCode => {
+      filesByClass[classCode] = files.filter(file => file.classCode === classCode);
+    });
+    
+    res.json({
+      success: true,
+      count: files.length,
+      filesByClass: filesByClass,
+      allFiles: files,
+      enrolledClasses: classObjs.map(cls => ({
+        classCode: cls.classCode,
+        className: cls.className,
+        educator: cls.educator
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching files from all classes:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error fetching files'
+    });
+  }
+});
+
 // =====================
 // 📁 ROUTES
 // =====================
@@ -1851,8 +2028,11 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('File sharing endpoints available:');
-  console.log('  GET  /api/files/list - Get files (with classCode query param)');
+  console.log('  GET  /api/files/list - Get files (shows current class files for students)');
   console.log('  GET  /api/files/class/:classCode - Get files by class');
-  console.log('  POST /api/classes/join - Join class endpoint');
-  console.log('  GET  /api/auth/profile - Get user profile with class info');
+  console.log('  GET  /api/files/all-classes - Get files from all enrolled classes (students only)');
+  console.log('  POST /api/classes/join - Join class endpoint (multiple classes supported)');
+  console.log('  POST /api/student/switch-class - Switch current class');
+  console.log('  GET  /api/auth/profile - Get user profile with all class info');
+  console.log('  GET  /api/student/classes - Get all enrolled classes for student');
 });
