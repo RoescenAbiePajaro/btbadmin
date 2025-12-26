@@ -247,13 +247,22 @@ export default function AdminDashboard() {
       const response = await axios.get(
         'http://localhost:5000/api/analytics/filter',
         {
-          params: { type: 'users', role: 'educator', page: 1, limit: 1000 },
+          params: { 
+            type: 'users', 
+            role: 'educator', 
+            page: 1, 
+            limit: 1000,
+            includeSchool: true // Request school data
+          },
           headers: { Authorization: `Bearer ${token}` }
         }
       );
       if (response.data.success) {
         const map = (response.data.data || []).reduce((acc, user) => {
-          acc[user._id] = { email: user.email || 'N/A', school: user.school || null };
+          acc[user._id] = { 
+            email: user.email || 'N/A', 
+            school: user.school || null 
+          };
           return acc;
         }, {});
         setEducatorUsers(map);
@@ -272,7 +281,10 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('token');
       const response = await axios.get(
         'http://localhost:5000/api/classes/all',
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          params: { includeSchool: true } 
+        }
       );
       
       if (response.data.success) {
@@ -900,6 +912,7 @@ export default function AdminDashboard() {
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
+
                 </div>
               )}
             </div>
@@ -936,38 +949,63 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {filteredData.data && filteredData.data.length > 0 ? (
-                          filteredData.data.map((user, index) => (
-                            <tr key={user._id || index} className="hover:bg-gray-800">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                {user.fullName || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                {user.email}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
-                                  user.role === 'educator' ? 'bg-green-500/20 text-green-400' :
-                                  'bg-blue-500/20 text-blue-400'
-                                }`}>
-                                  {user.role}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                {user.school ? getSchoolName(user.school) : 'Not specified'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                                }`}>
-                                  {user.isActive ? 'Active' : 'Inactive'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                              </td>
-                            </tr>
-                          ))
+                          filteredData.data.map((user, index) => {
+                            // Get school for educator from their classes
+                            let userSchool = user.school;
+                            
+                            if (user.role === 'educator') {
+                              // Try to get school from educatorClassSummary first
+                              if (educatorClassSummary?.[user._id]?.school) {
+                                userSchool = educatorClassSummary[user._id].school;
+                              } 
+                              // If not found, fetch from class codes
+                              else if (classCodes.length > 0) {
+                                // Find classes created by this educator
+                                const educatorClasses = classCodes.filter(cls => 
+                                  cls.educator?._id === user._id || 
+                                  cls.educatorId === user._id
+                                );
+                                
+                                if (educatorClasses.length > 0) {
+                                  // Get the first class's school (assuming all classes belong to same school)
+                                  userSchool = educatorClasses[0]?.school;
+                                }
+                              }
+                            }
+                            
+                            return (
+                              <tr key={user._id || index} className="hover:bg-gray-800">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.fullName || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                                    user.role === 'educator' ? 'bg-green-500/20 text-green-400' :
+                                    'bg-blue-500/20 text-blue-400'
+                                  }`}>
+                                    {user.role}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {userSchool ? getSchoolName(userSchool) : 'Not specified'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                  }`}>
+                                    {user.isActive ? 'Active' : 'Inactive'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                                </td>
+                              </tr>
+                            );
+                          })
                         ) : (
                           <tr>
                             <td colSpan="6" className="px-6 py-4 text-center text-gray-400">
