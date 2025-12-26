@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+// src/components/student/StudentFileSharing.jsx
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const StudentFileSharing = ({ student, onClassChange }) => {
+const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -11,8 +12,9 @@ const StudentFileSharing = ({ student, onClassChange }) => {
   const [studentClasses, setStudentClasses] = useState([]);
   const [currentClassCode, setCurrentClassCode] = useState('');
   const [showClassSelector, setShowClassSelector] = useState(false);
+  const [lastFilesUpdate, setLastFilesUpdate] = useState(null);
 
-  useEffect(() => {
+  const updateStudentData = useCallback(() => {
     console.log('StudentFileSharing - Student prop:', student);
     
     if (student) {
@@ -26,16 +28,21 @@ const StudentFileSharing = ({ student, onClassChange }) => {
       
       if (currentClass) {
         setCurrentClassCode(currentClass.classCode);
-        fetchFiles(currentClass.classCode);
-        fetchClassInfo(currentClass.classCode);
       } else {
-        setLoading(false);
+        setCurrentClassCode('');
+        setFiles([]);
+        setClassInfo(null);
         setError('You are not enrolled in any class');
+        setLoading(false);
       }
     }
   }, [student]);
 
-  const fetchFiles = async (classCode) => {
+  useEffect(() => {
+    updateStudentData();
+  }, [updateStudentData]);
+
+  const fetchFiles = useCallback(async (classCode) => {
     try {
       setLoading(true);
       setError('');
@@ -50,30 +57,55 @@ const StudentFileSharing = ({ student, onClassChange }) => {
         return;
       }
       
-      const response = await axios.get(
-        'http://localhost:5000/api/files/list',
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}` 
-          },
-          params: {
-            classCode: classCode
+      try {
+        const response = await axios.get(
+          'http://localhost:5000/api/files/list',
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}` 
+            },
+            params: {
+              classCode: classCode
+            }
           }
-        }
-      );
-      
-      if (response.data.success) {
-        const allFiles = response.data.files || [];
-        const learningMaterials = allFiles.filter(file => 
-          file.type !== 'assignment' && 
-          file.type !== 'submission'
         );
         
-        console.log('Learning materials:', learningMaterials.length);
-        
-        setFiles(learningMaterials);
-      } else {
-        setError(response.data.error || 'Failed to fetch files');
+        if (response.data.success) {
+          const allFiles = response.data.files || [];
+          const learningMaterials = allFiles.filter(file => 
+            file.type !== 'assignment' && 
+            file.type !== 'submission'
+          );
+          
+          console.log('Learning materials:', learningMaterials.length);
+          
+          // Filter out files that might be orphaned
+          const validMaterials = learningMaterials.filter(material => 
+            material.url && material.uploadedBy
+          );
+          
+          setFiles(validMaterials);
+          setLastFilesUpdate(new Date());
+          
+          // If no materials and we have a class, fetch class info
+          if (validMaterials.length === 0 && classCode) {
+            fetchClassInfo(classCode);
+          }
+        } else {
+          setError(response.data.error || 'Failed to fetch files');
+        }
+      } catch (fetchError) {
+        // If class doesn't exist or access denied, clear the files
+        if (fetchError.response?.status === 404 || fetchError.response?.status === 403) {
+          setFiles([]);
+          setError('This class is no longer available');
+          // Refresh user data if class might have been deleted
+          if (onRefresh) {
+            onRefresh();
+          }
+        } else {
+          throw fetchError;
+        }
       }
     } catch (error) {
       console.error('Error fetching files:', error);
@@ -82,9 +114,9 @@ const StudentFileSharing = ({ student, onClassChange }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [onRefresh]);
 
-  const fetchClassInfo = async (classCode) => {
+  const fetchClassInfo = useCallback(async (classCode) => {
     try {
       if (!classCode) return;
       
@@ -103,8 +135,28 @@ const StudentFileSharing = ({ student, onClassChange }) => {
       }
     } catch (error) {
       console.error('Error fetching class info:', error);
+      // If class not found, refresh user data
+      if (error.response?.status === 404 && onRefresh) {
+        onRefresh();
+      }
     }
-  };
+  }, [onRefresh]);
+
+  // Fetch files when current class code changes
+  useEffect(() => {
+    if (currentClassCode) {
+      fetchFiles(currentClassCode);
+      fetchClassInfo(currentClassCode);
+    }
+  }, [currentClassCode, fetchFiles, fetchClassInfo]);
+
+  // Re-fetch files when student data is refreshed from parent
+  useEffect(() => {
+    if (lastUpdated && currentClassCode) {
+      console.log('Student data updated, refreshing files...');
+      fetchFiles(currentClassCode);
+    }
+  }, [lastUpdated, currentClassCode, fetchFiles]);
 
   const handleClassChange = async (classCode) => {
     try {
@@ -119,8 +171,6 @@ const StudentFileSharing = ({ student, onClassChange }) => {
       
       if (response.data.toast?.type === 'success') {
         setCurrentClassCode(classCode);
-        fetchFiles(classCode);
-        fetchClassInfo(classCode);
         setShowClassSelector(false);
         
         // Update localStorage with new user data
@@ -128,9 +178,9 @@ const StudentFileSharing = ({ student, onClassChange }) => {
           localStorage.setItem('user', JSON.stringify(response.data.data.user));
         }
         
-        // Notify parent component
-        if (onClassChange) {
-          onClassChange(classCode);
+        // Refresh parent component
+        if (onRefresh) {
+          onRefresh();
         }
       }
     } catch (error) {
@@ -160,14 +210,35 @@ const StudentFileSharing = ({ student, onClassChange }) => {
         console.error('Error tracking download:', trackError);
       }
       
-      // Create a temporary link element to trigger download
-      const link = document.createElement('a');
-      link.href = fileUrl;
-      link.download = fileName || 'download';
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Try multiple download methods
+      try {
+        // Method 1: Fetch file as blob and download
+        const response = await fetch(fileUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName || 'download';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          return;
+        }
+      } catch (fetchError) {
+        console.log('Fetch method failed, trying fallback...');
+      }
+      
+      // Method 2: Fallback to opening in new tab
+      window.open(fileUrl, '_blank');
+      
     } catch (error) {
       console.error('Error downloading file:', error);
       alert('Error downloading file. Please try again.');
@@ -232,7 +303,11 @@ const StudentFileSharing = ({ student, onClassChange }) => {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchFiles(currentClassCode);
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      fetchFiles(currentClassCode);
+    }
   };
 
   const toggleMaterials = () => {
@@ -261,12 +336,22 @@ const StudentFileSharing = ({ student, onClassChange }) => {
             </svg>
             <div>
               <p className="text-white">{error}</p>
-              <button
-                onClick={() => fetchFiles(currentClassCode)}
-                className="mt-2 bg-red-600 hover:bg-red-700 text-white py-1 px-4 rounded text-sm transition duration-200"
-              >
-                Try Again
-              </button>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => fetchFiles(currentClassCode)}
+                  className="bg-red-600 hover:bg-red-700 text-white py-1 px-4 rounded text-sm transition duration-200"
+                >
+                  Try Again
+                </button>
+                {onRefresh && (
+                  <button
+                    onClick={onRefresh}
+                    className="bg-gray-600 hover:bg-gray-700 text-white py-1 px-4 rounded text-sm transition duration-200"
+                  >
+                    Refresh Data
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -280,6 +365,11 @@ const StudentFileSharing = ({ student, onClassChange }) => {
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2">File Sharing</h2>
                 <p className="text-gray-400">Access learning materials from your classes</p>
+                {lastFilesUpdate && (
+                  <p className="text-gray-500 text-xs mt-1">
+                    Files updated: {lastFilesUpdate.toLocaleTimeString()}
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
                 {studentClasses.length > 0 && (
@@ -429,7 +519,9 @@ const StudentFileSharing = ({ student, onClassChange }) => {
                       <div>
                         <p className="text-white font-medium">No Learning Materials Yet</p>
                         <p className="text-blue-400 text-sm mt-1">
-                          Your educator has not shared any learning materials yet.
+                          {currentClassCode 
+                            ? `Your educator has not shared any learning materials for ${currentClassCode} yet.`
+                            : 'Your educator has not shared any learning materials yet.'}
                         </p>
                       </div>
                     </div>
@@ -532,7 +624,7 @@ const StudentFileSharing = ({ student, onClassChange }) => {
                   {currentClassCode && ` from ${currentClassCode}`}
                 </p>
                 <div className="text-gray-500 text-sm">
-                  Last updated: {new Date().toLocaleTimeString()}
+                  Last updated: {lastFilesUpdate ? lastFilesUpdate.toLocaleTimeString() : 'Never'}
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 // src/components/student/StudentDashboard.jsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import StudentFileSharing from './StudentFileSharing'; // Import the component
@@ -15,6 +15,9 @@ export default function StudentDashboard() {
   const [joinClassLoading, setJoinClassLoading] = useState(false);
   const [joinClassError, setJoinClassError] = useState('');
   const [joinClassInfo, setJoinClassInfo] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const refreshIntervalRef = useRef(null);
 
   const fetchUserData = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -37,6 +40,7 @@ export default function StudentDashboard() {
         
         // Update localStorage with fresh data
         localStorage.setItem('user', JSON.stringify(userData));
+        setLastUpdated(new Date());
         return userData;
       } else {
         // Fallback to localStorage data
@@ -65,6 +69,51 @@ export default function StudentDashboard() {
     }
   }, [navigate]);
 
+  const refreshUserData = async () => {
+    console.log('Refreshing user data...');
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await axios.get('http://localhost:5000/api/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.data?.user) {
+        const updatedUser = response.data.data.user;
+        console.log('Updated user data:', updatedUser);
+        
+        // Check if classes have changed
+        const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
+        const currentClasses = currentUser.allClasses?.map(c => c.classCode) || [];
+        const newClasses = updatedUser.allClasses?.map(c => c.classCode) || [];
+        
+        // If classes changed, update state and localStorage
+        if (JSON.stringify(currentClasses) !== JSON.stringify(newClasses)) {
+          console.log('Classes changed! Updating UI...');
+          setUser(updatedUser);
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setLastUpdated(new Date());
+          
+          // Show notification if user was removed from a class
+          if (newClasses.length < currentClasses.length) {
+            const removedClass = currentClasses.find(code => !newClasses.includes(code));
+            if (removedClass) {
+              alert(`You have been removed from class ${removedClass}`);
+            }
+          }
+        } else {
+          // Still update to get fresh data
+          setUser(updatedUser);
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setLastUpdated(new Date());
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
   useEffect(() => {
     const isFreshRegistration = localStorage.getItem('freshRegistration');
     
@@ -87,6 +136,26 @@ export default function StudentDashboard() {
 
     loadUserData();
   }, [fetchUserData, forceRefresh]);
+
+  // Auto-refresh setup
+  useEffect(() => {
+    if (autoRefreshEnabled) {
+      // Refresh every 30 seconds
+      refreshIntervalRef.current = setInterval(() => {
+        refreshUserData();
+      }, 30000);
+      
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+        }
+      };
+    } else {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    }
+  }, [autoRefreshEnabled]);
 
   useEffect(() => {
     console.log('Current user state:', user);
@@ -157,7 +226,18 @@ export default function StudentDashboard() {
     }
   };
 
+  const handleManualRefresh = async () => {
+    await refreshUserData();
+  };
+
+  const toggleAutoRefresh = () => {
+    setAutoRefreshEnabled(!autoRefreshEnabled);
+  };
+
   const handleLogout = () => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.history.replaceState(null, '', '/login');
@@ -194,6 +274,39 @@ export default function StudentDashboard() {
               <p className="text-gray-400">Welcome, {user.fullName}</p>
             </div>
             <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleManualRefresh}
+                  className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded-lg transition duration-200 flex items-center gap-2"
+                  title="Refresh data"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+                <button
+                  onClick={toggleAutoRefresh}
+                  className={`py-2 px-3 rounded-lg transition duration-200 flex items-center gap-2 ${
+                    autoRefreshEnabled 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'bg-gray-700 hover:bg-gray-600 text-white'
+                  }`}
+                  title={autoRefreshEnabled ? 'Auto-refresh enabled (30s)' : 'Auto-refresh disabled'}
+                >
+                  {autoRefreshEnabled ? (
+                    <>
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      Auto
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      Auto
+                    </>
+                  )}
+                </button>
+              </div>
               <button
                 onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200"
@@ -202,6 +315,12 @@ export default function StudentDashboard() {
               </button>
             </div>
           </div>
+          {lastUpdated && (
+            <div className="mt-2 text-xs text-gray-500">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+              {autoRefreshEnabled && ' • Auto-refresh enabled (every 30s)'}
+            </div>
+          )}
         </div>
       </header>
 
@@ -439,7 +558,11 @@ export default function StudentDashboard() {
           </>
         ) : (
           // File Sharing Tab - Render the StudentFileSharing component
-          <StudentFileSharing student={user} />
+          <StudentFileSharing 
+            student={user} 
+            onRefresh={handleManualRefresh}
+            lastUpdated={lastUpdated}
+          />
         )}
       </div>
     </div>

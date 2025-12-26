@@ -1,3 +1,4 @@
+// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -10,7 +11,7 @@ const AcademicSetting = require('./models/AcademicSetting');
 const AccessCode = require('./models/AccessCode');
 const Click = require('./models/Click');
 const FileActivity = require('./models/FileActivity');
-const File = require('./models/File'); // Import File model
+const File = require('./models/File');
 const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
@@ -119,6 +120,14 @@ const requireEducator = (req, res, next) => {
 const requireStudent = (req, res, next) => {
   if (req.user.role !== 'student') {
     return createToastResponse(res, 403, 'Student access required', 'error');
+  }
+  next();
+};
+
+// Admin middleware
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return createToastResponse(res, 403, 'Admin access required', 'error');
   }
   next();
 };
@@ -1167,47 +1176,75 @@ app.put('/api/classes/:id', verifyToken, requireEducator, async (req, res) => {
   }
 });
 
-// Delete class
+// Delete class - UPDATED WITH CASCADING DELETIONS
 app.delete('/api/classes/:id', verifyToken, requireEducator, async (req, res) => {
   try {
     const classId = req.params.id;
     const userId = req.user.id;
 
-    // Find and delete the class if the user is the owner
-    const deletedClass = await Class.findOneAndDelete({ 
+    // Find the class
+    const classToDelete = await Class.findOne({ 
       _id: classId, 
       educator: userId 
     });
     
-    if (!deletedClass) {
-      return res.status(404).json({
-        toast: {
-          show: true,
-          message: 'Class not found or access denied',
-          type: 'error'
-        }
-      });
+    if (!classToDelete) {
+      return createToastResponse(res, 404, 'Class not found or access denied', 'error');
     }
 
-    return res.json({
-      toast: {
-        show: true,
-        message: 'Class deleted successfully',
-        type: 'success'
-      },
-      data: {
-        class: deletedClass
+    // Get all files associated with this class
+    const files = await File.find({ classCode: classToDelete.classCode });
+    
+    // Delete files from Supabase storage
+    for (const file of files) {
+      try {
+        await supabase.deleteFile(file.path);
+      } catch (supabaseError) {
+        console.error('Error deleting file from Supabase:', supabaseError);
+      }
+    }
+    
+    // Delete file records from database
+    await File.deleteMany({ classCode: classToDelete.classCode });
+    
+    // Remove class from all enrolled students
+    const students = await User.find({ 
+      classes: classId 
+    });
+    
+    for (const student of students) {
+      // Remove class from student's classes array
+      student.classes = student.classes.filter(
+        clsId => clsId.toString() !== classId
+      );
+      
+      // Remove class code from student's classCodes array
+      student.classCodes = student.classCodes.filter(
+        code => code !== classToDelete.classCode
+      );
+      
+      // If this was their current enrolled class, set to another or null
+      if (student.enrolledClass && 
+          student.enrolledClass.toString() === classId) {
+        student.enrolledClass = student.classes.length > 0 ? student.classes[0] : null;
+      }
+      
+      await student.save();
+    }
+
+    // Delete the class
+    await Class.findByIdAndDelete(classId);
+
+    return createToastResponse(res, 200, 'Class deleted successfully', 'success', {
+      deletedCount: {
+        class: 1,
+        files: files.length,
+        affectedStudents: students.length
       }
     });
   } catch (error) {
     console.error('Error deleting class:', error);
-    return res.status(500).json({
-      toast: {
-        show: true,
-        message: 'Failed to delete class',
-        type: 'error'
-      }
-    });
+    return createToastResponse(res, 500, 'Failed to delete class', 'error');
   }
 });
 
@@ -1243,7 +1280,7 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
   }
 });
 
-// Remove student from class - IMPROVED VERSION
+// Remove student from class - IMPROVED VERSION WITH FILE DELETION
 app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEducator, async (req, res) => {
   try {
     const { classId, studentId } = req.params;
@@ -1270,6 +1307,27 @@ app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEduc
     if (!isStudentInClass) {
       return createToastResponse(res, 404, 'Student not found in this class', 'error');
     }
+
+    // Delete student's submitted assignments/files for this class
+    const studentFiles = await File.find({
+      uploadedBy: studentId,
+      classCode: classObj.classCode
+    });
+    
+    // Delete files from Supabase storage
+    for (const file of studentFiles) {
+      try {
+        await supabase.deleteFile(file.path);
+      } catch (supabaseError) {
+        console.error('Error deleting student file from Supabase:', supabaseError);
+      }
+    }
+    
+    // Delete file records from database
+    await File.deleteMany({
+      uploadedBy: studentId,
+      classCode: classObj.classCode
+    });
 
     // Remove student from class array
     classObj.students = classObj.students.filter(id => id.toString() !== studentId);
@@ -1309,7 +1367,8 @@ app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEduc
         id: student._id,
         fullName: student.fullName,
         email: student.email
-      }
+      },
+      deletedFilesCount: studentFiles.length
     });
 
   } catch (error) {
@@ -1648,6 +1707,105 @@ app.put('/api/academic-settings/:id/toggle', verifyToken, requireEducator, async
         type: 'error'
       }
     });
+  }
+});
+
+// =====================
+// 👤 USER MANAGEMENT
+// =====================
+
+// Delete educator (admin only)
+app.delete('/api/users/educator/:id', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find and delete educator
+    const educator = await User.findById(id);
+    
+    if (!educator || educator.role !== 'educator') {
+      return createToastResponse(res, 404, 'Educator not found', 'error');
+    }
+    
+    // Get all classes created by this educator
+    const educatorClasses = await Class.find({ educator: id });
+    
+    // Delete all files uploaded by this educator
+    const files = await File.find({ uploadedBy: id });
+    
+    // Delete files from Supabase storage
+    for (const file of files) {
+      try {
+        await supabase.deleteFile(file.path);
+      } catch (supabaseError) {
+        console.error('Error deleting file from Supabase:', supabaseError);
+      }
+    }
+    
+    // Delete file records from database
+    await File.deleteMany({ uploadedBy: id });
+    
+    // Remove educator from all student's enrolled classes
+    for (const classObj of educatorClasses) {
+      // Find all students enrolled in this class
+      const students = await User.find({ 
+        classes: classObj._id 
+      });
+      
+      // Remove this class from each student's classes array
+      for (const student of students) {
+        student.classes = student.classes.filter(
+          clsId => clsId.toString() !== classObj._id.toString()
+        );
+        student.classCodes = student.classCodes.filter(
+          code => code !== classObj.classCode
+        );
+        
+        // If this was their current enrolled class, set to another or null
+        if (student.enrolledClass && 
+            student.enrolledClass.toString() === classObj._id.toString()) {
+          student.enrolledClass = student.classes.length > 0 ? student.classes[0] : null;
+        }
+        
+        await student.save();
+      }
+    }
+    
+    // Delete all classes created by this educator
+    await Class.deleteMany({ educator: id });
+    
+    // Delete academic settings created by this educator
+    await AcademicSetting.deleteMany({ educator: id });
+    
+    // Finally, delete the educator user
+    await User.findByIdAndDelete(id);
+    
+    return createToastResponse(res, 200, 'Educator deleted successfully', 'success', {
+      deletedCount: {
+        educator: 1,
+        classes: educatorClasses.length,
+        files: files.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Delete educator error:', error);
+    return createToastResponse(res, 500, 'Server error deleting educator', 'error');
+  }
+});
+
+// Get all educators (admin only)
+app.get('/api/users/educators', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const educators = await User.find({ role: 'educator' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
+    return createToastResponse(res, 200, 'Educators fetched successfully', 'success', {
+      educators
+    });
+  } catch (error) {
+    console.error('Get educators error:', error);
+    return createToastResponse(res, 500, 'Server error fetching educators', 'error');
   }
 });
 
@@ -2015,6 +2173,94 @@ app.get('/api/files/all-classes', verifyToken, async (req, res) => {
 });
 
 // =====================
+// 🧹 ADMIN CLEANUP
+// =====================
+
+// Clean up orphaned data
+app.get('/api/admin/cleanup', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const cleanupReport = {
+      deletedFiles: 0,
+      updatedStudents: 0,
+      orphanedClasses: 0
+    };
+    
+    // Find orphaned files (files where class doesn't exist or educator doesn't exist)
+    const allFiles = await File.find();
+    
+    for (const file of allFiles) {
+      const classExists = await Class.findOne({ classCode: file.classCode });
+      const educatorExists = await User.findById(file.uploadedBy);
+      
+      if (!classExists || !educatorExists) {
+        try {
+          await supabase.deleteFile(file.path);
+          await File.findByIdAndDelete(file._id);
+          cleanupReport.deletedFiles++;
+        } catch (error) {
+          console.error('Error cleaning up file:', error);
+        }
+      }
+    }
+    
+    // Find students with references to non-existent classes
+    const allStudents = await User.find({ role: 'student' });
+    
+    for (const student of allStudents) {
+      let needsUpdate = false;
+      
+      // Check classes array
+      if (student.classes && student.classes.length > 0) {
+        const validClasses = [];
+        for (const classId of student.classes) {
+          const classExists = await Class.findById(classId);
+          if (classExists) {
+            validClasses.push(classId);
+          } else {
+            needsUpdate = true;
+          }
+        }
+        student.classes = validClasses;
+      }
+      
+      // Check enrolledClass
+      if (student.enrolledClass) {
+        const classExists = await Class.findById(student.enrolledClass);
+        if (!classExists) {
+          student.enrolledClass = student.classes.length > 0 ? student.classes[0] : null;
+          needsUpdate = true;
+        }
+      }
+      
+      if (needsUpdate) {
+        await student.save();
+        cleanupReport.updatedStudents++;
+      }
+    }
+    
+    // Find orphaned classes (without educator)
+    const allClasses = await Class.find();
+    
+    for (const classObj of allClasses) {
+      const educatorExists = await User.findById(classObj.educator);
+      if (!educatorExists) {
+        // Delete the orphaned class
+        await Class.findByIdAndDelete(classObj._id);
+        cleanupReport.orphanedClasses++;
+      }
+    }
+    
+    return createToastResponse(res, 200, 'Cleanup completed', 'success', {
+      cleanupReport
+    });
+    
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    return createToastResponse(res, 500, 'Server error during cleanup', 'error');
+  }
+});
+
+// =====================
 // 📁 ROUTES
 // =====================
 app.use('/api/dashboard', dashboardRoutes);
@@ -2035,4 +2281,6 @@ app.listen(PORT, () => {
   console.log('  POST /api/student/switch-class - Switch current class');
   console.log('  GET  /api/auth/profile - Get user profile with all class info');
   console.log('  GET  /api/student/classes - Get all enrolled classes for student');
+  console.log('  DELETE /api/users/educator/:id - Delete educator (admin only)');
+  console.log('  GET  /api/admin/cleanup - Clean up orphaned data (admin only)');
 });
