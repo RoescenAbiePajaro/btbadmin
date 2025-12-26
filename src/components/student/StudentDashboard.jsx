@@ -133,32 +133,24 @@ export default function StudentDashboard() {
       );
 
       if (joinResponse.data.toast?.type === 'success') {
-        // Force refresh user data from server
-        const userResponse = await axios.get('http://localhost:5000/api/auth/profile', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (userResponse.data.data?.user) {
-          const updatedUser = userResponse.data.data.user;
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          setUser(updatedUser);
-          console.log('User updated after joining class:', updatedUser);
-        }
+        // Update user state with new data
+        const updatedUser = joinResponse.data.data.user;
+        console.log('Updated user after joining:', updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
         
         // Close modal and reset
         setShowJoinClassModal(false);
         setJoinClassCode('');
         setJoinClassInfo(null);
         
-        // Show success message
-        alert('Successfully joined class!');
-        
-        // Force refresh to update UI
-        setForceRefresh(true);
+        // Force refresh
+        setForceRefresh(!forceRefresh);
       } else {
         setJoinClassError(joinResponse.data.toast?.message || 'Failed to join class');
       }
     } catch (error) {
+      console.error('Join class error details:', error.response?.data);
       setJoinClassError(error.response?.data?.toast?.message || 'Failed to join class');
     } finally {
       setJoinClassLoading(false);
@@ -200,11 +192,6 @@ export default function StudentDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-white">Student Dashboard</h1>
               <p className="text-gray-400">Welcome, {user.fullName}</p>
-              {user.enrolledClassDetails && (
-                <p className="text-sm text-green-400 mt-1">
-                  Joined in: {user.enrolledClassDetails.className} ({user.enrolledClassDetails.classCode})
-                </p>
-              )}
             </div>
             <div className="flex items-center gap-4">
               <button
@@ -389,37 +376,27 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              {/* Class Info Card */}
+              {/* Class Info Card (shows only count) */}
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Class Information</h3>
-                {user.enrolledClassDetails ? (
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-gray-400">Class Code:</span>
-                      <p className="text-white font-mono">{user.enrolledClassDetails.classCode}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Class Name:</span>
-                      <p className="text-white">{user.enrolledClassDetails.className}</p>
-                    </div>
-                    {user.enrolledClassDetails.educatorName && (
-                      <div>
-                        <span className="text-gray-400">Educator:</span>
-                        <p className="text-white">{user.enrolledClassDetails.educatorName}</p>
-                      </div>
-                    )}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Classes Joined</h3>
+                    <p className="text-gray-400 text-sm">Total number of classes</p>
                   </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-gray-400 mb-4">Not enrolled in any class</p>
-                    <button
-                      onClick={() => setShowJoinClassModal(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
-                    >
-                      Join a Class
-                    </button>
+                  <div className="bg-blue-900 text-blue-300 font-bold text-3xl px-5 py-3 rounded-lg">
+                    {user.allClasses ? user.allClasses.length : (user.enrolledClass ? 1 : 0)}
                   </div>
-                )}
+                </div>
+                
+                <button
+                  onClick={() => setShowJoinClassModal(true)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Join New Class
+                </button>
               </div>
             </div>
 

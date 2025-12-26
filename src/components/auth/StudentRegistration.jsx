@@ -52,6 +52,11 @@ export default function StudentRegistration() {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     
+    if (!formData.school.trim()) newErrors.school = 'School is required';
+    if (!formData.course.trim()) newErrors.course = 'Course is required';
+    if (!formData.year.trim()) newErrors.year = 'Year is required';
+    if (!formData.block.trim()) newErrors.block = 'Block is required';
+    
     return newErrors;
   };
 
@@ -254,61 +259,73 @@ export default function StudentRegistration() {
                 {/* School */}
                 <div>
                   <label className="block text-gray-300 text-sm font-medium mb-2">
-                    School
+                    School *
                   </label>
                   <input
                     type="text"
                     name="school"
                     value={formData.school}
                     onChange={handleChange}
-                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className={`w-full bg-black/50 border ${errors.school ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                     placeholder="Enter your school"
                   />
+                  {errors.school && (
+                    <p className="mt-1 text-sm text-red-400">{errors.school}</p>
+                  )}
                 </div>
 
                 {/* Course */}
                 <div>
                   <label className="block text-gray-300 text-sm font-medium mb-2">
-                    Course
+                    Course *
                   </label>
                   <input
                     type="text"
                     name="course"
                     value={formData.course}
                     onChange={handleChange}
-                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className={`w-full bg-black/50 border ${errors.course ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                     placeholder="Enter your course"
                   />
+                  {errors.course && (
+                    <p className="mt-1 text-sm text-red-400">{errors.course}</p>
+                  )}
                 </div>
 
                 {/* Year */}
                 <div>
                   <label className="block text-gray-300 text-sm font-medium mb-2">
-                    Year
+                    Year *
                   </label>
                   <input
                     type="text"
                     name="year"
                     value={formData.year}
                     onChange={handleChange}
-                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className={`w-full bg-black/50 border ${errors.year ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                     placeholder="Enter your year"
                   />
+                  {errors.year && (
+                    <p className="mt-1 text-sm text-red-400">{errors.year}</p>
+                  )}
                 </div>
 
                 {/* Block */}
                 <div>
                   <label className="block text-gray-300 text-sm font-medium mb-2">
-                    Block
+                    Block *
                   </label>
                   <input
                     type="text"
                     name="block"
                     value={formData.block}
                     onChange={handleChange}
-                    className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className={`w-full bg-black/50 border ${errors.block ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
                     placeholder="Enter your block"
                   />
+                  {errors.block && (
+                    <p className="mt-1 text-sm text-red-400">{errors.block}</p>
+                  )}
                 </div>
               </div>
               <p className="mt-3 text-xs text-gray-500">

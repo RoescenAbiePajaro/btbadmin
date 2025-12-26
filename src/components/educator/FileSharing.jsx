@@ -1,4 +1,4 @@
-// src/components/educator/FileSharing.jsx
+// src/components/educator/FileSharing.jsx - this is for educator
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Toast from '../Toast';

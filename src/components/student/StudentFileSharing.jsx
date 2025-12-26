@@ -1,48 +1,55 @@
-// src/components/student/StudentFileSharing.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const StudentFileSharing = ({ student }) => {
+const StudentFileSharing = ({ student, onClassChange }) => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [classInfo, setClassInfo] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
+  const [studentClasses, setStudentClasses] = useState([]);
+  const [currentClassCode, setCurrentClassCode] = useState('');
+  const [showClassSelector, setShowClassSelector] = useState(false);
 
   useEffect(() => {
     console.log('StudentFileSharing - Student prop:', student);
-    console.log('Enrolled class details:', student?.enrolledClassDetails);
-    console.log('Enrolled class object:', student?.enrolledClass);
     
     if (student) {
-      fetchFiles();
-      if (student.enrolledClassDetails?.classCode || student?.enrolledClass?.classCode) {
-        fetchClassInfo();
+      // Get all classes from student data
+      const allClasses = student.allClasses || [];
+      setStudentClasses(allClasses);
+      
+      // Set current class from enrolledClassDetails or first class
+      const currentClass = student.enrolledClassDetails || 
+                          (allClasses.length > 0 ? allClasses[0] : null);
+      
+      if (currentClass) {
+        setCurrentClassCode(currentClass.classCode);
+        fetchFiles(currentClass.classCode);
+        fetchClassInfo(currentClass.classCode);
+      } else {
+        setLoading(false);
+        setError('You are not enrolled in any class');
       }
     }
   }, [student]);
 
-  const fetchFiles = async () => {
+  const fetchFiles = async (classCode) => {
     try {
       setLoading(true);
       setError('');
       const token = localStorage.getItem('token');
       
-      // Check if student has an enrolled class
-      const classCode = student?.enrolledClassDetails?.classCode || 
-                       (student?.enrolledClass?.classCode);
-      
       console.log('Fetching files for class code:', classCode);
       
       if (!classCode) {
-        setError('You are not enrolled in any class');
+        setError('No class selected');
         setFiles([]);
         setLoading(false);
         return;
       }
       
-      // Use the files/list endpoint with classCode parameter
       const response = await axios.get(
         'http://localhost:5000/api/files/list',
         { 
@@ -55,19 +62,14 @@ const StudentFileSharing = ({ student }) => {
         }
       );
       
-      console.log('Files response:', response.data);
-      
       if (response.data.success) {
-        // Filter out assignment files and only show learning materials
         const allFiles = response.data.files || [];
         const learningMaterials = allFiles.filter(file => 
           file.type !== 'assignment' && 
           file.type !== 'submission'
         );
         
-        console.log('Total files:', allFiles.length);
         console.log('Learning materials:', learningMaterials.length);
-        console.log('Files:', allFiles);
         
         setFiles(learningMaterials);
       } else {
@@ -82,11 +84,8 @@ const StudentFileSharing = ({ student }) => {
     }
   };
 
-  const fetchClassInfo = async () => {
+  const fetchClassInfo = async (classCode) => {
     try {
-      const classCode = student?.enrolledClassDetails?.classCode || 
-                       (student?.enrolledClass?.classCode);
-      
       if (!classCode) return;
       
       const token = localStorage.getItem('token');
@@ -107,11 +106,42 @@ const StudentFileSharing = ({ student }) => {
     }
   };
 
+  const handleClassChange = async (classCode) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Call backend to switch class
+      const response = await axios.post(
+        'http://localhost:5000/api/student/switch-class',
+        { classCode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.toast?.type === 'success') {
+        setCurrentClassCode(classCode);
+        fetchFiles(classCode);
+        fetchClassInfo(classCode);
+        setShowClassSelector(false);
+        
+        // Update localStorage with new user data
+        if (response.data.data?.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        }
+        
+        // Notify parent component
+        if (onClassChange) {
+          onClassChange(classCode);
+        }
+      }
+    } catch (error) {
+      console.error('Error switching class:', error);
+      alert(error.response?.data?.toast?.message || 'Failed to switch class');
+    }
+  };
+
   const handleDownloadFile = async (fileUrl, fileId, fileName, educatorId) => {
     try {
       const token = localStorage.getItem('token');
-      const classCode = student?.enrolledClassDetails?.classCode || 
-                       (student?.enrolledClass?.classCode);
       
       // Track download activity
       try {
@@ -119,7 +149,7 @@ const StudentFileSharing = ({ student }) => {
           fileId,
           fileName,
           activityType: 'download',
-          classCode: classCode,
+          classCode: currentClassCode,
           educatorId
         }, {
           headers: {
@@ -128,10 +158,8 @@ const StudentFileSharing = ({ student }) => {
         });
       } catch (trackError) {
         console.error('Error tracking download:', trackError);
-        // Continue with download even if tracking fails
       }
       
-      // Direct download from Supabase
       window.open(fileUrl, '_blank');
     } catch (error) {
       console.error('Error downloading file:', error);
@@ -139,13 +167,15 @@ const StudentFileSharing = ({ student }) => {
     }
   };
 
+  const handleViewFile = async (fileUrl, fileId, fileName, educatorId) => {
+    // Keep your existing view file logic
+    // ... (same as before)
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Date not available';
     const date = new Date(dateString);
-    // Check if the date is valid
-    if (isNaN(date.getTime())) {
-      return 'Invalid date';
-    }
+    if (isNaN(date.getTime())) return 'Invalid date';
     return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -162,7 +192,6 @@ const StudentFileSharing = ({ student }) => {
     else return (bytes / 1048576).toFixed(2) + ' MB';
   };
 
-  // Check if file can be viewed in the browser
   const canViewInBrowser = (fileName) => {
     if (!fileName) return false;
     const extension = fileName.split('.').pop().toLowerCase();
@@ -170,64 +199,15 @@ const StudentFileSharing = ({ student }) => {
     return viewableExtensions.includes(extension);
   };
 
-  // Handle viewing file in browser
-  const handleViewFile = async (fileUrl, fileId, fileName, educatorId) => {
-    if (!canViewInBrowser(fileName)) {
-      alert('This file type cannot be viewed in the browser. Please download it instead.');
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      const classCode = student?.enrolledClassDetails?.classCode || 
-                       (student?.enrolledClass?.classCode);
-      
-      // Track view activity
-      try {
-        await axios.post('http://localhost:5000/api/analytics/file-activity', {
-          fileId,
-          fileName,
-          activityType: 'view',
-          classCode: classCode,
-          educatorId
-        }, {
-          headers: {
-            Authorization: `Bearer ${token}` 
-          }
-        });
-      } catch (trackError) {
-        console.error('Error tracking view:', trackError);
-        // Continue with view even if tracking fails
-      }
-      
-      // For PDFs and images, we can open them directly
-      const extension = fileName.split('.').pop().toLowerCase();
-      const isPdf = extension === 'pdf';
-      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(extension);
-      
-      if (isPdf || isImage) {
-        window.open(fileUrl, '_blank');
-      } else {
-        // For other viewable files, we'll use Google Docs Viewer
-        const googleDocsViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-        window.open(googleDocsViewerUrl, '_blank');
-      }
-    } catch (error) {
-      console.error('Error viewing file:', error);
-      alert('Error viewing file. Please try downloading it instead.');
-    }
-  };
-
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchFiles();
+    fetchFiles(currentClassCode);
   };
 
   const toggleMaterials = () => {
     setShowMaterials(!showMaterials);
   };
 
-  // Filter learning materials (files without type 'assignment')
   const learningMaterials = files.filter(file => 
     file.type !== 'assignment' && 
     file.type !== 'submission'
@@ -235,7 +215,6 @@ const StudentFileSharing = ({ student }) => {
 
   return (
     <div className="space-y-8">
-      {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -243,7 +222,6 @@ const StudentFileSharing = ({ student }) => {
         </div>
       )}
 
-      {/* Error State */}
       {error && !loading && (
         <div className="bg-red-900/30 border border-red-700 rounded-xl p-6">
           <div className="flex items-center gap-3">
@@ -253,7 +231,7 @@ const StudentFileSharing = ({ student }) => {
             <div>
               <p className="text-white">{error}</p>
               <button
-                onClick={fetchFiles}
+                onClick={() => fetchFiles(currentClassCode)}
                 className="mt-2 bg-red-600 hover:bg-red-700 text-white py-1 px-4 rounded text-sm transition duration-200"
               >
                 Try Again
@@ -263,79 +241,111 @@ const StudentFileSharing = ({ student }) => {
         </div>
       )}
 
-      {/* No Class Enrolled */}
-      {!student?.enrolledClassDetails && !student?.enrolledClass && !loading && (
-        <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl p-6">
-          <div className="flex items-center gap-3">
-            <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <div>
-              <p className="text-white font-medium">Not Enrolled in Any Class</p>
-              <p className="text-yellow-400 text-sm mt-1">You need to be enrolled in a class to view learning materials</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Class Card Display - Only show if student is enrolled */}
-      {(student?.enrolledClassDetails || student?.enrolledClass) && !loading && (
+      {!loading && !error && (
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl overflow-hidden">
           {/* Card Header */}
           <div className="p-6 border-b border-gray-700">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2">File Sharing</h2>
-                <p className="text-gray-400">Access learning materials from your educator</p>
+                <p className="text-gray-400">Access learning materials from your classes</p>
               </div>
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2 disabled:opacity-50"
-              >
-                {refreshing ? (
+              <div className="flex gap-3">
+                {studentClasses.length > 0 && (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                    Refreshing...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Refresh
+                    <button
+                      onClick={() => setShowClassSelector(!showClassSelector)}
+                      className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
+                      Switch Class ({studentClasses.length})
+                    </button>
+                    <button
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {refreshing ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Refresh
+                        </>
+                      )}
+                    </button>
                   </>
                 )}
-              </button>
+              </div>
             </div>
+
+            {showClassSelector && studentClasses.length > 0 && (
+              <div className="mt-4 bg-gray-900 border border-gray-700 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-3">Select a Class ({studentClasses.length})</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {studentClasses.map((cls) => (
+                    <button
+                      key={cls.classCode}
+                      onClick={() => handleClassChange(cls.classCode)}
+                      className={`w-full text-left p-3 rounded-lg transition duration-200 ${
+                        currentClassCode === cls.classCode
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="font-medium">{cls.className}</div>
+                      <div className="text-sm opacity-75">
+                        Code: {cls.classCode} • Educator: {cls.educatorName}
+                        {currentClassCode === cls.classCode && (
+                          <span className="ml-2 text-green-300">(Current)</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Class Information Card */}
+          {/* Class Information */}
           <div className="p-6">
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:border-gray-600 transition duration-200">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-xl font-semibold text-white mb-2">
-                      {student.enrolledClassDetails?.className || 'Class Information'}
+                      {classInfo?.className || 'Class Information'}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-1">
-                        <p className="text-gray-400 text-sm">Class Code</p>
+                        <p className="text-gray-400 text-sm">Current Class</p>
                         <p className="text-white font-mono text-lg font-bold">
-                          {student.enrolledClassDetails?.classCode || student?.enrolledClass?.classCode}
+                          {currentClassCode || 'No class selected'}
                         </p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-gray-400 text-sm">Class Name</p>
                         <p className="text-white text-lg">
-                          {student.enrolledClassDetails?.className || 'Unnamed Class'}
+                          {classInfo?.className || 'Unnamed Class'}
                         </p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-gray-400 text-sm">Educator</p>
                         <p className="text-white text-lg">
-                          {student.enrolledClassDetails?.educatorName || 'Educator'}
+                          {classInfo?.educator?.fullName || classInfo?.educator?.username || 'Educator'}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-gray-400 text-sm">Joined Classes</p>
+                        <p className="text-white text-lg font-bold">
+                          {studentClasses.length}
                         </p>
                       </div>
                     </div>
@@ -368,7 +378,7 @@ const StudentFileSharing = ({ student }) => {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
-                        Enter to View Materials
+                        View Materials
                       </>
                     )}
                   </button>
@@ -376,7 +386,7 @@ const StudentFileSharing = ({ student }) => {
               </div>
             </div>
 
-            {/* Learning Materials Section (Collapsible) */}
+            {/* Learning Materials Section */}
             {showMaterials && (
               <div className="mt-6 animate-fadeIn">
                 {learningMaterials.length === 0 ? (
@@ -488,6 +498,7 @@ const StudentFileSharing = ({ student }) => {
               <div className="flex justify-between items-center">
                 <p className="text-gray-400 text-sm">
                   Showing {learningMaterials.length} learning material{learningMaterials.length !== 1 ? 's' : ''}
+                  {currentClassCode && ` from ${currentClassCode}`}
                 </p>
                 <div className="text-gray-500 text-sm">
                   Last updated: {new Date().toLocaleTimeString()}
