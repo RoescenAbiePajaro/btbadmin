@@ -283,11 +283,11 @@ export default function AdminDashboard() {
         'http://localhost:5000/api/classes/all',
         { 
           headers: { Authorization: `Bearer ${token}` },
-          params: { includeSchool: true } 
+          params: { includeSchool: true, includeEducator: true } 
         }
       );
       
-      if (response.data.success) {
+        if (response.data.success) {
         setClassCodes(response.data.classes || []);
       } else {
         console.warn('Failed to fetch class codes:', response.data.error);
@@ -306,7 +306,8 @@ export default function AdminDashboard() {
       const response = await axios.get(
         'http://localhost:5000/api/files/list',
         { 
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          params: { includeEducator: true }
         }
       );
       if (response.data.success) {
@@ -317,6 +318,8 @@ export default function AdminDashboard() {
               acc[file.uploadedBy] = {
                 educatorName: file.uploaderName,
                 educatorId: file.uploadedBy,
+                educatorEmail: file.uploaderEmail || null, // Check if email is in file response
+                educatorSchool: file.uploaderSchool || null, // Check if school is in file response
                 files: []
               };
             }
@@ -1174,7 +1177,7 @@ export default function AdminDashboard() {
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">Learning Material Logs</h3>
-                {filteredData ? (
+                {educatorSharedFiles.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-800">
@@ -1188,26 +1191,16 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {Object.entries(
-                          (filteredData.data || []).reduce((acc, file) => {
-                            const educatorId = file.uploadedBy || file.educator?._id || 'unknown';
-                            if (!acc[educatorId]) {
-                              acc[educatorId] = {
-                                name: file.educator?.fullName || file.uploaderName || 'N/A',
-                                email: file.educator?.email || 'N/A',
-                                school: file.school || file.educator?.school || null,
-                                totalFiles: 0,
-                                totalStudents: 0,
-                                files: []
-                              };
-                            }
-                            acc[educatorId].totalFiles += 1;
-                            acc[educatorId].files.push(file);
-                            
-                            // Get total students from educatorClassSummary if available
-                            if (educatorClassSummary?.[educatorId]?.totalStudents) {
-                              acc[educatorId].totalStudents = educatorClassSummary[educatorId].totalStudents;
-                            }
-                            
+                          educatorSharedFiles.reduce((acc, educator) => {
+                            const educatorId = educator.educatorId || 'unknown';
+                            acc[educatorId] = {
+                              name: educator.educatorName || 'N/A',
+                              email: educator.educatorEmail || educatorUsers[educatorId]?.email || 'N/A',
+                              school: educator.educatorSchool || educatorUsers[educatorId]?.school || educatorClassSummary?.[educatorId]?.school || null,
+                              totalFiles: educator.files.length,
+                              totalStudents: educatorClassSummary?.[educatorId]?.totalStudents || 0,
+                              files: educator.files
+                            };
                             return acc;
                           }, {})
                         ).map(([educatorId, data]) => (
