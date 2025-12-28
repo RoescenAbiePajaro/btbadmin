@@ -11,6 +11,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const [showMaterials, setShowMaterials] = useState(false);
   const [studentClasses, setStudentClasses] = useState([]);
   const [currentClassCode, setCurrentClassCode] = useState('');
+  const [isCurrentClassInactive, setIsCurrentClassInactive] = useState(false);
   const [showClassSelector, setShowClassSelector] = useState(false);
   const [lastFilesUpdate, setLastFilesUpdate] = useState(null);
 
@@ -18,16 +19,28 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
     console.log('StudentFileSharing - Student prop:', student);
     
     if (student) {
-      // Get all classes from student data
       const allClasses = student.allClasses || [];
       setStudentClasses(allClasses);
-      
-      // Set current class from enrolledClassDetails or first class
-      const currentClass = student.enrolledClassDetails || 
-                          (allClasses.length > 0 ? allClasses[0] : null);
+      const activeCodes = allClasses.map(c => c.classCode);
+      const currentClass = student.enrolledClassDetails || (allClasses.length > 0 ? allClasses[0] : null);
       
       if (currentClass) {
-        setCurrentClassCode(currentClass.classCode);
+        const code = currentClass.classCode;
+        const inactive = code && !activeCodes.includes(code);
+        setIsCurrentClassInactive(inactive);
+        if (inactive) {
+          if (allClasses.length > 0) {
+            setCurrentClassCode(allClasses[0].classCode);
+          } else {
+            setCurrentClassCode('');
+            setFiles([]);
+            setClassInfo(null);
+            setError('Your current class is inactive. Please join or switch to an active class.');
+            setLoading(false);
+          }
+        } else {
+          setCurrentClassCode(code);
+        }
       } else {
         setCurrentClassCode('');
         setFiles([]);
@@ -472,6 +485,12 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                     </div>
                   </div>
                   
+                  {isCurrentClassInactive && (
+                    <div className="bg-red-900/30 border border-red-700 text-red-300 text-sm rounded px-3 py-2">
+                      Current class is inactive. Switch to an active class to view materials.
+                    </div>
+                  )}
+                  
                   <div className="flex items-center gap-2 text-gray-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -485,7 +504,8 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                 <div className="flex-shrink-0">
                   <button
                     onClick={toggleMaterials}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-200 flex items-center gap-2 transform hover:scale-105"
+                    disabled={isCurrentClassInactive || !currentClassCode}
+                    className={`bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-200 flex items-center gap-2 transform hover:scale-105 ${isCurrentClassInactive || !currentClassCode ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {showMaterials ? (
                       <>
