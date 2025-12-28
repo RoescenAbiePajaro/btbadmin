@@ -7,7 +7,6 @@ const Class = require('../models/Class');
 const File = require('../models/File');
 const Activity = require('../models/Activity');
 const FileActivity = require('../models/FileActivity');
-const FileActivity = require('../models/FileActivity');
 const AccessCode = require('../models/AccessCode');
 const AcademicSetting = require('../models/AcademicSetting');
 const { requireAdmin } = require('../middleware/admin');
