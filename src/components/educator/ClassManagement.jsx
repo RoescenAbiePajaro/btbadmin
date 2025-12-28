@@ -16,7 +16,8 @@ export default function ClassManagement() {
     school: '',
     course: '',
     year: '',
-    block: ''
+    block: '',
+    isActive: true
   });
   const [startYear, setStartYear] = useState('');
   const [endYear, setEndYear] = useState('');
@@ -196,7 +197,8 @@ export default function ClassManagement() {
       school: classItem.school || '',
       course: classItem.course || '',
       year: classItem.year || '',
-      block: classItem.block || ''
+      block: classItem.block || '',
+      isActive: classItem.isActive
     };
     
     // Extract years from description if it follows the pattern "Batch YYYY - YYYY"
@@ -234,7 +236,7 @@ export default function ClassManagement() {
         course: formData.course,
         year: formData.year,
         block: formData.block,
-        isActive: true
+        isActive: formData.isActive
       };
 
       const response = await axios.put(
@@ -662,7 +664,7 @@ export default function ClassManagement() {
       {/* Edit Class Modal */}
       {showEditModal && editingClass && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-lg">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white">Edit Class</h3>
               <button
@@ -811,6 +813,22 @@ export default function ClassManagement() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-300 text-sm font-medium">Status</span>
+                  <span className={`px-2 py-1 rounded text-xs ${formData.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {formData.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                  className="px-3 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition duration-200"
+                >
+                  {formData.isActive ? 'Set Inactive' : 'Set Active'}
+                </button>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
