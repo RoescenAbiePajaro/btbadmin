@@ -50,10 +50,7 @@ export default function AdminDashboard() {
     browser: ''
   });
 
-  // Helper function to get activity counts
-  const getActivityCounts = () => {
-    return { views: 0, downloads: 0 };
-  };
+
 
   // Fetch academic settings for educators
   const fetchAcademicSettings = async () => {
@@ -97,20 +94,7 @@ export default function AdminDashboard() {
 
       if (statsRes.data.success) setStatistics(statsRes.data.statistics);
       
-      if (analyticsRes.data.success) {
-        const { views, downloads } = getActivityCounts();
-        
-        // Update statistics with activity data
-        setStatistics(prev => ({
-          ...prev,
-          activities: {
-            ...prev.activities,
-            total: 0,
-            views: views,
-            downloads: downloads
-          }
-        }));
-      }
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please check your connection.');

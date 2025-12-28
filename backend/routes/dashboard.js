@@ -6,6 +6,8 @@ const User = require('../models/User');
 const Class = require('../models/Class');
 const File = require('../models/File');
 const Activity = require('../models/Activity');
+const FileActivity = require('../models/FileActivity');
+const FileActivity = require('../models/FileActivity');
 const AccessCode = require('../models/AccessCode');
 const AcademicSetting = require('../models/AcademicSetting');
 const { requireAdmin } = require('../middleware/admin');
@@ -66,8 +68,8 @@ router.get('/statistics', requireAdmin, async (req, res) => {
     ]);
 
     // Learning Materials Activities
-    const totalDownloads = await Activity.countDocuments({ activityType: 'download' });
-    const totalViews = await Activity.countDocuments({ activityType: 'view' });
+    const totalDownloads = await FileActivity.countDocuments({ activityType: 'download' });
+    const totalViews = await FileActivity.countDocuments({ activityType: 'view' });
 
     // Total Schools Created
     const totalSchools = await AcademicSetting.countDocuments({ type: 'school' });
