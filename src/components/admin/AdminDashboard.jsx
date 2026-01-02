@@ -40,6 +40,18 @@ export default function AdminDashboard() {
   });
   const [feedbackStats, setFeedbackStats] = useState(null);
   const [feedbackData, setFeedbackData] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackFilters, setFeedbackFilters] = useState({
+    status: 'all',
+    role: 'all',
+    category: 'all',
+    startDate: '',
+    endDate: ''
+  });
+  const [selectedFeedback, setSelectedFeedback] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [adminResponse, setAdminResponse] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -353,6 +365,80 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch feedback data
+  const fetchFeedbackData = async () => {
+    try {
+      setFeedbackLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const params = new URLSearchParams();
+      if (feedbackFilters.status !== 'all') params.append('status', feedbackFilters.status);
+      if (feedbackFilters.role !== 'all') params.append('role', feedbackFilters.role);
+      if (feedbackFilters.category !== 'all') params.append('category', feedbackFilters.category);
+      if (feedbackFilters.startDate) params.append('startDate', feedbackFilters.startDate);
+      if (feedbackFilters.endDate) params.append('endDate', feedbackFilters.endDate);
+      
+      const response = await axios.get(
+        `http://localhost:5000/api/feedback/all?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setFeedbackData(response.data.feedback);
+      }
+    } catch (error) {
+      console.error('Error fetching feedback data:', error);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  // Fetch feedback statistics
+  const fetchFeedbackStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'http://localhost:5000/api/feedback/statistics',
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setFeedbackStats(response.data.statistics);
+      }
+    } catch (error) {
+      console.error('Error fetching feedback stats:', error);
+    }
+  };
+
+  // Update feedback status
+  const updateFeedbackStatus = async (feedbackId, status, adminResponse = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `http://localhost:5000/api/feedback/${feedbackId}/status`,
+        { 
+          status, 
+          adminResponse 
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        // Refresh feedback data
+        fetchFeedbackData();
+        fetchFeedbackStats();
+      }
+    } catch (error) {
+      console.error('Error updating feedback status:', error);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     fetchAcademicSettings();
@@ -381,6 +467,13 @@ export default function AdminDashboard() {
       fetchAllClassCodes();
     }
   }, [activeTab]);
+  
+  useEffect(() => {
+    if (activeTab === 'feedback') {
+      fetchFeedbackData();
+      fetchFeedbackStats();
+    }
+  }, [activeTab, feedbackFilters]);
   
   const handleLogout = () => {
     localStorage.removeItem('token');

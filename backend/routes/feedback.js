@@ -264,11 +264,11 @@ router.get('/statistics', verifyToken, async (req, res) => {
       });
     }
 
-    // Get total feedback count
+    // Get total count
     const total = await Feedback.countDocuments();
     
     // Get average rating
-    const avgRatingResult = await Feedback.aggregate([
+    const avgRatingAgg = await Feedback.aggregate([
       {
         $group: {
           _id: null,
@@ -277,83 +277,35 @@ router.get('/statistics', verifyToken, async (req, res) => {
       }
     ]);
     
-    const avgRating = avgRatingResult.length > 0 ? Math.round(avgRatingResult[0].avgRating * 100) / 100 : 0;
-
-    // Get feedback by status
+    const avgRating = avgRatingAgg.length > 0 ? parseFloat(avgRatingAgg[0].avgRating.toFixed(2)) : 0;
+    
+    // Get by status
     const byStatus = await Feedback.aggregate([
       {
         $group: {
           _id: '$status',
           count: { $sum: 1 }
         }
-      },
-      {
-        $project: {
-          status: '$_id',
-          count: 1,
-          _id: 0
-        }
       }
     ]);
-
-    // Get feedback by role
+    
+    // Get by role
     const byRole = await Feedback.aggregate([
       {
         $group: {
           _id: '$userRole',
           count: { $sum: 1 }
         }
-      },
-      {
-        $project: {
-          role: '$_id',
-          count: 1,
-          _id: 0
-        }
       }
     ]);
-
-    // Get feedback by category
+    
+    // Get by category
     const byCategory = await Feedback.aggregate([
       {
         $group: {
           _id: '$category',
           count: { $sum: 1 }
         }
-      },
-      {
-        $project: {
-          category: '$_id',
-          count: 1,
-          _id: 0
-        }
-      }
-    ]);
-
-    // Recent feedback (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const recentStats = await Feedback.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: sevenDaysAgo }
-        }
-      },
-      {
-        $group: {
-          _id: { 
-            $dateToString: { 
-              format: '%Y-%m-%d', 
-              date: '$createdAt' 
-            } 
-          },
-          count: { $sum: 1 },
-          avgRating: { $avg: '$rating' }
-        }
-      },
-      { 
-        $sort: { _id: 1 } 
       }
     ]);
 
@@ -362,11 +314,10 @@ router.get('/statistics', verifyToken, async (req, res) => {
       statistics: {
         total,
         avgRating,
-        byStatus,
-        byRole,
-        byCategory
-      },
-      recentStats
+        byStatus: byStatus.map(s => ({ status: s._id, count: s.count })),
+        byRole: byRole.map(r => ({ role: r._id, count: r.count })),
+        byCategory: byCategory.map(c => ({ category: c._id, count: c.count }))
+      }
     });
   } catch (error) {
     console.error('Feedback statistics error:', error);
