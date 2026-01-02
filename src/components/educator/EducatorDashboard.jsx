@@ -6,6 +6,7 @@ import ClassManagement from './ClassManagement';
 import AcademicSettings from './AcademicSettings';
 import StudentList from './StudentList';
 import FileSharing from './FileSharing'; // New component
+import EducFeedback from './EducFeedback';
 
 export default function EducatorDashboard() {
   const navigate = useNavigate();
@@ -194,6 +195,16 @@ export default function EducatorDashboard() {
                 File Sharing
               </span>
             </button>
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+                activeTab === 'feedback'
+                  ? 'border-green-500 text-green-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Feedback
+            </button>
           </nav>
         </div>
 
@@ -203,6 +214,9 @@ export default function EducatorDashboard() {
           {activeTab === 'academic' && <AcademicSettings />}
           {activeTab === 'students' && <StudentList />}
           {activeTab === 'files' && <FileSharing educatorId={user?._id} />}
+          {activeTab === 'feedback' ? (
+            <EducFeedback educator={user} />
+          ) : null}
         </div>
       </div>
     </div>

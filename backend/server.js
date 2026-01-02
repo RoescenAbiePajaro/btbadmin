@@ -16,6 +16,7 @@ const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
+const feedbackRoutes = require('./routes/feedback');
 
 // Load environment variables
 dotenv.config();
@@ -2266,6 +2267,7 @@ app.get('/api/admin/cleanup', verifyToken, requireAdmin, async (req, res) => {
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // =====================
 // 🚀 SERVER START

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import StudentFileSharing from './StudentFileSharing'; // Import the component
+import StudFeedback from './StudFeedback';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -441,6 +442,16 @@ export default function StudentDashboard() {
           >
             File Sharing
           </button>
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+              activeTab === 'feedback'
+                ? 'border-blue-500 text-blue-400'
+                : 'border-transparent text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Feedback
+          </button>
         </nav>
       </div>
 
@@ -562,6 +573,8 @@ export default function StudentDashboard() {
               </div>
             </div>
           </>
+        ) : activeTab === 'feedback' ? (
+          <StudFeedback student={user} />
         ) : (
           // File Sharing Tab - Render the StudentFileSharing component
           <StudentFileSharing 
