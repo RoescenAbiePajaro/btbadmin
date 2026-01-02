@@ -298,10 +298,10 @@ export default function ClassManagement() {
         }
       );
 
-      if (response.data.data?.class) {
+      if ((response.status >= 200 && response.status < 300) || response.data?.data?.class) {
         setClasses(prev => prev.filter(cls => cls._id !== classToDelete._id));
         showToast('Class deleted successfully!', 'success');
-        fetchClasses();
+        await fetchClasses();
       }
     } catch (error) {
       console.error('Error deleting class:', error);
