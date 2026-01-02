@@ -270,12 +270,12 @@ export default function StudentDashboard() {
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-white">Student Dashboard</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">Student Dashboard</h1>
               <p className="text-gray-400">Welcome, {user.fullName}</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center flex-wrap gap-2 sm:gap-4">
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleManualRefresh}
