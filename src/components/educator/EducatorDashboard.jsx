@@ -201,7 +201,7 @@ export default function EducatorDashboard() {
               onClick={() => setActiveTab('feedback')}
               className={`whitespace-nowrap py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'feedback'
-                  ? 'border-green-500 text-green-400'
+                  ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >

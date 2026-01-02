@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import AnimatedBackground from '../AnimatedBackground';
 
 export default function EducatorRegistration() {
   const navigate = useNavigate();
@@ -114,8 +115,9 @@ export default function EducatorRegistration() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative">
+      <AnimatedBackground />
+      <div className="w-full max-w-md relative z-10">
         <button
           onClick={handleBack}
           className="bg-red-500 text-white hover:bg-red-600 transition duration-200 flex items-center gap-2 mb-6 px-3 py-2 rounded-lg"
@@ -253,7 +255,7 @@ export default function EducatorRegistration() {
                 onChange={(e) => setAgreeToTerms(e.target.checked)}
                 className="mt-1"
               />
-              <label htmlFor="terms" className="text-gray-400 text-sm">
+              <label htmlFor="terms" className="text-pink-400 text-sm">
                 I agree to the Terms of Service and Privacy Policy.
               </label>
             </div>

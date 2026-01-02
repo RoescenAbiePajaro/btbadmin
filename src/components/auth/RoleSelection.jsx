@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import AnimatedBackground from '../AnimatedBackground';
 
 export default function RoleSelection() {
   const navigate = useNavigate();
@@ -15,10 +16,11 @@ export default function RoleSelection() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative">
+      <AnimatedBackground />
       <button
         onClick={handleBackToHome}
-        className="absolute top-6 left-6 bg-red-500 text-white hover:bg-red-600 transition duration-200 flex items-center gap-2 px-3 py-2 rounded-lg shadow"
+        className="absolute top-6 left-6 z-10 bg-red-500 text-white hover:bg-red-600 transition duration-200 flex items-center gap-2 px-3 py-2 rounded-lg shadow"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -29,7 +31,7 @@ export default function RoleSelection() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-black/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-8 w-full max-w-2xl"
+        className="bg-black/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-8 w-full max-w-2xl relative z-10"
       >
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-3">

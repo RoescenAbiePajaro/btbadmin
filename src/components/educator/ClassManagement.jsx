@@ -427,7 +427,7 @@ export default function ClassManagement() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">Class Codes</h2>
-          <p className="text-gray-400">Create and manage your class codes</p>
+          <p className="text-gray-400">Create and manage your class</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">

@@ -116,12 +116,12 @@ export default function EducFeedback({ educator }) {
       <div className="max-w-4xl mx-auto py-8 px-4">
         <div className="bg-gray-800 rounded-xl shadow-md overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-green-600 to-green-800 px-8 py-6">
+          <div className="bg-gradient-to-r from-pink-600 to-pink-800 px-8 py-6">
             <div className="flex items-center gap-3">
               <FiUsers className="h-8 w-8 text-white" />
               <div>
                 <h1 className="text-2xl font-bold text-white">Educator Feedback Center</h1>
-                <p className="text-green-100 mt-2">Help us improve the platform for all educators</p>
+                <p className="text-pink-100 mt-2">Help us improve the platform for all educators</p>
               </div>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function EducFeedback({ educator }) {
                 onClick={() => setActiveTab('submit')}
                 className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
                   activeTab === 'submit'
-                    ? 'border-green-500 text-green-400'
+                    ? 'border-pink-500 text-pink-400'
                     : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
                 }`}
               >
@@ -144,7 +144,7 @@ export default function EducFeedback({ educator }) {
                 onClick={() => setActiveTab('history')}
                 className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
                   activeTab === 'history'
-                    ? 'border-green-500 text-green-400'
+                    ? 'border-pink-500 text-pink-400'
                     : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
                 }`}
               >
@@ -202,7 +202,7 @@ export default function EducFeedback({ educator }) {
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 text-gray-100 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className="w-full bg-gray-900 border border-gray-700 text-gray-100 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                     >
                       <option value="general">General Feedback</option>
                       <option value="bug">Bug Report</option>
@@ -226,7 +226,7 @@ export default function EducFeedback({ educator }) {
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
                       rows={6}
-                      className="w-full bg-gray-900 border border-gray-700 text-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                      className="w-full bg-gray-900 border border-gray-700 text-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"
                       placeholder="Share your experience as an educator: class management features, student interactions, file sharing, analytics, or any platform improvements needed..."
                       minLength={10}
                       maxLength={2000}
@@ -242,7 +242,7 @@ export default function EducFeedback({ educator }) {
                     <button
                       type="submit"
                       disabled={submitting || feedback.length < 10}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg transition duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-pink-600 hover:bg-pink-700 text-white font-medium py-3 px-8 rounded-lg transition duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {submitting ? (
                         <>
@@ -265,7 +265,7 @@ export default function EducFeedback({ educator }) {
                 {/* Educator-specific Guidelines */}
                 <div className="mt-8 p-4 bg-gray-900 border border-gray-700 rounded-lg">
                   <h3 className="font-medium text-gray-200 mb-2 flex items-center">
-                    <FiAlertCircle className="mr-2 text-green-500" />
+                    <FiAlertCircle className="mr-2 text-pink-500" />
                     Educator Feedback Guidelines
                   </h3>
                   <ul className="text-sm text-gray-300 space-y-1">
@@ -288,7 +288,7 @@ export default function EducFeedback({ educator }) {
 
                 {loading ? (
                   <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto"></div>
                     <p className="mt-4 text-gray-400">Loading your feedback...</p>
                   </div>
                 ) : myFeedback.length === 0 ? (
@@ -317,7 +317,7 @@ export default function EducFeedback({ educator }) {
                               <span className={`px-2 py-1 text-xs rounded-full ${getCategoryColor(item.category)}`}>
                                 {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                               </span>
-                              <span className="px-2 py-1 text-xs bg-green-900 text-green-300 rounded-full">
+                              <span className="px-2 py-1 text-xs bg-pink-900 text-pink-300 rounded-full">
                                 Educator
                               </span>
                               <div className="flex items-center">
@@ -348,12 +348,12 @@ export default function EducFeedback({ educator }) {
                         {item.adminResponse && (
                           <div className="mt-4 pt-4 border-t border-gray-700">
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 w-8 h-8 bg-green-900 rounded-full flex items-center justify-center">
-                                <FiCheck className="h-4 w-4 text-green-400" />
+                              <div className="flex-shrink-0 w-8 h-8 bg-pink-900 rounded-full flex items-center justify-center">
+                                <FiCheck className="h-4 w-4 text-pink-400" />
                               </div>
                               <div className="flex-1">
                                 <div className="flex justify-between items-center mb-1">
-                                  <span className="text-sm font-medium text-green-400">Admin Response</span>
+                                  <span className="text-sm font-medium text-pink-400">Admin Response</span>
                                   <span className="text-xs text-gray-400">
                                     {new Date(item.adminResponse.respondedAt).toLocaleDateString()}
                                   </span>

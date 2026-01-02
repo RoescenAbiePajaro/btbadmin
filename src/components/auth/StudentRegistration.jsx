@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import AnimatedBackground from '../AnimatedBackground';
 
 export default function StudentRegistration() {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export default function StudentRegistration() {
   });
 
   const [errors, setErrors] = useState({});
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -56,6 +58,8 @@ export default function StudentRegistration() {
     if (!formData.course.trim()) newErrors.course = 'Course is required';
     if (!formData.year.trim()) newErrors.year = 'Year is required';
     if (!formData.block.trim()) newErrors.block = 'Block is required';
+    
+    if (!agreeToTerms) newErrors.terms = 'You must agree to the Terms of Service';
     
     return newErrors;
   };
@@ -103,6 +107,7 @@ export default function StudentRegistration() {
         });
         
         setErrors({});
+        setAgreeToTerms(false);
         
         setTimeout(() => {
           navigate('/login');
@@ -122,8 +127,9 @@ export default function StudentRegistration() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative">
+      <AnimatedBackground />
+      <div className="w-full max-w-md relative z-10">
         <button
           onClick={handleBack}
           className="bg-red-500 text-white hover:bg-red-600 transition duration-200 flex items-center gap-2 mb-6 px-3 py-2 rounded-lg"
@@ -332,6 +338,22 @@ export default function StudentRegistration() {
                 You can join a class later from your dashboard
               </p>
             </div>
+
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={agreeToTerms}
+                onChange={(e) => setAgreeToTerms(e.target.checked)}
+                className="mt-1"
+              />
+              <label htmlFor="terms" className="text-blue-400 text-sm">
+                I agree to the Terms of Service and Privacy Policy.
+              </label>
+            </div>
+            {errors.terms && (
+              <p className="text-sm text-red-400">{errors.terms}</p>
+            )}
 
             {/* Submit Button */}
             <button
