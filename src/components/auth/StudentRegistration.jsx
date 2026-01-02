@@ -172,7 +172,7 @@ export default function StudentRegistration() {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                className={`w-full bg-black/50 border ${errors.fullName ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                className={`w-full bg-black/50 border ${errors.fullName ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter your full name"
               />
               {errors.fullName && (
@@ -190,7 +190,7 @@ export default function StudentRegistration() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full bg-black/50 border ${errors.email ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                className={`w-full bg-black/50 border ${errors.email ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter your email"
               />
               {errors.email && (
@@ -208,7 +208,7 @@ export default function StudentRegistration() {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className={`w-full bg-black/50 border ${errors.username ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                className={`w-full bg-black/50 border ${errors.username ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Choose a username"
               />
               {errors.username && (
@@ -226,7 +226,7 @@ export default function StudentRegistration() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full bg-black/50 border ${errors.password ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                className={`w-full bg-black/50 border ${errors.password ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Create a password"
               />
               {errors.password && (
@@ -244,7 +244,7 @@ export default function StudentRegistration() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full bg-black/50 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                className={`w-full bg-black/50 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Confirm your password"
               />
               {errors.confirmPassword && (
@@ -266,7 +266,7 @@ export default function StudentRegistration() {
                     name="school"
                     value={formData.school}
                     onChange={handleChange}
-                    className={`w-full bg-black/50 border ${errors.school ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                    className={`w-full bg-black/50 border ${errors.school ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="Enter your school"
                   />
                   {errors.school && (
@@ -284,7 +284,7 @@ export default function StudentRegistration() {
                     name="course"
                     value={formData.course}
                     onChange={handleChange}
-                    className={`w-full bg-black/50 border ${errors.course ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                    className={`w-full bg-black/50 border ${errors.course ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="Enter your course"
                   />
                   {errors.course && (
@@ -302,7 +302,7 @@ export default function StudentRegistration() {
                     name="year"
                     value={formData.year}
                     onChange={handleChange}
-                    className={`w-full bg-black/50 border ${errors.year ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                    className={`w-full bg-black/50 border ${errors.year ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="Enter your year"
                   />
                   {errors.year && (
@@ -320,7 +320,7 @@ export default function StudentRegistration() {
                     name="block"
                     value={formData.block}
                     onChange={handleChange}
-                    className={`w-full bg-black/50 border ${errors.block ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                    className={`w-full bg-black/50 border ${errors.block ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="Enter your block"
                   />
                   {errors.block && (

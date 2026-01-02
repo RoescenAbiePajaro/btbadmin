@@ -421,11 +421,11 @@ export default function StudentDashboard() {
       )}
 
       {/* Add Tabs */}
-      <div className="container mx-auto px-4 py-4 border-b border-gray-700">
-        <nav className="flex space-x-8">
+      <div className="container mx-auto px-4 py-4 border-b border-gray-700 overflow-x-auto">
+        <nav className="flex space-x-4 sm:space-x-8 whitespace-nowrap">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+            className={`flex-shrink-0 py-2 px-2 sm:py-3 sm:px-1 font-medium text-xs sm:text-sm border-b-2 transition duration-200 ${
               activeTab === 'overview'
                 ? 'border-blue-500 text-blue-400'
                 : 'border-transparent text-gray-400 hover:text-gray-300'
@@ -438,7 +438,7 @@ export default function StudentDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('files')}
-            className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+            className={`flex-shrink-0 py-2 px-2 sm:py-3 sm:px-1 font-medium text-xs sm:text-sm border-b-2 transition duration-200 ${
               activeTab === 'files'
                 ? 'border-blue-500 text-blue-400'
                 : 'border-transparent text-gray-400 hover:text-gray-300'
@@ -453,7 +453,7 @@ export default function StudentDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('feedback')}
-            className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+            className={`flex-shrink-0 py-2 px-2 sm:py-3 sm:px-1 font-medium text-xs sm:text-sm border-b-2 transition duration-200 ${
               activeTab === 'feedback'
                 ? 'border-blue-500 text-blue-400'
                 : 'border-transparent text-gray-400 hover:text-gray-300'

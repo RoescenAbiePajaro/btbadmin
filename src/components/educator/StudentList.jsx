@@ -284,7 +284,7 @@ const StudentList = () => {
                 {classItem.description && (
                   <div className="text-xs">
                     <div className="text-gray-400 mb-1">Batch:</div>
-                    <div className="px-2 py-1 bg-blue-900/30 text-blue-300 rounded border border-blue-800/50 truncate" title={classItem.description}>
+                    <div className="px-2 py-1 bg-pink-900/30 text-pink-300 rounded border border-pink-800/50 truncate" title={classItem.description}>
                       {classItem.description}
                     </div>
                   </div>
@@ -391,7 +391,7 @@ const StudentList = () => {
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Batch Information</h3>
               <div className="space-y-2">
-                <p className={`px-3 py-2 rounded-lg border ${getSelectedClassInfo()?.description ? 'text-white bg-blue-900/30 border-blue-800/50' : 'text-gray-400 bg-gray-900/50 border-gray-700'}`}>
+                <p className={`px-3 py-2 rounded-lg border ${getSelectedClassInfo()?.description ? 'text-white bg-pink-900/30 border-pink-800/50' : 'text-gray-400 bg-gray-900/50 border-gray-700'}`}>
                   {getSelectedClassInfo()?.description || 'No Batch created'}
                 </p>
                 {getSelectedClassInfo()?.description && (
@@ -440,7 +440,7 @@ const StudentList = () => {
               {students.length} student{students.length !== 1 ? 's' : ''} enrolled in this class
             </p>
             {getSelectedClassInfo()?.description && (
-              <p className="text-sm text-blue-300 mt-1">
+              <p className="text-sm text-pink-300 mt-1">
                 Batch: {getSelectedClassInfo()?.description}
               </p>
             )}

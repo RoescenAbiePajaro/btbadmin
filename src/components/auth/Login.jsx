@@ -145,7 +145,7 @@ export default function Login() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className={`w-full bg-gray-900 border ${errors.email ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full bg-gray-900 border ${errors.email ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500`}
               placeholder="Enter your email or username"
             />
             {errors.email && (
@@ -165,7 +165,7 @@ export default function Login() {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className={`w-full bg-gray-900 border ${errors.password ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full bg-gray-900 border ${errors.password ? 'border-red-500' : 'border-gray-800'} rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500`}
               placeholder="Enter your password"
             />
             {errors.password && (
