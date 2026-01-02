@@ -133,11 +133,11 @@ export default function EducatorDashboard() {
       {/* Dashboard Content */}
       <div className="container mx-auto px-4 py-8">
         {/* Tabs */}
-        <div className="border-b border-gray-700 mb-8">
-          <nav className="flex space-x-8">
+        <div className="border-b border-gray-700 mb-8 overflow-x-auto">
+          <nav className="flex space-x-4 md:space-x-8 min-w-max px-2 md:px-0">
             <button
               onClick={() => setActiveTab('classes')}
-              className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+              className={`whitespace-nowrap py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'classes'
                   ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
@@ -152,7 +152,7 @@ export default function EducatorDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('academic')}
-              className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+              className={`whitespace-nowrap py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'academic'
                   ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
@@ -167,7 +167,7 @@ export default function EducatorDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('students')}
-              className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+              className={`whitespace-nowrap py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'students'
                   ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
@@ -182,7 +182,7 @@ export default function EducatorDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('files')}
-              className={`py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+              className={`whitespace-nowrap py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'files'
                   ? 'border-pink-500 text-pink-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
@@ -197,7 +197,7 @@ export default function EducatorDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('feedback')}
-              className={`py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+              className={`whitespace-nowrap py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
                 activeTab === 'feedback'
                   ? 'border-green-500 text-green-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
