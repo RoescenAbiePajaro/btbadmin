@@ -12,7 +12,7 @@ import {
   FiLogOut, FiHome, FiBarChart2, FiActivity, FiEye, FiUpload,
   FiClock, FiGlobe, FiMonitor, FiUserCheck, FiDatabase,
   FiAlertCircle, FiCheckCircle, FiRefreshCw, FiSearch,
-  FiChevronUp, FiChevronDown, FiMoreVertical, FiMessageSquare, FiStar
+  FiChevronUp, FiChevronDown, FiMoreVertical, FiMessageSquare, FiStar, FiSend, FiX
 } from 'react-icons/fi';
 
 export default function AdminDashboard() {
@@ -1561,7 +1561,14 @@ export default function AdminDashboard() {
                             {new Date(item.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <button className="text-blue-400 hover:text-blue-300 text-sm">
+                            <button 
+                              onClick={() => {
+                                setSelectedFeedback(item);
+                                setAdminResponse(item.adminResponse?.message || '');
+                                setShowFeedbackModal(true);
+                              }}
+                              className="text-blue-400 hover:text-blue-300 text-sm"
+                            >
                               View & Respond
                             </button>
                           </td>
@@ -1646,6 +1653,131 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Feedback Modal */}
+        {showFeedbackModal && selectedFeedback && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-xl font-bold text-white">Feedback Details</h3>
+                  <button 
+                    onClick={() => setShowFeedbackModal(false)}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Feedback Info */}
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg ${
+                      selectedFeedback.userRole === 'student' ? 'bg-blue-500/20' : 'bg-green-500/20'
+                    }`}>
+                      <FiUsers className={`w-6 h-6 ${
+                        selectedFeedback.userRole === 'student' ? 'text-blue-400' : 'text-green-400'
+                      }`} />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-medium">{selectedFeedback.userName}</h4>
+                      <p className="text-sm text-gray-400">{selectedFeedback.userEmail}</p>
+                      <p className="text-xs text-gray-500 capitalize">{selectedFeedback.userRole} • {selectedFeedback.school || 'No School'}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-800 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 bg-gray-700 rounded text-xs text-gray-300 capitalize">
+                          {selectedFeedback.category}
+                        </span>
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <FiStar
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {new Date(selectedFeedback.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-gray-300 whitespace-pre-wrap">{selectedFeedback.message}</p>
+                    {selectedFeedback.classCode && (
+                       <p className="text-xs text-gray-500 mt-2">Class Code: {selectedFeedback.classCode}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Response Section */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-white">Admin Response</h4>
+                  <textarea
+                    value={adminResponse}
+                    onChange={(e) => setAdminResponse(e.target.value)}
+                    placeholder="Write your response here..."
+                    className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                  
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-2">
+                        <label className="text-sm text-gray-400">Status:</label>
+                        <select 
+                          value={selectedFeedback.status} 
+                          onChange={(e) => {
+                             setSelectedFeedback({...selectedFeedback, status: e.target.value});
+                          }}
+                          className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none"
+                        >
+                           <option value="pending">Pending</option>
+                           <option value="reviewed">Reviewed</option>
+                           <option value="resolved">Resolved</option>
+                        </select>
+                     </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setShowFeedbackModal(false)}
+                        className="px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setUpdatingStatus(true);
+                          // Default to 'reviewed' if status is pending and we are responding, otherwise use selected status
+                          const newStatus = selectedFeedback.status === 'pending' ? 'reviewed' : selectedFeedback.status;
+                          await updateFeedbackStatus(selectedFeedback._id, newStatus, adminResponse);
+                          setUpdatingStatus(false);
+                          setShowFeedbackModal(false);
+                        }}
+                        disabled={updatingStatus}
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        {updatingStatus ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <FiSend className="w-4 h-4" />
+                            Send Response
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
