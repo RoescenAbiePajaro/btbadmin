@@ -299,8 +299,9 @@ export default function ClassManagement() {
       );
 
       if (response.data.data?.class) {
-        setClasses(classes.filter(cls => cls._id !== classToDelete._id));
+        setClasses(prev => prev.filter(cls => cls._id !== classToDelete._id));
         showToast('Class deleted successfully!', 'success');
+        fetchClasses();
       }
     } catch (error) {
       console.error('Error deleting class:', error);
@@ -566,10 +567,10 @@ export default function ClassManagement() {
                       <div className="text-white font-medium">{classItem.students?.length || 0}</div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      <span className={`px-2 py-1 rounded text-xs transition duration-200 ${
                         classItem.isActive 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-red-500/20 text-red-400'
+                          ? 'bg-green-900/30 text-green-400' 
+                          : 'bg-red-900/30 text-red-400'
                       }`}>
                         {classItem.isActive ? 'Active' : 'Inactive'}
                       </span>

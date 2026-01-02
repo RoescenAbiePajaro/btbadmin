@@ -39,6 +39,11 @@ export default function AcademicSettings() {
   };
 
   const handleAddItem = async () => {
+    if (activeType === 'school' && items.length > 0) {
+      showToast('You can only add one school. Please edit the existing one.', 'error');
+      return;
+    }
+
     if (!newItem.trim()) {
       showToast('Please enter a name', 'error');
       return;
@@ -263,25 +268,27 @@ export default function AcademicSettings() {
       </div>
 
       {/* Add New Form */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <input
-            type="text"
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
-            placeholder={`Add new ${activeType} (e.g., ${activeType === 'school' ? 'College of Engineering' : 'Computer Science'})`}
-            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
-          <button
-            onClick={handleAddItem}
-            disabled={loading}
-            className="bg-pink-600 hover:bg-pink-700 text-white py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-          >
-            {loading ? 'Adding...' : 'Add'}
-          </button>
+      {(activeType !== 'school' || items.length === 0) && (
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <input
+              type="text"
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
+              placeholder={`Add new ${activeType} (e.g., ${activeType === 'school' ? 'College of Engineering' : 'Computer Science'})`}
+              className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+            <button
+              onClick={handleAddItem}
+              disabled={loading}
+              className="bg-pink-600 hover:bg-pink-700 text-white py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+            >
+              {loading ? 'Adding...' : 'Add'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Items List */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
