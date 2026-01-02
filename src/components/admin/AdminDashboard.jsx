@@ -189,6 +189,31 @@ export default function AdminDashboard() {
     return userSchool ? getSchoolName(userSchool) : 'Not specified';
   };
 
+  const deriveFeedbackSchool = (item) => {
+    const raw = item?.school;
+    if (raw) return getSchoolName(raw);
+    if (item?.userRole === 'educator') {
+      if (item.userId && educatorClassSummary?.[item.userId]?.school) {
+        return getSchoolName(educatorClassSummary[item.userId].school);
+      }
+      if (item.userEmail) {
+        const matchId = Object.keys(educatorUsers || {}).find(id => educatorUsers[id]?.email === item.userEmail);
+        if (matchId && educatorUsers[matchId]?.school) {
+          return getSchoolName(educatorUsers[matchId].school);
+        }
+      }
+      const ecsEntry = Object.entries(educatorClassSummary || {}).find(([_, val]) => val?.email === item.userEmail || val?.fullName === item.userName);
+      if (ecsEntry?.[1]?.school) {
+        return getSchoolName(ecsEntry[1].school);
+      }
+      const clsMatch = classCodes.find(cls => cls.educator?.email === item.userEmail || cls.educator?.fullName === item.userName);
+      if (clsMatch?.school) {
+        return getSchoolName(clsMatch.school);
+      }
+    }
+    return 'Not specified';
+  };
+
   const exportUsersToCSV = () => {
     if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
     const headers = ['Name','Email','Role','School','Status','Joined'];
@@ -626,6 +651,9 @@ export default function AdminDashboard() {
     if (activeTab === 'feedback') {
       fetchFeedbackData();
       fetchFeedbackStats();
+      fetchEducatorClassSummary();
+      fetchAllClassCodes();
+      fetchEducatorUsers();
     }
   }, [activeTab, feedbackFilters]);
   
@@ -1809,7 +1837,7 @@ export default function AdminDashboard() {
                     <div>
                       <h4 className="text-white font-medium">{selectedFeedback.userName}</h4>
                       <p className="text-sm text-gray-400">{selectedFeedback.userEmail}</p>
-                      <p className="text-xs text-gray-500 capitalize">{selectedFeedback.userRole} • {selectedFeedback.school || 'No School'}</p>
+                      <p className="text-xs text-gray-500 capitalize">{selectedFeedback.userRole} • {deriveFeedbackSchool(selectedFeedback)}</p>
                     </div>
                   </div>
 
