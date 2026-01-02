@@ -7,6 +7,7 @@ import AcademicSettings from './AcademicSettings';
 import StudentList from './StudentList';
 import FileSharing from './FileSharing'; // New component
 import EducFeedback from './EducFeedback';
+import { FiMessageSquare } from 'react-icons/fi';
 
 export default function EducatorDashboard() {
   const navigate = useNavigate();
@@ -175,7 +176,8 @@ export default function EducatorDashboard() {
             >
               <span className="flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-7.645a4 4 0 11-8 0 4 4 0 018 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A10.97 10.97 0 0112 15c2.5 0 4.8.832 6.879 2.224" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12a5 5 0 100-10 5 5 0 000 10" />
                 </svg>
                 Student Management
               </span>
@@ -203,7 +205,10 @@ export default function EducatorDashboard() {
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
-              Feedback
+              <span className="flex items-center gap-2">
+                <FiMessageSquare className="w-5 h-5" />
+                Feedback
+              </span>
             </button>
           </nav>
         </div>

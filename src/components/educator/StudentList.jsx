@@ -274,7 +274,8 @@ const StudentList = () => {
                   </div>
                   <div className="flex items-center gap-1 text-gray-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.67 1.823l-.67.383m0 0A9 9 0 0112 21a9 9 0 01-6.3-2.197m13.67 1.823A9 9 0 0012 21a9 9 0 00-6.3-2.197" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A10.97 10.97 0 0112 15c2.5 0 4.8.832 6.879 2.224" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12a5 5 0 100-10 5 5 0 000 10" />
                     </svg>
                     <span>{classItem.students?.length || 0}</span>
                   </div>
