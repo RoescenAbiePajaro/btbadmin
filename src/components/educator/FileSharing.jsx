@@ -17,6 +17,8 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTargetFileId, setDeleteTargetFileId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchClassCodes();
@@ -32,6 +34,11 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       fetchSharedFiles();
     }
   }, [selectedClassCode]);
+
+  useEffect(() => {
+    // Reset to page 1 when files change or filter is applied
+    setCurrentPage(1);
+  }, [files, filterClassCode]);
 
   const fetchClassCodes = async () => {
     try {
@@ -217,6 +224,16 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     if (bytes < 1024) return bytes + ' bytes';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
     else return (bytes / 1048576).toFixed(2) + ' MB';
+  };
+
+  const getPaginatedFiles = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return files.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(files.length / itemsPerPage);
   };
 
   const renderFilePreview = (file) => {
@@ -609,88 +626,135 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         
         <div className="divide-y divide-gray-700">
           {files.length > 0 ? (
-            files.map((file) => {
-              const classItem = classCodes.find(c => c.classCode === file.classCode);
-              return (
-                <div
-                  key={file._id}
-                  className="p-4 hover:bg-gray-750 transition-colors duration-200"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex-1 flex items-start sm:items-center gap-4">
-                      <div className="flex-shrink-0">
-                        {renderFilePreview(file)}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-white font-medium truncate">{file.name}</h4>
-                        <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 mt-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
-                              {classItem?.className || file.classCode}
-                            </span>
-                            {classItem?.description && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
-                                {classItem.description}
+            <>
+              {getPaginatedFiles().map((file) => {
+                const classItem = classCodes.find(c => c.classCode === file.classCode);
+                return (
+                  <div
+                    key={file._id}
+                    className="p-4 hover:bg-gray-750 transition-colors duration-200"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex-1 flex items-start sm:items-center gap-4">
+                        <div className="flex-shrink-0">
+                          {renderFilePreview(file)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-white font-medium truncate">{file.name}</h4>
+                          <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 mt-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
+                                {classItem?.className || file.classCode}
                               </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-400">
-                            <span>•</span>
-                            <span>{formatFileSize(file.size || 0)}</span>
-                            <span>•</span>
-                            <div className="flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              {formatDate(file.uploadedAt || file.createdAt)}
+                              {classItem?.description && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+                                  {classItem.description}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                              <span>•</span>
+                              <span>{formatFileSize(file.size || 0)}</span>
+                              <span>•</span>
+                              <div className="flex items-center gap-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                {formatDate(file.uploadedAt || file.createdAt)}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center space-x-1">
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(file.url, file.name);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 mr-3"
+                            title="Download"
+                          >
+                            <i className="fas fa-download"></i>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewFile(file.url);
+                            }}
+                            className="text-green-600 hover:text-green-800 mr-3"
+                            title="View"
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                        </div>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownload(file.url, file.name);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 mr-3"
-                          title="Download"
+                          onClick={() => openDeleteModal(file._id)}
+                          disabled={deletingFiles[file._id]}
+                          className="text-red-400 hover:text-red-300 transition duration-200 p-1 rounded hover:bg-red-500/10 disabled:opacity-50"
+                          title="Delete File"
                         >
-                          <i className="fas fa-download"></i>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewFile(file.url);
-                          }}
-                          className="text-green-600 hover:text-green-800 mr-3"
-                          title="View"
-                        >
-                          <i className="fas fa-eye"></i>
+                          {deletingFiles[file._id] ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-red-400"></div>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
                         </button>
                       </div>
-                      <button
-                        onClick={() => openDeleteModal(file._id)}
-                        disabled={deletingFiles[file._id]}
-                        className="text-red-400 hover:text-red-300 transition duration-200 p-1 rounded hover:bg-red-500/10 disabled:opacity-50"
-                        title="Delete File"
-                      >
-                        {deletingFiles[file._id] ? (
-                          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-red-400"></div>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        )}
-                      </button>
                     </div>
                   </div>
+                );
+              })}
+              
+              {/* Add Pagination Controls */}
+              {getTotalPages() > 1 && (
+                <div className="p-4 border-t border-gray-700 flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  <div className="flex gap-1">
+                    {Array.from({ length: getTotalPages() }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 rounded-lg transition duration-200 ${
+                          currentPage === page
+                            ? 'bg-pink-600 text-white'
+                            : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                    disabled={currentPage === getTotalPages()}
+                    className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <span className="text-gray-400 text-sm ml-4">
+                    Showing {Math.min((currentPage - 1) * itemsPerPage + 1, files.length)} to {Math.min(currentPage * itemsPerPage, files.length)} of {files.length} files
+                  </span>
                 </div>
-              );
-            })
+              )}
+            </>
           ) : (
             <div className="text-center py-12">
               <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -11,6 +11,8 @@ export default function EducFeedback({ educator }) {
   const [myFeedback, setMyFeedback] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('submit'); // 'submit' or 'history'
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchMyFeedback();
@@ -109,6 +111,16 @@ export default function EducFeedback({ educator }) {
       case 'compliment': return 'bg-yellow-900 text-yellow-300';
       default: return 'bg-gray-800 text-gray-300';
     }
+  };
+
+  const getPaginatedFeedback = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return myFeedback.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(myFeedback.length / itemsPerPage);
   };
 
   return (
@@ -306,7 +318,7 @@ export default function EducFeedback({ educator }) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {myFeedback.map((item) => (
+                    {getPaginatedFeedback().map((item) => (
                       <div
                         key={item._id}
                         className="border border-gray-700 rounded-lg p-5 hover:bg-gray-800 transition-colors"
@@ -365,6 +377,51 @@ export default function EducFeedback({ educator }) {
                         )}
                       </div>
                     ))}
+                    
+                    {/* Add Pagination Controls */}
+                    {getTotalPages() > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-700">
+                        <button
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+
+                        <div className="flex gap-1">
+                          {Array.from({ length: getTotalPages() }, (_, i) => i + 1).map((page) => (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-2 rounded-lg transition duration-200 ${
+                                currentPage === page
+                                  ? 'bg-pink-600 text-white'
+                                  : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                          disabled={currentPage === getTotalPages()}
+                          className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+
+                        <span className="text-gray-400 text-sm ml-4">
+                          Page {currentPage} of {getTotalPages()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
