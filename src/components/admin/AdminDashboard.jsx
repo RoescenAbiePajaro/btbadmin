@@ -94,6 +94,160 @@ export default function AdminDashboard() {
     return school ? school.name : identifier;
   };
 
+  const exportClassesSummaryCSV = () => {
+    if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
+    const headers = ['Educator','Email','Total Classes','Active Classes','Total Students','School'];
+    const summary = Object.entries(
+      filteredData.data.reduce((acc, cls) => {
+        const educatorId = cls.educator?._id || 'unknown';
+        if (!acc[educatorId]) {
+          acc[educatorId] = {
+            name: cls.educator?.fullName || 'N/A',
+            email: cls.educator?.email || 'N/A',
+            classes: [],
+            totalClasses: 0,
+            activeClasses: 0,
+            totalStudents: 0
+          };
+        }
+        acc[educatorId].totalClasses += 1;
+        if (cls.isActive) acc[educatorId].activeClasses += 1;
+        acc[educatorId].totalStudents += cls.students?.length || 0;
+        acc[educatorId].classes.push(cls);
+        return acc;
+      }, {})
+    );
+    const rows = summary.map(([_, data]) => {
+      const schoolId = data.classes[0]?.school;
+      const values = [
+        data.name,
+        data.email,
+        data.totalClasses,
+        data.activeClasses,
+        data.totalStudents,
+        schoolId ? getSchoolName(schoolId) : 'Not specified'
+      ];
+      return values.map(v => {
+        const s = String(v).replace(/"/g, '""');
+        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
+        return s;
+      }).join(',');
+    });
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'classes_summary_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportClassDetailsCSV = () => {
+    if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
+    const headers = ['Class Code','Class Name','Educator','Students','Course','Year','Block','Batch','Status'];
+    const rows = filteredData.data.map(cls => {
+      const values = [
+        cls.classCode || 'N/A',
+        cls.className || 'N/A',
+        cls.educator?.fullName || 'N/A',
+        cls.students?.length || 0,
+        cls.course || 'N/A',
+        cls.year || 'N/A',
+        cls.block || 'N/A',
+        cls.description || 'N/A',
+        cls.isActive ? 'Active' : 'Inactive'
+      ];
+      return values.map(v => {
+        const s = String(v).replace(/"/g, '""');
+        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
+        return s;
+      }).join(',');
+    });
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'class_details_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const deriveUserSchool = (user) => {
+    let userSchool = user.school;
+    if (user.role === 'educator') {
+      if (educatorClassSummary?.[user._id]?.school) {
+        userSchool = educatorClassSummary[user._id].school;
+      } else if (classCodes.length > 0) {
+        const educatorClasses = classCodes.filter(cls => cls.educator?._id === user._id || cls.educatorId === user._id);
+        if (educatorClasses.length > 0) {
+          userSchool = educatorClasses[0]?.school;
+        }
+      }
+    }
+    return userSchool ? getSchoolName(userSchool) : 'Not specified';
+  };
+
+  const exportUsersToCSV = () => {
+    if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
+    const headers = ['Name','Email','Role','School','Status','Joined'];
+    const rows = filteredData.data.map(user => {
+      const values = [
+        user.fullName || 'N/A',
+        user.email || 'N/A',
+        user.role || 'N/A',
+        deriveUserSchool(user),
+        user.isActive ? 'Active' : 'Inactive',
+        user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'
+      ];
+      return values.map(v => {
+        const s = String(v).replace(/"/g, '""');
+        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
+        return s;
+      }).join(',');
+    });
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users_export_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportFeedbackCSV = () => {
+    if (!feedbackData || feedbackData.length === 0) return;
+    const headers = ['User','Email','Role','Rating','Category','Message','Status','Date','School'];
+    const rows = feedbackData.map(item => {
+      const values = [
+        item.userName || 'N/A',
+        item.userEmail || 'N/A',
+        item.userRole || 'N/A',
+        item.rating ?? 'N/A',
+        item.category || 'N/A',
+        item.message || 'N/A',
+        item.status || 'N/A',
+        item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A',
+        item.school || 'N/A'
+      ];
+      return values.map(v => {
+        const s = String(v).replace(/"/g, '""');
+        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
+        return s;
+      }).join(',');
+    });
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'feedback_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Fetch dashboard statistics
   const fetchDashboardData = async () => {
     try {
@@ -453,7 +607,7 @@ export default function AdminDashboard() {
   }, [schoolTrendPeriod]);
 
   useEffect(() => {
-    if (activeTab !== 'overview' && activeTab !== 'export') {
+    if (activeTab !== 'overview') {
       fetchFilteredData();
     }
   }, [activeTab, filters]);
@@ -740,15 +894,14 @@ export default function AdminDashboard() {
               { id: 'classes', label: 'Classes', icon: <FiBook /> },
               { id: 'activities', label: 'Learning Materials', icon: <FiActivity /> },
               { id: 'charts', label: 'Charts', icon: <FiBarChart2 /> },
-              { id: 'feedback', label: 'Feedback', icon: <FiMessageSquare /> },
-              { id: 'export', label: 'Export', icon: <FiDownloadIcon /> }
+              { id: 'feedback', label: 'Feedback', icon: <FiMessageSquare /> }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`pb-2 px-4 flex items-center gap-2 whitespace-nowrap ${
                   activeTab === tab.id 
-                    ? 'border-b-2 border-blue-500 text-blue-500' 
+                    ? 'border-b-2 border-violet-500 text-violet-500' 
                     : 'text-gray-400 hover:text-gray-300'
                 }`}
               >
@@ -1004,7 +1157,12 @@ export default function AdminDashboard() {
           {activeTab === 'users' && (
             <div className="space-y-8">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">User Management</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">User Management</h3>
+                  <button onClick={exportUsersToCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <FiDownloadIcon className="w-5 h-5" /> Export
+                  </button>
+                </div>
                 {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -1067,7 +1225,7 @@ export default function AdminDashboard() {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                   <span className={`px-2 py-1 rounded text-xs ${
                                     user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
-                                    user.role === 'educator' ? 'bg-green-500/20 text-green-400' :
+                                    user.role === 'educator' ? 'bg-pink-500/20 text-pink-400' :
                                     'bg-blue-500/20 text-blue-400'
                                   }`}>
                                     {user.role}
@@ -1114,7 +1272,12 @@ export default function AdminDashboard() {
               
 
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Educator Classes Summary</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">Educator Classes Summary</h3>
+                  <button onClick={exportClassesSummaryCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <FiDownloadIcon className="w-5 h-5" /> Export
+                  </button>
+                </div>
                 {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -1196,7 +1359,12 @@ export default function AdminDashboard() {
               </div>
 
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Class Details</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">Class Details</h3>
+                  <button onClick={exportClassDetailsCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <FiDownloadIcon className="w-5 h-5" /> Export
+                  </button>
+                </div>
                 {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -1439,7 +1607,12 @@ export default function AdminDashboard() {
             <div className="space-y-8">
               {/* Feedback Statistics */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Feedback Overview</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">Feedback Overview</h3>
+                  <button onClick={exportFeedbackCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <FiDownloadIcon className="w-5 h-5" /> Export
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-gray-800 p-4 rounded-lg">
                     <p className="text-gray-400 text-sm">Total Feedback</p>
@@ -1519,9 +1692,11 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 rounded text-xs ${
-                              item.userRole === 'student' 
+                              item.userRole === 'student'
                                 ? 'bg-blue-500/20 text-blue-400'
-                                : 'bg-green-500/20 text-green-400'
+                                : item.userRole === 'educator'
+                                  ? 'bg-pink-500/20 text-pink-400'
+                                  : 'bg-gray-500/20 text-gray-400'
                             }`}>
                               {item.userRole}
                             </span>
@@ -1581,55 +1756,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {activeTab === 'export' && (
-            <div className="space-y-8">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <button
-                    onClick={() => {
-                      setActiveTab('users');
-                      setTimeout(() => {
-                        alert('Export functionality would be implemented here');
-                      }, 100);
-                    }}
-                    className="bg-blue-500 hover:bg-blue-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200"
-                  >
-                    <FiUsers className="w-10 h-10 mb-3" />
-                    <span className="font-bold">Export Users</span>
-                    <span className="text-sm text-gray-300 mt-1">CSV Format</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setActiveTab('classes');
-                      setTimeout(() => {
-                        alert('Export functionality would be implemented here');
-                      }, 100);
-                    }}
-                    className="bg-green-500 hover:bg-green-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200"
-                  >
-                    <FiBook className="w-10 h-10 mb-3" />
-                    <span className="font-bold">Export Classes</span>
-                    <span className="text-sm text-gray-300 mt-1">CSV Format</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setActiveTab('activities');
-                      setTimeout(() => {
-                        alert('Export functionality would be implemented here');
-                      }, 100);
-                    }}
-                    className="bg-purple-500 hover:bg-purple-600 p-6 rounded-lg flex flex-col items-center justify-center transition duration-200"
-                  >
-                    <FiActivity className="w-10 h-10 mb-3" />
-                    <span className="font-bold">Export Activities</span>
-                    <span className="text-sm text-gray-300 mt-1">CSV Format</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Footer Stats */}
@@ -1673,10 +1800,10 @@ export default function AdminDashboard() {
                 <div className="space-y-4 mb-6">
                   <div className="flex items-center gap-4">
                     <div className={`p-2 rounded-lg ${
-                      selectedFeedback.userRole === 'student' ? 'bg-blue-500/20' : 'bg-green-500/20'
+                      selectedFeedback.userRole === 'student' ? 'bg-blue-500/20' : selectedFeedback.userRole === 'educator' ? 'bg-pink-500/20' : 'bg-gray-500/20'
                     }`}>
                       <FiUsers className={`w-6 h-6 ${
-                        selectedFeedback.userRole === 'student' ? 'text-blue-400' : 'text-green-400'
+                        selectedFeedback.userRole === 'student' ? 'text-blue-400' : selectedFeedback.userRole === 'educator' ? 'text-pink-400' : 'text-gray-400'
                       }`} />
                     </div>
                     <div>
