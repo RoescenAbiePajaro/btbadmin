@@ -239,7 +239,7 @@ export default function AcademicSettings() {
       <div>
         <h2 className="text-2xl font-bold text-white">Academic Settings</h2>
         <p className="text-gray-400">Manage schools, courses, years, and blocks for student registration</p>
-        <p className="text-sm text-blue-400 mt-1">
+        <p className="text-sm text-pink-400 mt-1">
           These settings are specific to your account and will be shown to students joining your classes.
         </p>
       </div>
@@ -325,14 +325,14 @@ export default function AcademicSettings() {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSaveEdit(item._id)}
-                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                         autoFocus
                       />
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleSaveEdit(item._id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200"
+                        className="bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded-lg transition duration-200"
                       >
                         Save
                       </button>
@@ -398,17 +398,16 @@ export default function AcademicSettings() {
       </div>
 
       {/* Info Section */}
-      <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4">
+      <div className="bg-pink-900/20 border border-pink-700/50 rounded-xl p-4">
         <div className="flex items-start gap-3">
-          <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5 text-pink-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>
-            <p className="text-blue-300 font-medium">How this works:</p>
-            <ul className="text-blue-400 text-sm mt-1 space-y-1">
+            <p className="text-pink-300 font-medium">How this works:</p>
+            <ul className="text-pink-400 text-sm mt-1 space-y-1">
               <li>• These academic settings are specific to your educator account</li>
-              <li>• When students join your class, they will only see these options</li>
-              <li>• You can add, edit, or deactivate settings as needed</li>
+              <li>• You can add, edit, or delete settings as needed</li>
               <li>• Each educator has their own unique set of academic options</li>
             </ul>
           </div>

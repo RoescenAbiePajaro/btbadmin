@@ -168,7 +168,7 @@ export default function EducFeedback({ educator }) {
                 <form onSubmit={handleSubmit}>
                   {/* Rating */}
                   <div className="mb-6">
-                    <label className="block text-gray-700 text-sm font-medium mb-2">
+                    <label className="block text-gray-400 text-sm font-medium mb-2">
                       Platform Rating (as an Educator)
                     </label>
                     <div className="flex items-center space-x-1">
@@ -270,8 +270,7 @@ export default function EducFeedback({ educator }) {
                   </h3>
                   <ul className="text-sm text-gray-300 space-y-1">
                     <li>• Focus on class management and teaching experience</li>
-                    <li>• Share insights about student engagement and analytics</li>
-                    <li>• Suggest improvements for file sharing and assignment features</li>
+                    <li>• Suggest improvements for features</li>
                     <li>• Report any technical issues with creating/managing classes</li>
                     <li>• Include specific examples from your teaching experience</li>
                     <li>• Your feedback helps shape educator-focused features</li>

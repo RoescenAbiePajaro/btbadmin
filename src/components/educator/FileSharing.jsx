@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Toast from '../Toast';
+import DeleteConfirmationModal from '../DeleteConfirmationModal';
 
 const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [files, setFiles] = useState([]);
@@ -14,6 +15,8 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [classCodes, setClassCodes] = useState([]);
   const [viewingFile, setViewingFile] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTargetFileId, setDeleteTargetFileId] = useState(null);
 
   useEffect(() => {
     fetchClassCodes();
@@ -165,30 +168,27 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       showToast('Failed to open file', 'error');
     }
   };
-
+  
+  const openDeleteModal = (fileId) => {
+    setDeleteTargetFileId(fileId);
+    setShowDeleteModal(true);
+  };
+  
   const handleDeleteFile = async (fileId) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) {
-      showToast('File deletion cancelled', 'info');
-      return;
-    }
-
     try {
       setDeletingFiles(prev => ({ ...prev, [fileId]: true }));
       const token = localStorage.getItem('token');
-      
       const response = await axios.delete(
         `http://localhost:5000/api/files/${fileId}`,
         {
-          headers: { 
-            Authorization: `Bearer ${token}` 
+          headers: {
+            Authorization: `Bearer ${token}`
           }
         }
       );
-
+  
       if (response.data.success) {
-        // Remove file from state
         setFiles(prevFiles => prevFiles.filter(file => file._id !== fileId));
-        
         showToast('File deleted successfully', 'success');
       } else {
         throw new Error(response.data.error || 'Failed to delete file');
@@ -198,6 +198,8 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       showToast(error.response?.data?.error || error.message || 'Failed to delete file', 'error');
     } finally {
       setDeletingFiles(prev => ({ ...prev, [fileId]: false }));
+      setShowDeleteModal(false);
+      setDeleteTargetFileId(null);
     }
   };
 
@@ -408,6 +410,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   return (
     <div className="space-y-6">
       {viewingFile && renderFileModal()}
+      <DeleteConfirmationModal
+        showModal={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setDeleteTargetFileId(null); }}
+        onConfirm={() => { if (deleteTargetFileId) handleDeleteFile(deleteTargetFileId); }}
+        deleteMode="single"
+        isDeleting={deleteTargetFileId ? !!deletingFiles[deleteTargetFileId] : false}
+      />
       
       {/* Upload Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden transition-all duration-300 hover:border-pink-500/30">
@@ -664,7 +673,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                         </button>
                       </div>
                       <button
-                        onClick={() => handleDeleteFile(file._id)}
+                        onClick={() => openDeleteModal(file._id)}
                         disabled={deletingFiles[file._id]}
                         className="text-red-400 hover:text-red-300 transition duration-200 p-1 rounded hover:bg-red-500/10 disabled:opacity-50"
                         title="Delete File"
