@@ -14,6 +14,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const [isCurrentClassInactive, setIsCurrentClassInactive] = useState(false);
   const [showClassSelector, setShowClassSelector] = useState(false);
   const [lastFilesUpdate, setLastFilesUpdate] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const updateStudentData = useCallback(() => {
     console.log('StudentFileSharing - Student prop:', student);
@@ -332,6 +333,17 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
     file.type !== 'submission'
   );
 
+  const filteredMaterials = learningMaterials.filter((material) => {
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      (material.assignmentTitle && material.assignmentTitle.toLowerCase().includes(q)) ||
+      (material.originalName && material.originalName.toLowerCase().includes(q)) ||
+      (material.assignmentDescription && material.assignmentDescription.toLowerCase().includes(q)) ||
+      (material.uploaderName && material.uploaderName.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="space-y-8">
       {loading && (
@@ -384,7 +396,31 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                   </p>
                 )}
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
+                <div className="flex items-center bg-gray-700 rounded-lg overflow-hidden border border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 w-full md:w-64">
+                  <div className="pl-3 pr-2 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search materials..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-transparent border-0 py-2 px-2 text-white placeholder-gray-400 focus:ring-0 focus:outline-none w-full"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="p-1 mr-2 text-gray-400 hover:text-white"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 {studentClasses.length > 0 && (
                   <>
                     <button
@@ -548,14 +584,40 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                       <h4 className="text-lg font-semibold text-white">Learning Materials</h4>
-                      <span className="text-gray-400 text-sm">
-                        {learningMaterials.length} item{learningMaterials.length !== 1 ? 's' : ''}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-gray-700 rounded-lg overflow-hidden border border-gray-600 focus-within:ring-2 focus-within:ring-blue-500">
+                          <div className="pl-3 pr-2 text-gray-400">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Search materials..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-transparent border-0 py-2 px-2 text-white placeholder-gray-400 focus:ring-0 focus:outline-none"
+                          />
+                          {searchTerm && (
+                            <button 
+                              onClick={() => setSearchTerm('')}
+                              className="p-1 mr-2 text-gray-400 hover:text-white"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        <span className="text-gray-400 text-sm">
+                          {filteredMaterials.length} item{filteredMaterials.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </div>
                     
-                    {learningMaterials.map((material) => (
+                    {filteredMaterials.map((material) => (
                       <div
                         key={material._id}
                         className="bg-gray-900 border border-gray-700 rounded-lg p-5 hover:border-gray-600 transition duration-200"
