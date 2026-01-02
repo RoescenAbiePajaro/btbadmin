@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import StudentFileSharing from './StudentFileSharing'; // Import the component
 import StudFeedback from './StudFeedback';
-import { FiMessageSquare } from 'react-icons/fi';
+import { FiMessageSquare, FiHome } from 'react-icons/fi';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -431,7 +431,10 @@ export default function StudentDashboard() {
                 : 'border-transparent text-gray-400 hover:text-gray-300'
             }`}
           >
-            Overview
+            <span className="flex items-center gap-2">
+              <FiHome className="w-5 h-5" />
+              Overview
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('files')}

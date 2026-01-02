@@ -18,7 +18,7 @@ export default function RoleSelection() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
       <button
         onClick={handleBackToHome}
-        className="absolute top-6 left-6 text-gray-400 hover:text-white transition duration-200 flex items-center gap-2"
+        className="absolute top-6 left-6 bg-red-500 text-white hover:bg-red-600 transition duration-200 flex items-center gap-2 px-3 py-2 rounded-lg shadow"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

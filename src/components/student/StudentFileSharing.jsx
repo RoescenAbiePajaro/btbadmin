@@ -371,7 +371,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       )}
 
       {!loading && !error && (
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+        <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
           {/* Card Header */}
           <div className="p-6 border-b border-gray-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -505,7 +505,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                   <button
                     onClick={toggleMaterials}
                     disabled={isCurrentClassInactive || !currentClassCode}
-                    className={`bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-200 flex items-center gap-2 transform hover:scale-105 ${isCurrentClassInactive || !currentClassCode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-200 flex items-center gap-2 transform hover:scale-105 ${isCurrentClassInactive || !currentClassCode ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {showMaterials ? (
                       <>
@@ -608,10 +608,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                                 className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-1 min-w-[100px]"
                                 title="View file"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                                <i className="fas fa-eye"></i>
                                 View
                               </button>
                             )}
@@ -620,9 +617,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                               className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-1 min-w-[100px]"
                               title="Download file"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
+                              <i className="fas fa-download"></i>
                               Download
                             </button>
                           </div>
