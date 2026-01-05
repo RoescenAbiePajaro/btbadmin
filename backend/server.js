@@ -50,9 +50,9 @@ app.use(cors({
     }
     
     if (allowedOrigins.indexOf(origin) === -1) {
-      // In production, you might want to be more permissive
-      if (process.env.NODE_ENV === 'production') {
-        console.log('CORS: Allowing origin in production:', origin);
+      // In development, you might want to be more permissive
+      if (process.env.NODE_ENV === 'development') {
+        console.log('CORS: Allowing origin in development:', origin);
         return callback(null, true);
       }
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
