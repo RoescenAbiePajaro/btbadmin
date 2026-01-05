@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "pm2-runtime start server.js --name btbadmin-api",
+    "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "echo 'No build step required'",
     "test": "echo \"Error: no test specified\" && exit 1"

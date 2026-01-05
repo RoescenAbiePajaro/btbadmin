@@ -21,6 +21,14 @@ const feedbackRoutes = require('./routes/feedback');
 // Load environment variables
 dotenv.config();
 
+// Debug: Check if MongoDB URI is loaded
+console.log('Environment loaded:', process.env.NODE_ENV || 'development');
+console.log('MongoDB URI loaded:', process.env.MONGODB_URI ? 'Yes' : 'No');
+if (process.env.MONGODB_URI) {
+  const uri = process.env.MONGODB_URI;
+  console.log('MongoDB URI first 50 chars:', uri.substring(0, Math.min(50, uri.length)) + (uri.length > 50 ? '...' : ''));
+}
+
 // Initialize Express app
 const app = express();
 
@@ -28,29 +36,48 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  'http://localhost:4173'
+  'http://localhost:4173',
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
+    // Allow all origins in development
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
     if (allowedOrigins.indexOf(origin) === -1) {
+      // In production, you might want to be more permissive
+      if (process.env.NODE_ENV === 'production') {
+        console.log('CORS: Allowing origin in production:', origin);
+        return callback(null, true);
+      }
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
     return callback(null, true);
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
 })
 .then(() => {
-  console.log('Connected to MongoDB');
+  console.log('✅ Successfully connected to MongoDB');
+  console.log('Database:', mongoose.connection.name);
   
   // Auto-create indexes on startup (optional)
   if (process.env.CREATE_INDEXES === 'true') {
@@ -59,8 +86,31 @@ mongoose.connect(process.env.MONGODB_URI, {
   }
 })
 .catch(err => {
-  console.error('MongoDB connection error:', err);
+  console.error('❌ MongoDB connection error:', err.message);
+  console.error('Full error:', err);
   process.exit(1);
+});
+
+// Test endpoint
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const dbState = mongoose.connection.readyState;
+    const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+    
+    res.json({
+      status: 'success',
+      dbState: states[dbState],
+      readyState: dbState,
+      timestamp: new Date().toISOString(),
+      nodeEnv: process.env.NODE_ENV,
+      port: process.env.PORT
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
 });
 
 // Generate JWT token
@@ -292,7 +342,9 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    nodeEnv: process.env.NODE_ENV,
+    port: process.env.PORT
   });
 });
 
@@ -2274,8 +2326,11 @@ app.use('/api/feedback', feedbackRoutes);
 // =====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('File sharing endpoints available:');
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log('✅ Health check endpoint: GET /api/health');
+  console.log('✅ Database test endpoint: GET /api/test-db');
+  console.log('📁 File sharing endpoints available:');
   console.log('  GET  /api/files/list - Get files (shows current class files for students)');
   console.log('  GET  /api/files/class/:classCode - Get files by class');
   console.log('  GET  /api/files/all-classes - Get files from all enrolled classes (students only)');
@@ -2285,4 +2340,15 @@ app.listen(PORT, () => {
   console.log('  GET  /api/student/classes - Get all enrolled classes for student');
   console.log('  DELETE /api/users/educator/:id - Delete educator (admin only)');
   console.log('  GET  /api/admin/cleanup - Clean up orphaned data (admin only)');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise Rejection:', err);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
 });
