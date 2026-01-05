@@ -336,6 +336,26 @@ app.get('/api/analytics/device-stats', verifyToken, async (req, res) => {
 });
 
 // =====================
+// 🌐 ROOT ENDPOINT (FOR RENDER DEPLOYMENT)
+// =====================
+app.get('/', (req, res) => {
+  res.json({
+    message: 'EduPulse Backend API',
+    status: 'running',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth/login, /api/auth/register/[role]',
+      classes: '/api/classes/*',
+      files: '/api/files/*',
+      analytics: '/api/analytics/*',
+      documentation: 'See GitHub repo for API docs'
+    }
+  });
+});
+
+// =====================
 // 📊 HEALTH CHECK
 // =====================
 app.get('/api/health', (req, res) => {
@@ -2327,7 +2347,6 @@ app.use('/api/feedback', feedbackRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('✅ Health check endpoint: GET /api/health');
   console.log('✅ Database test endpoint: GET /api/test-db');
   console.log('📁 File sharing endpoints available:');
