@@ -219,7 +219,7 @@ router.get('/educator', async (req, res) => {
   try {
     // In a real app, you would fetch files for the logged-in educator
     // For now, we'll return all files
-    const response = await axios.get('https://btbadmin.onrender.com/api/files/list');
+    const response = await axios.get('http://localhost:5000/api/files/list');
     res.json({
       success: true,
       files: response.data.files || []

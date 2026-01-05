@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "pm2-runtime start server.js --name btbadmin-api",
+    "dev": "nodemon server.js",
     "build": "echo 'No build step required'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -23,6 +24,7 @@
     "lodash": "^4.17.21",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
+    "pm2": "^6.0.14",
     "ua-parser-js": "^2.0.6",
     "uuid": "^13.0.0"
   }

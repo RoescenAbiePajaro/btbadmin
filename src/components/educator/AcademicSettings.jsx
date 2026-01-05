@@ -24,7 +24,7 @@ export default function AcademicSettings() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `https://btbadmin.onrender.com/api/academic-settings/${activeType}`,
+        `http://localhost:5000/api/academic-settings/${activeType}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -53,7 +53,7 @@ export default function AcademicSettings() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `https://btbadmin.onrender.com/api/academic-settings`,
+        `http://localhost:5000/api/academic-settings`,
         {
           name: newItem.trim(),
           type: activeType
@@ -96,7 +96,7 @@ export default function AcademicSettings() {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `https://btbadmin.onrender.com/api/academic-settings/${itemToDelete._id}`,
+        `http://localhost:5000/api/academic-settings/${itemToDelete._id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -120,7 +120,7 @@ export default function AcademicSettings() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `https://btbadmin.onrender.com/api/academic-settings/${id}/toggle`,
+        `http://localhost:5000/api/academic-settings/${id}/toggle`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -163,7 +163,7 @@ export default function AcademicSettings() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `https://btbadmin.onrender.com/api/academic-settings/${id}`,
+        `http://localhost:5000/api/academic-settings/${id}`,
         {
           name: editName.trim()
         },

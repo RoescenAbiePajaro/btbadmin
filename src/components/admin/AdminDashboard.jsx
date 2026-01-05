@@ -73,7 +73,7 @@ export default function AdminDashboard() {
       
       // Fetch all academic settings in parallel
       const [schoolsRes] = await Promise.all([
-        axios.get('https://btbadmin.onrender.com/api/academic-settings/school', {
+        axios.get('http://localhost:5000/api/academic-settings/school', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -281,8 +281,8 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [statsRes, analyticsRes] = await Promise.all([
-        axios.get('https://btbadmin.onrender.com/api/dashboard/statistics', { headers }),
-        axios.get('https://btbadmin.onrender.com/api/analytics/overview?period=30d', { headers })
+        axios.get('http://localhost:5000/api/dashboard/statistics', { headers }),
+        axios.get('http://localhost:5000/api/analytics/overview?period=30d', { headers })
       ]);
 
       if (statsRes.data.success) setStatistics(statsRes.data.statistics);
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `https://btbadmin.onrender.com/api/analytics/overview?period=${timeRange}`,
+        `http://localhost:5000/api/analytics/overview?period=${timeRange}`,
         {
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -335,7 +335,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'https://btbadmin.onrender.com/api/analytics/filter',
+        'http://localhost:5000/api/analytics/filter',
         {
           params: {
             type: activeTab,
@@ -359,7 +359,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'https://btbadmin.onrender.com/api/files/list',
+        'http://localhost:5000/api/files/list',
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.data.success) {
@@ -387,7 +387,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'https://btbadmin.onrender.com/api/analytics/filter',
+        'http://localhost:5000/api/analytics/filter',
         {
           params: { type: 'classes', page: 1, limit: 200 },
           headers: { Authorization: `Bearer ${token}` }
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'https://btbadmin.onrender.com/api/analytics/filter',
+        'http://localhost:5000/api/analytics/filter',
         {
           params: { 
             type: 'users', 
@@ -457,7 +457,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'https://btbadmin.onrender.com/api/classes/all',
+        'http://localhost:5000/api/classes/all',
         { 
           headers: { Authorization: `Bearer ${token}` },
           params: { includeSchool: true, includeEducator: true } 
@@ -481,7 +481,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'https://btbadmin.onrender.com/api/files/list',
+        'http://localhost:5000/api/files/list',
         { 
           headers: { Authorization: `Bearer ${token}` },
           params: { includeEducator: true }
@@ -530,7 +530,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `https://btbadmin.onrender.com/api/dashboard/school-trends?period=${schoolTrendPeriod}`,
+        `http://localhost:5000/api/dashboard/school-trends?period=${schoolTrendPeriod}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -558,7 +558,7 @@ export default function AdminDashboard() {
       if (feedbackFilters.endDate) params.append('endDate', feedbackFilters.endDate);
       
       const response = await axios.get(
-        `https://btbadmin.onrender.com/api/feedback/all?${params.toString()}`,
+        `http://localhost:5000/api/feedback/all?${params.toString()}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -579,7 +579,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'https://btbadmin.onrender.com/api/feedback/statistics',
+        'http://localhost:5000/api/feedback/statistics',
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -598,7 +598,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `https://btbadmin.onrender.com/api/feedback/${feedbackId}/status`,
+        `http://localhost:5000/api/feedback/${feedbackId}/status`,
         { 
           status, 
           adminResponse 

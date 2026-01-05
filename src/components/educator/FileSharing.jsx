@@ -49,7 +49,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       }
       
       const response = await axios.get(
-        `https://btbadmin.onrender.com/api/classes/my-classes`,
+        `http://localhost:5000/api/classes/my-classes`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -82,7 +82,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       }
       
       const response = await axios.get(
-        `https://btbadmin.onrender.com/api/files/list`,
+        `http://localhost:5000/api/files/list`,
         { 
           headers: { 
             Authorization: `Bearer ${token}` 
@@ -123,7 +123,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       const token = localStorage.getItem('token');
       
       const response = await axios.post(
-        'https://btbadmin.onrender.com/api/files/upload',
+        'http://localhost:5000/api/files/upload',
         formData,
         {
           headers: {
@@ -186,7 +186,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       setDeletingFiles(prev => ({ ...prev, [fileId]: true }));
       const token = localStorage.getItem('token');
       const response = await axios.delete(
-        `https://btbadmin.onrender.com/api/files/${fileId}`,
+        `http://localhost:5000/api/files/${fileId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`

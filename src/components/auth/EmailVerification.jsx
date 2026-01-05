@@ -23,7 +23,7 @@ export default function EmailVerification() {
 
       try {
         const response = await axios.get(
-          `https://btbadmin.onrender.com/api/auth/verify-email`,
+          `http://localhost:5000/api/auth/verify-email`,
           {
             params: { token, email }
           }
