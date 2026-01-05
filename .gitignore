@@ -27,3 +27,4 @@ db.js
 .env.example
 .vercel
 backend/.env.production
+.env.production
