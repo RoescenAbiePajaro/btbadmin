@@ -25,7 +25,7 @@ export default function HomePage() {
   // Track click function
   const trackClick = async (type, location) => {
     try {
-      await axios.post('http://localhost:5000/api/analytics/page-visit', {
+      await axios.post('https://btbadmin.onrender.com/api/analytics/page-visit', {
         type,
         location,
         userAgent: navigator.userAgent,
@@ -44,7 +44,7 @@ export default function HomePage() {
     
     try {
       // Track download
-      await axios.post('http://localhost:5000/api/analytics/download-homepage');
+      await axios.post('https://btbadmin.onrender.com//api/analytics/download-homepage');
     } catch (error) {
       console.error("Error tracking download:", error);
     } finally {
@@ -73,7 +73,7 @@ export default function HomePage() {
 
   const fetchUserCounts = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/dashboard/user-counts');
+      const response = await axios.get('https://btbadmin.onrender.com//api/dashboard/user-counts');
       if (response.data.success) {
         setUserCounts(response.data.counts);
       }
