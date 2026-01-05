@@ -73,7 +73,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       
       try {
         const response = await axios.get(
-          'http://localhost:5000/api/files/list',
+          'https://btbadmin.onrender.com/api/files/list',
           { 
             headers: { 
               Authorization: `Bearer ${token}` 
@@ -136,7 +136,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5000/api/classes/by-code/${classCode}`,
+        `https://btbadmin.onrender.com/api/classes/by-code/${classCode}`,
         { 
           headers: { 
             Authorization: `Bearer ${token}` 
@@ -178,7 +178,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       
       // Call backend to switch class
       const response = await axios.post(
-        'http://localhost:5000/api/student/switch-class',
+        'https://btbadmin.onrender.com/api/student/switch-class',
         { classCode },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -209,7 +209,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       
       // Track download activity
       try {
-        await axios.post('http://localhost:5000/api/analytics/file-activity', {
+        await axios.post('https://btbadmin.onrender.com/api/analytics/file-activity', {
           fileId,
           fileName,
           activityType: 'download',
@@ -265,7 +265,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       
       // Track view activity
       try {
-        await axios.post('http://localhost:5000/api/analytics/file-activity', {
+        await axios.post('https://btbadmin.onrender.com/api/analytics/file-activity', {
           fileId,
           fileName,
           activityType: 'view',

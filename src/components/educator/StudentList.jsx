@@ -27,7 +27,7 @@ const StudentList = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5000/api/classes/my-classes`,
+        `https://btbadmin.onrender.com/api/classes/my-classes`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -55,7 +55,7 @@ const StudentList = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5000/api/classes/${classId}/students`,
+        `https://btbadmin.onrender.com/api/classes/${classId}/students`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -115,7 +115,7 @@ const StudentList = () => {
       console.log('Token available:', !!token);
       
       const response = await axios.delete(
-        `http://localhost:5000/api/classes/${selectedClass}/students/${studentToDelete._id}`,
+        `https://btbadmin.onrender.com/api/classes/${selectedClass}/students/${studentToDelete._id}`,
         {
           headers: { 
             Authorization: `Bearer ${token}`,
