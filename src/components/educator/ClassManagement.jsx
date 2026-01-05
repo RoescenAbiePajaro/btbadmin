@@ -52,7 +52,7 @@ export default function ClassManagement() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5000/api/classes/my-classes`,
+        `https://btbadmin.onrender.com/api/classes/my-classes`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -74,16 +74,16 @@ export default function ClassManagement() {
       
       // Fetch all academic settings in parallel
       const [schoolsRes, coursesRes, yearsRes, blocksRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/academic-settings/school', {
+        axios.get('https://btbadmin.onrender.com/api/academic-settings/school', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:5000/api/academic-settings/course', {
+        axios.get('https://btbadmin.onrender.com/api/academic-settings/course', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:5000/api/academic-settings/year', {
+        axios.get('https://btbadmin.onrender.com/api/academic-settings/year', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:5000/api/academic-settings/block', {
+        axios.get('https://btbadmin.onrender.com/api/academic-settings/block', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -151,7 +151,7 @@ export default function ClassManagement() {
       };
 
       const response = await axios.post(
-        `http://localhost:5000/api/classes/generate-code`,
+        `https://btbadmin.onrender.com/api/classes/generate-code`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -240,7 +240,7 @@ export default function ClassManagement() {
       };
 
       const response = await axios.put(
-        `http://localhost:5000/api/classes/${editingClass._id}`,
+        `https://btbadmin.onrender.com/api/classes/${editingClass._id}`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -292,7 +292,7 @@ export default function ClassManagement() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.delete(
-        `http://localhost:5000/api/classes/${classToDelete._id}`,
+        `https://btbadmin.onrender.com/api/classes/${classToDelete._id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
