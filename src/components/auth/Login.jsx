@@ -49,7 +49,7 @@ export default function Login() {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/auth/login`,
+        `https://btbadmin.onrender.com/api/auth/login`,
         formData
       );
 
@@ -59,7 +59,7 @@ export default function Login() {
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
         
         // Track successful login
-        await axios.post('http://localhost:5000/api/analytics/login', {}, {
+        await axios.post('https://btbadmin.onrender.com/api/analytics/login', {}, {
           headers: {
             Authorization: `Bearer ${response.data.data.token}` 
           }
