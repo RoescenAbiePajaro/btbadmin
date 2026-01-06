@@ -1011,7 +1011,7 @@ router.get('/export', requireAdmin, async (req, res) => {
     } = req.query;
     
     // Use the filter endpoint to get data
-    const filterResponse = await axios.get(`http://localhost:5000/api/analytics/filter`, {
+    const filterResponse = await axios.get(`https://btbtestservice.onrender.comapi/analytics/filter`, {
       params: { ...filters, type, limit: 10000 },
       headers: req.headers
     });

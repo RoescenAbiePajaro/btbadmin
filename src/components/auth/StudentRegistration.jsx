@@ -78,7 +78,7 @@ export default function StudentRegistration() {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/auth/register/student`,
+        `https://btbtestservice.onrender.comapi/auth/register/student`,
         {
           fullName: formData.fullName,
           email: formData.email,

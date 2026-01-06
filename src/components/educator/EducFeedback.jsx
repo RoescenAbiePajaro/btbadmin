@@ -21,7 +21,7 @@ export default function EducFeedback({ educator }) {
   const fetchMyFeedback = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/feedback/my-feedback', {
+      const response = await axios.get('https://btbtestservice.onrender.comapi/feedback/my-feedback', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -47,7 +47,7 @@ export default function EducFeedback({ educator }) {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/feedback/submit', 
+      const response = await axios.post('https://btbtestservice.onrender.comapi/feedback/submit', 
         {
           message: feedback,
           rating,
