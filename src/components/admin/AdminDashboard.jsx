@@ -941,8 +941,8 @@ export default function AdminDashboard() {
               { id: 'users', label: 'Users', icon: <FiUsers /> },
               { id: 'classes', label: 'Classes', icon: <FiBook /> },
               { id: 'activities', label: 'Learning Materials', icon: <FiActivity /> },
-              { id: 'charts', label: 'Charts', icon: <FiBarChart2 /> },
-              { id: 'feedback', label: 'Feedback', icon: <FiMessageSquare /> }
+              { id: 'feedback', label: 'Feedback', icon: <FiMessageSquare /> },
+              { id: 'charts', label: 'Charts', icon: <FiBarChart2 /> }
             ].map((tab) => (
               <button
                 key={tab.id}
