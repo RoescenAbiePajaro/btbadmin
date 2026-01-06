@@ -56,6 +56,8 @@ export default function AdminDashboard() {
   const [materialSearch, setMaterialSearch] = useState('');
   const [feedbackSearch, setFeedbackSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const [classTrends, setClassTrends] = useState(null);
+  const [classTrendPeriod, setClassTrendPeriod] = useState('month');
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -571,6 +573,25 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch class trends
+  const fetchClassTrends = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `https://btbtestservice.onrender.com/api/dashboard/class-trends?period=${classTrendPeriod}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setClassTrends(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching class trends:', error);
+    }
+  };
+
   // Fetch feedback data
   const fetchFeedbackData = async () => {
     try {
@@ -657,6 +678,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchSchoolTrends();
   }, [schoolTrendPeriod]);
+
+  useEffect(() => {
+    fetchClassTrends();
+  }, [classTrendPeriod]);
 
   useEffect(() => {
     if (activeTab !== 'overview') {
@@ -746,6 +771,7 @@ export default function AdminDashboard() {
                   fetchDashboardData();
                   fetchAnalyticsData();
                   fetchSchoolTrends();
+                  fetchClassTrends();
                 }}
                 className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition duration-200"
                 title="Refresh Data"
@@ -1047,6 +1073,56 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {/* Total Classes Created Chart */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">Total Classes Created Over Time</h3>
+                  <div className="flex gap-2">
+                    {['week', 'month', 'year'].map((period) => (
+                      <button
+                        key={period}
+                        onClick={() => setClassTrendPeriod(period)}
+                        className={`px-3 py-1 rounded-lg text-sm capitalize ${
+                          classTrendPeriod === period
+                            ? 'bg-violet-500 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        {period}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={classTrends?.creationTrends || []}>
+                      <defs>
+                        <linearGradient id="colorClasses" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="_id" stroke="#9CA3AF" />
+                      <YAxis stroke="#9CA3AF" />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="total" 
+                        stroke="#10B981" 
+                        fillOpacity={1} 
+                        fill="url(#colorClasses)" 
+                        name="Classes Created"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              
+
               {/* Activity Distribution Chart */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">Learning Materials Distribution</h3>
@@ -1266,7 +1342,7 @@ export default function AdminDashboard() {
                           })
                         ) : (
                           <tr>
-                            <td colSpan="6" className="px-6 py-4 text-center text-gray-400">
+                            <td colSpan="8" className="px-6 py-4 text-center text-gray-400">
                               No user data available
                             </td>
                           </tr>
@@ -1421,6 +1497,12 @@ export default function AdminDashboard() {
                             Educator
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            School
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             Students
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -1463,6 +1545,12 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               {cls.educator?.fullName || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {cls.educator?.email || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {cls.school ? getSchoolName(cls.school) : 'Not specified'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               {cls.students?.length || 0}

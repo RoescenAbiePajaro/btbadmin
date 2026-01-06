@@ -427,7 +427,17 @@ router.get('/class-trends', requireAdmin, async (req, res) => {
             }
           },
           total: { $sum: "$count" },
-          averageStudents: { $avg: "$avgStudents" }
+          averageStudents: { $avg: "$avgStudents" },
+          active: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.active", true] }, "$count", 0]
+            }
+          },
+          inactive: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.active", false] }, "$count", 0]
+            }
+          }
         }
       },
       { $sort: { "_id": 1 } }
