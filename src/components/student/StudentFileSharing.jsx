@@ -15,6 +15,8 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const [showClassSelector, setShowClassSelector] = useState(false);
   const [lastFilesUpdate, setLastFilesUpdate] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const updateStudentData = useCallback(() => {
     console.log('StudentFileSharing - Student prop:', student);
@@ -171,6 +173,11 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       fetchFiles(currentClassCode);
     }
   }, [lastUpdated, currentClassCode, fetchFiles]);
+
+  // Reset to page 1 when files change or search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [files, searchTerm]);
 
   const handleClassChange = async (classCode) => {
     try {
@@ -343,6 +350,16 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       (material.uploaderName && material.uploaderName.toLowerCase().includes(q))
     );
   });
+
+  const getPaginatedMaterials = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredMaterials.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(filteredMaterials.length / itemsPerPage);
+  };
 
   return (
     <div className="space-y-8">
@@ -532,7 +549,8 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <span className="text-sm">
-                      {learningMaterials.length} learning material{learningMaterials.length !== 1 ? 's' : ''} available
+                      {learningMaterials.length} learning material{learningMaterials.length !== 1 ? 's' : ''}
+                      {currentClassCode && ` from ${currentClassCode}`}
                     </span>
                   </div>
                 </div>
@@ -613,11 +631,12 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                         </div>
                         <span className="text-gray-400 text-sm">
                           {filteredMaterials.length} item{filteredMaterials.length !== 1 ? 's' : ''}
+                          {getTotalPages() > 1 && ` (Page ${currentPage} of ${getTotalPages()})`}
                         </span>
                       </div>
                     </div>
                     
-                    {filteredMaterials.map((material) => (
+                    {getPaginatedMaterials().map((material) => (
                       <div
                         key={material._id}
                         className="bg-gray-900 border border-gray-700 rounded-lg p-5 hover:border-gray-600 transition duration-200"
@@ -684,6 +703,51 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Add Pagination Controls */}
+                    {getTotalPages() > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-700">
+                        <button
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+
+                        <div className="flex gap-1">
+                          {Array.from({ length: getTotalPages() }, (_, i) => i + 1).map((page) => (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-2 rounded-lg transition duration-200 ${
+                                currentPage === page
+                                  ? 'bg-blue-600 text-white'
+                                  : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                          disabled={currentPage === getTotalPages()}
+                          className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+
+                        <span className="text-gray-400 text-sm ml-4">
+                          Page {currentPage} of {getTotalPages()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -695,8 +759,9 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
             <div className="p-6 border-t border-gray-700 bg-gray-800/50">
               <div className="flex justify-between items-center">
                 <p className="text-gray-400 text-sm">
-                  Showing {learningMaterials.length} learning material{learningMaterials.length !== 1 ? 's' : ''}
+                  Showing {getPaginatedMaterials().length} of {filteredMaterials.length} learning material{filteredMaterials.length !== 1 ? 's' : ''}
                   {currentClassCode && ` from ${currentClassCode}`}
+                  {getTotalPages() > 1 && ` (Page ${currentPage} of ${getTotalPages()})`}
                 </p>
                 <div className="text-gray-500 text-sm">
                   Last updated: {lastFilesUpdate ? lastFilesUpdate.toLocaleTimeString() : 'Never'}

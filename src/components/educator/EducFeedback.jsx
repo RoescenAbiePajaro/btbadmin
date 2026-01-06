@@ -20,6 +20,11 @@ export default function EducFeedback({ educator }) {
     fetchMyFeedback();
   }, []);
 
+  useEffect(() => {
+    // Reset to page 1 when feedback changes
+    setCurrentPage(1);
+  }, [myFeedback]);
+
   const fetchMyFeedback = async () => {
     try {
       const token = localStorage.getItem('token');
