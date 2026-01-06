@@ -52,6 +52,9 @@ export default function AdminDashboard() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [adminResponse, setAdminResponse] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [classSearch, setClassSearch] = useState('');
+  const [materialSearch, setMaterialSearch] = useState('');
+  const [feedbackSearch, setFeedbackSearch] = useState('');
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -1313,6 +1316,18 @@ export default function AdminDashboard() {
 
           {activeTab === 'classes' && (
             <div className="space-y-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative w-full sm:w-96">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={classSearch}
+                    onChange={(e) => setClassSearch(e.target.value)}
+                    placeholder="Search classes, educators, courses..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+              </div>
               
 
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -1349,7 +1364,19 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {Object.entries(
-                          filteredData.data.reduce((acc, cls) => {
+                          (classSearch ? filteredData.data.filter(cls => {
+                            const t = [
+                              cls.className,
+                              cls.classCode,
+                              cls.educator?.fullName,
+                              cls.course,
+                              cls.year,
+                              cls.block,
+                              cls.description,
+                              getSchoolName(cls.school)
+                            ].filter(Boolean).join(' ').toLowerCase();
+                            return t.includes(classSearch.toLowerCase());
+                          }) : filteredData.data).reduce((acc, cls) => {
                             const educatorId = cls.educator?._id || 'unknown';
                             if (!acc[educatorId]) {
                               acc[educatorId] = {
@@ -1444,7 +1471,19 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
-                        {filteredData.data.map((cls, index) => (
+                        {(classSearch ? filteredData.data.filter(cls => {
+                          const t = [
+                            cls.className,
+                            cls.classCode,
+                            cls.educator?.fullName,
+                            cls.course,
+                            cls.year,
+                            cls.block,
+                            cls.description,
+                            getSchoolName(cls.school)
+                          ].filter(Boolean).join(' ').toLowerCase();
+                          return t.includes(classSearch.toLowerCase());
+                        }) : filteredData.data).map((cls, index) => (
                           <tr key={index} className="hover:bg-gray-800">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               {cls.classCode}
@@ -1491,6 +1530,18 @@ export default function AdminDashboard() {
 
           {activeTab === 'activities' && (
             <div className="space-y-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative w-full sm:w-96">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={materialSearch}
+                    onChange={(e) => setMaterialSearch(e.target.value)}
+                    placeholder="Search materials, educators, files..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+              </div>
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 text-white">Learning Material Logs</h3>
                 {educatorSharedFiles.length > 0 ? (
@@ -1505,7 +1556,12 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {Object.entries(
-                          educatorSharedFiles.reduce((acc, educator) => {
+                          (materialSearch ? educatorSharedFiles.filter(educator => {
+                            const q = materialSearch.toLowerCase();
+                            const nameEmail = [educator.educatorName, educator.educatorEmail].filter(Boolean).join(' ').toLowerCase();
+                            const fileMatch = educator.files?.some(f => [f.name, f.originalName, f.classCode].filter(Boolean).join(' ').toLowerCase().includes(q));
+                            return nameEmail.includes(q) || fileMatch;
+                          }) : educatorSharedFiles).reduce((acc, educator) => {
                             const educatorId = educator.educatorId || 'unknown';
                             acc[educatorId] = {
                               name: educator.educatorName || 'N/A',
@@ -1543,7 +1599,12 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-bold mb-4 text-white">Educator Shared Files</h3>
                 {educatorSharedFiles.length > 0 ? (
                   <div className="space-y-6">
-                    {educatorSharedFiles.map((educator) => (
+                    {(materialSearch ? educatorSharedFiles.filter(educator => {
+                      const q = materialSearch.toLowerCase();
+                      const nameEmail = [educator.educatorName, educator.educatorEmail].filter(Boolean).join(' ').toLowerCase();
+                      const fileMatch = educator.files?.some(f => [f.name, f.originalName, f.classCode].filter(Boolean).join(' ').toLowerCase().includes(q));
+                      return nameEmail.includes(q) || fileMatch;
+                    }) : educatorSharedFiles).map((educator) => (
                       <div key={educator.educatorId} className="bg-gray-800 rounded-lg p-4">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -1556,7 +1617,10 @@ export default function AdminDashboard() {
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {educator.files.map((file) => (
+                          {(materialSearch ? educator.files.filter(file => {
+                            const t = [file.name, file.originalName, file.classCode, file.type, file.mimeType].filter(Boolean).join(' ').toLowerCase();
+                            return t.includes(materialSearch.toLowerCase());
+                          }) : educator.files).map((file) => (
                             <div key={file.id} className="bg-gray-700 rounded-lg p-3 hover:bg-gray-600 transition-colors">
                               <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0">
@@ -1686,6 +1750,18 @@ export default function AdminDashboard() {
 
                 {/* Feedback Filters */}
                 <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="relative w-full sm:w-96">
+                      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={feedbackSearch}
+                        onChange={(e) => setFeedbackSearch(e.target.value)}
+                        placeholder="Search feedback by user, email, message..."
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-4 mb-4">
                     <select
                       value={feedbackFilters.status}
@@ -1744,7 +1820,18 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {feedbackData?.map((item) => (
+                      {(feedbackSearch ? feedbackData.filter(item => {
+                        const t = [
+                          item.userName,
+                          item.userEmail,
+                          item.userRole,
+                          item.category,
+                          item.message,
+                          item.status,
+                          item.classCode
+                        ].filter(Boolean).join(' ').toLowerCase();
+                        return t.includes(feedbackSearch.toLowerCase());
+                      }) : feedbackData)?.map((item) => (
                         <tr key={item._id} className="hover:bg-gray-800">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
