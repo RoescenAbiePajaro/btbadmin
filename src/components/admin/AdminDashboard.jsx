@@ -897,7 +897,7 @@ export default function AdminDashboard() {
                   <select
                     value={filters.role}
                     onChange={(e) => handleFilterChange('role', e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
                   >
                     <option value="">All Roles</option>
                     <option value="student">Student</option>
@@ -1025,7 +1025,7 @@ export default function AdminDashboard() {
                         onClick={() => setSchoolTrendPeriod(period)}
                         className={`px-3 py-1 rounded-lg text-sm capitalize ${
                           schoolTrendPeriod === period
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-violet-500 text-white'
                             : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                         }`}
                       >
@@ -1686,22 +1686,25 @@ export default function AdminDashboard() {
                 {/* Feedback Filters */}
                 <div className="mb-6">
                   <div className="flex flex-wrap gap-4 mb-4">
-                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500">
                       <option value="all">All Status</option>
                       <option value="pending">Pending</option>
                       <option value="reviewed">Reviewed</option>
                       <option value="resolved">Resolved</option>
                     </select>
-                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500">
                       <option value="all">All Roles</option>
                       <option value="student">Student</option>
                       <option value="educator">Educator</option>
                     </select>
-                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500">
                       <option value="all">All Categories</option>
-                      <option value="general">General</option>
+                      <option value="general">General Feedback</option>
                       <option value="bug">Bug Report</option>
                       <option value="feature">Feature Request</option>
+                      <option value="improvement">Improvement Suggestion</option>
+                      <option value="compliment">Compliment</option>
+                      <option value="other">Other</option>
                     </select>
                     <button className="bg-violet-600 hover:bgviolet-700 px-4 py-2 rounded-lg">
                       Apply Filters
@@ -1785,7 +1788,7 @@ export default function AdminDashboard() {
                                 setAdminResponse(item.adminResponse?.message || '');
                                 setShowFeedbackModal(true);
                               }}
-                              className="text-blue-400 hover:text-blue-300 text-sm"
+                              className="text-violet-400 hover:text-violet-300 text-sm"
                             >
                               View & Respond
                             </button>
@@ -1891,7 +1894,7 @@ export default function AdminDashboard() {
                     value={adminResponse}
                     onChange={(e) => setAdminResponse(e.target.value)}
                     placeholder="Write your response here..."
-                    className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-4 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
                   />
                   
                   <div className="flex items-center justify-between">
@@ -1927,7 +1930,7 @@ export default function AdminDashboard() {
                           setShowFeedbackModal(false);
                         }}
                         disabled={updatingStatus}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                        className="px-6 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors flex items-center gap-2"
                       >
                         {updatingStatus ? (
                           <>
