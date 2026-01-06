@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiSend, FiStar, FiMessageSquare, FiClock, FiCheck, FiAlertCircle, FiUsers } from 'react-icons/fi';
 import axios from 'axios';
+import Toast from '../Toast';
 
 export default function StudFeedback({ student }) {
   const [feedback, setFeedback] = useState('');
@@ -11,6 +12,7 @@ export default function StudFeedback({ student }) {
   const [myFeedback, setMyFeedback] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('submit'); // 'submit' or 'history'
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
   useEffect(() => {
     fetchMyFeedback();
@@ -37,7 +39,7 @@ export default function StudFeedback({ student }) {
     e.preventDefault();
     
     if (!feedback.trim() || feedback.length < 10) {
-      alert('Please provide feedback with at least 10 characters');
+      setToast({ show: true, message: 'Please provide feedback with at least 10 characters', type: 'warning' });
       return;
     }
 
@@ -62,11 +64,11 @@ export default function StudFeedback({ student }) {
         setRating(5);
         setCategory('general');
         fetchMyFeedback(); // Refresh history
-        alert('Thank you for your feedback!');
+        setToast({ show: true, message: 'Thank you for your feedback!', type: 'success' });
       }
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      alert('Failed to submit feedback. Please try again.');
+      setToast({ show: true, message: 'Failed to submit feedback. Please try again.', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -386,6 +388,14 @@ export default function StudFeedback({ student }) {
           </div>
         </div>
       </div>
+      
+      {toast.show && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ ...toast, show: false })}
+        />
+      )}
     </div>
   );
 }

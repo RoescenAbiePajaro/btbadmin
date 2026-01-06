@@ -285,13 +285,20 @@ export default function AdminDashboard() {
         axios.get('https://btbtestservice.onrender.com/api/analytics/overview?period=30d', { headers })
       ]);
 
-      if (statsRes.data.success) setStatistics(statsRes.data.statistics);
+      if (statsRes.data.success) {
+        setStatistics(statsRes.data.statistics);
+      }
       
+      // Process analytics response - THIS IS THE KEY FIX
+      if (analyticsRes.data.success) {
+        setAnalyticsData(analyticsRes.data.charts);
+      }
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please check your connection.');
       
+      // Set fallback data for both states
       setStatistics({
         users: { total: 0, byRole: [], active: 0 },
         classes: { total: 0, active: 0, inactive: 0, mostActive: [] },
@@ -300,6 +307,21 @@ export default function AdminDashboard() {
           downloads: 0, 
           views: 0, 
           total: 0
+        },
+        schools: { total: 0 } // Make sure this exists
+      });
+      
+      // Also set fallback for analyticsData
+      setAnalyticsData({
+        rawData: {
+          platformMetrics: {
+            pageVisits: 0,
+            totalDownloads: 0
+          }
+        },
+        lineCharts: {
+          downloadTrends: { data: [] },
+          pageVisitTrends: { data: [] }
         }
       });
     } finally {
