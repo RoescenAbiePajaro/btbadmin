@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   const [classSearch, setClassSearch] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
   const [feedbackSearch, setFeedbackSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -1203,13 +1204,23 @@ export default function AdminDashboard() {
 
           {activeTab === 'users' && (
             <div className="space-y-8">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-white">User Management</h3>
-                  <button onClick={exportUsersToCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
-                    <FiDownloadIcon className="w-5 h-5" /> Export
-                  </button>
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative w-full sm:w-96">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search users by name, email, role, school..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
                 </div>
+                <button onClick={exportUsersToCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <FiDownloadIcon className="w-5 h-5" /> Export
+                </button>
+              </div>
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold text-white mb-4">User Management</h3>
                 {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -1237,7 +1248,19 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {filteredData.data && filteredData.data.length > 0 ? (
-                          (filters.role ? filteredData.data.filter(u => u.role === filters.role) : filteredData.data).map((user, index) => {
+                          (filters.role ? filteredData.data.filter(u => u.role === filters.role) : filteredData.data).filter(user => {
+                            if (!userSearch) return true;
+                            const searchText = userSearch.toLowerCase();
+                            const searchableText = [
+                              user.fullName || '',
+                              user.email || '',
+                              user.role || '',
+                              deriveUserSchool(user),
+                              user.isActive ? 'active' : 'inactive',
+                              user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''
+                            ].join(' ').toLowerCase();
+                            return searchableText.includes(searchText);
+                          }).map((user, index) => {
                             // Get school for educator from their classes
                             let userSchool = user.school;
                             
