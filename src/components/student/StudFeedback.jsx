@@ -343,7 +343,7 @@ export default function StudFeedback({ student }) {
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <div className="flex items-center gap-3 mb-1">
-                              <span className={`px-2 py-1 text-xs rounded-full ${getCategoryColor(item.category)}`}>
+                              <span className={`px-2 py-1 text-xs rounded ${getCategoryColor(item.category)}`}>
                                 {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                               </span>
                               <div className="flex items-center">

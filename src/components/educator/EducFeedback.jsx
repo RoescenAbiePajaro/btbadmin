@@ -333,10 +333,10 @@ export default function EducFeedback({ educator }) {
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <div className="flex items-center gap-3 mb-1">
-                              <span className={`px-2 py-1 text-xs rounded-full ${getCategoryColor(item.category)}`}>
+                              <span className={`px-2 py-1 text-xs rounded ${getCategoryColor(item.category)}`}>
                                 {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                               </span>
-                              <span className="px-2 py-1 text-xs bg-pink-900 text-pink-300 rounded-full">
+                              <span className="px-2 py-1 text-xs bg-pink-900 text-pink-300 rounded">
                                 Educator
                               </span>
                               <div className="flex items-center">
