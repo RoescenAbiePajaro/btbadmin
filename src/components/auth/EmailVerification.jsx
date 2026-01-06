@@ -23,7 +23,7 @@ export default function EmailVerification() {
 
       try {
         const response = await axios.get(
-          `https://btbtestservice.onrender.comapi/auth/verify-email`,
+          `https://btbtestservice.onrender.com/api/auth/verify-email`,
           {
             params: { token, email }
           }

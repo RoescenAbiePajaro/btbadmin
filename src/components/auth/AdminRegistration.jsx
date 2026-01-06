@@ -64,7 +64,7 @@ export default function AdminRegistration() {
 
     try {
       const response = await axios.post(
-        `https://btbtestservice.onrender.comapi/auth/register/admin`,
+        `https://btbtestservice.onrender.com/api/auth/register/admin`,
         formData
       );
 

@@ -70,7 +70,7 @@ export default function EducatorRegistration() {
 
     try {
       const response = await axios.post(
-        `https://btbtestservice.onrender.comapi/auth/register/educator`,
+        `https://btbtestservice.onrender.com/api/auth/register/educator`,
         {
           fullName: formData.fullName,
           email: formData.email,

@@ -52,7 +52,7 @@ export default function ClassManagement() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `https://btbtestservice.onrender.comapi/classes/my-classes`,
+        `https://btbtestservice.onrender.com/api/classes/my-classes`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -74,16 +74,16 @@ export default function ClassManagement() {
       
       // Fetch all academic settings in parallel
       const [schoolsRes, coursesRes, yearsRes, blocksRes] = await Promise.all([
-        axios.get('https://btbtestservice.onrender.comapi/academic-settings/school', {
+        axios.get('https://btbtestservice.onrender.com/api/academic-settings/school', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('https://btbtestservice.onrender.comapi/academic-settings/course', {
+        axios.get('https://btbtestservice.onrender.com/api/academic-settings/course', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('https://btbtestservice.onrender.comapi/academic-settings/year', {
+        axios.get('https://btbtestservice.onrender.com/api/academic-settings/year', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('https://btbtestservice.onrender.comapi/academic-settings/block', {
+        axios.get('https://btbtestservice.onrender.com/api/academic-settings/block', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -151,7 +151,7 @@ export default function ClassManagement() {
       };
 
       const response = await axios.post(
-        `https://btbtestservice.onrender.comapi/classes/generate-code`,
+        `https://btbtestservice.onrender.com/api/classes/generate-code`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -240,7 +240,7 @@ export default function ClassManagement() {
       };
 
       const response = await axios.put(
-        `https://btbtestservice.onrender.comapi/classes/${editingClass._id}`,
+        `https://btbtestservice.onrender.com/api/classes/${editingClass._id}`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -292,7 +292,7 @@ export default function ClassManagement() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.delete(
-        `https://btbtestservice.onrender.comapi/classes/${classToDelete._id}`,
+        `https://btbtestservice.onrender.com/api/classes/${classToDelete._id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }

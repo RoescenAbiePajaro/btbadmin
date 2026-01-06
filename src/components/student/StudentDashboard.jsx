@@ -32,7 +32,7 @@ export default function StudentDashboard() {
 
     try {
       // Always fetch fresh user data from server
-      const response = await axios.get('https://btbtestservice.onrender.comapi/auth/profile', {
+      const response = await axios.get('https://btbtestservice.onrender.com/api/auth/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -77,7 +77,7 @@ export default function StudentDashboard() {
     if (!token) return;
 
     try {
-      const response = await axios.get('https://btbtestservice.onrender.comapi/auth/profile', {
+      const response = await axios.get('https://btbtestservice.onrender.com/api/auth/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -179,7 +179,7 @@ export default function StudentDashboard() {
       
       // First validate the class code
       const validateResponse = await axios.get(
-        `https://btbtestservice.onrender.comapi/classes/validate/${joinClassCode.toUpperCase()}`,
+        `https://btbtestservice.onrender.com/api/classes/validate/${joinClassCode.toUpperCase()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -198,7 +198,7 @@ export default function StudentDashboard() {
 
       // Join the class
       const joinResponse = await axios.post(
-        'https://btbtestservice.onrender.comapi/classes/join',
+        'https://btbtestservice.onrender.com/api/classes/join',
         { classCode: joinClassCode.toUpperCase() },
         { headers: { Authorization: `Bearer ${token}` } }
       );

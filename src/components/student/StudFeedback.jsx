@@ -19,7 +19,7 @@ export default function StudFeedback({ student }) {
   const fetchMyFeedback = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('https://btbtestservice.onrender.comapi/feedback/my-feedback', {
+      const response = await axios.get('https://btbtestservice.onrender.com/api/feedback/my-feedback', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -45,7 +45,7 @@ export default function StudFeedback({ student }) {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('https://btbtestservice.onrender.comapi/feedback/submit', 
+      const response = await axios.post('https://btbtestservice.onrender.com/api/feedback/submit', 
         {
           message: feedback,
           rating,
