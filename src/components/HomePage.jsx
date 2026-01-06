@@ -44,7 +44,7 @@ export default function HomePage() {
     
     try {
       // Track download
-      await axios.post('https://btbtestservice.onrender.com//api/analytics/download-homepage');
+      await axios.post('https://btbtestservice.onrender.com/api/analytics/download-homepage');
     } catch (error) {
       console.error("Error tracking download:", error);
     } finally {
@@ -73,7 +73,7 @@ export default function HomePage() {
 
   const fetchUserCounts = async () => {
     try {
-      const response = await axios.get('https://btbtestservice.onrender.com//api/dashboard/user-counts');
+      const response = await axios.get('https://btbtestservice.onrender.com/api/dashboard/user-counts');
       if (response.data.success) {
         setUserCounts(response.data.counts);
       }
