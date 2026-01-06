@@ -312,7 +312,7 @@ export default function EducFeedback({ educator }) {
                     <p className="text-gray-400 mb-6">Your educator feedback history will appear here.</p>
                     <button
                       onClick={() => setActiveTab('submit')}
-                      className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none"
+                      className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none"
                     >
                       <FiSend className="mr-2" />
                       Submit Educator Feedback
