@@ -58,6 +58,8 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState('');
   const [classTrends, setClassTrends] = useState(null);
   const [classTrendPeriod, setClassTrendPeriod] = useState('month');
+  const [feedbackCurrentPage, setFeedbackCurrentPage] = useState(1);
+  const feedbackItemsPerPage = 10;
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -69,8 +71,6 @@ export default function AdminDashboard() {
     deviceType: '',
     browser: ''
   });
-
-
 
   // Fetch academic settings for educators
   const fetchAcademicSettings = async () => {
@@ -707,6 +707,7 @@ export default function AdminDashboard() {
       fetchEducatorClassSummary();
       fetchAllClassCodes();
       fetchEducatorUsers();
+      setFeedbackCurrentPage(1); // Reset to page 1 when filters change
     }
   }, [activeTab, feedbackFilters]);
   
@@ -758,6 +759,48 @@ export default function AdminDashboard() {
         return 'bg-gray-700 text-gray-300';
     }
   };
+
+  // Pagination functions for feedback
+  const getPaginatedFeedback = () => {
+    const filteredFeedback = feedbackSearch ? feedbackData.filter(item => {
+      const t = [
+        item.userName,
+        item.userEmail,
+        item.userRole,
+        item.category,
+        item.message,
+        item.status,
+        item.classCode
+      ].filter(Boolean).join(' ').toLowerCase();
+      return t.includes(feedbackSearch.toLowerCase());
+    }) : feedbackData;
+    
+    const startIndex = (feedbackCurrentPage - 1) * feedbackItemsPerPage;
+    const endIndex = startIndex + feedbackItemsPerPage;
+    return filteredFeedback.slice(startIndex, endIndex);
+  };
+
+  const getFeedbackTotalPages = () => {
+    const filteredFeedback = feedbackSearch ? feedbackData.filter(item => {
+      const t = [
+        item.userName,
+        item.userEmail,
+        item.userRole,
+        item.category,
+        item.message,
+        item.status,
+        item.classCode
+      ].filter(Boolean).join(' ').toLowerCase();
+      return t.includes(feedbackSearch.toLowerCase());
+    }) : feedbackData;
+    
+    return Math.ceil(filteredFeedback.length / feedbackItemsPerPage);
+  };
+
+  useEffect(() => {
+    // Reset to page 1 when feedback data changes or search changes
+    setFeedbackCurrentPage(1);
+  }, [feedbackData, feedbackSearch]);
 
   if (loading && !statistics) {
     return (
@@ -1896,18 +1939,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {(feedbackSearch ? feedbackData.filter(item => {
-                        const t = [
-                          item.userName,
-                          item.userEmail,
-                          item.userRole,
-                          item.category,
-                          item.message,
-                          item.status,
-                          item.classCode
-                        ].filter(Boolean).join(' ').toLowerCase();
-                        return t.includes(feedbackSearch.toLowerCase());
-                      }) : feedbackData)?.map((item) => (
+                      {getPaginatedFeedback().map((item) => (
                         <tr key={item._id} className="hover:bg-gray-800">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
@@ -1976,6 +2008,51 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
+                  
+                  {/* Add Pagination Controls */}
+                  {getFeedbackTotalPages() > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-700">
+                      <button
+                        onClick={() => setFeedbackCurrentPage(Math.max(1, feedbackCurrentPage - 1))}
+                        disabled={feedbackCurrentPage === 1}
+                        className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+
+                      <div className="flex gap-1">
+                        {Array.from({ length: getFeedbackTotalPages() }, (_, i) => i + 1).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setFeedbackCurrentPage(page)}
+                            className={`px-3 py-2 rounded-lg transition duration-200 ${
+                              feedbackCurrentPage === page
+                                ? 'bg-violet-600 text-white'
+                                : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setFeedbackCurrentPage(Math.min(getFeedbackTotalPages(), feedbackCurrentPage + 1))}
+                        disabled={feedbackCurrentPage === getFeedbackTotalPages()}
+                        className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      <span className="text-gray-400 text-sm ml-4">
+                        Page {feedbackCurrentPage} of {getFeedbackTotalPages()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
