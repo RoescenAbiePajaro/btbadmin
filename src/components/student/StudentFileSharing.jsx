@@ -663,24 +663,22 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                             </div>
                           </div>
                           
-                          <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                          <div className="flex gap-3 ml-4 flex-shrink-0">
                             {canViewInBrowser(material.originalName) && (
                               <button
                                 onClick={() => handleViewFile(material.url, material._id, material.originalName, material.uploadedBy)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-1 min-w-[100px]"
+                                className="text-green-500 hover:text-green-400 transition duration-200 flex items-center justify-center"
                                 title="View file"
                               >
                                 <i className="fas fa-eye"></i>
-                                View
                               </button>
                             )}
                             <button
                               onClick={() => handleDownloadFile(material.url, material._id, material.originalName, material.uploadedBy)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-1 min-w-[100px]"
+                              className="text-blue-500 hover:text-blue-400 transition duration-200 flex items-center justify-center"
                               title="Download file"
                             >
                               <i className="fas fa-download"></i>
-                              Download
                             </button>
                           </div>
                         </div>
