@@ -61,10 +61,6 @@ export default function HomePage() {
     navigate("/select-role");
   };
 
-  const handleAdminRegister = () => {
-    navigate("/admin-register");
-  };
-
   useEffect(() => {
     fetchUserCounts();
     // Track page visit
@@ -293,17 +289,6 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
                   Register
-                </button>
-              </div>
-              <div className="mt-4">
-                <button
-                  onClick={handleAdminRegister}
-                  className="w-full bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A7.968 7.968 0 015 16c0-4.418 3.582-8 8-8s8 3.582 8 8a7.968 7.968 0 01-.121 1.804m-15.758 0A9.003 9.003 0 0012 21a9.003 9.003 0 008.877-5.196m-15.758 0A9 9 0 0112 3a9 9 0 018.877 12.804" />
-                  </svg>
-                  Admin Registration
                 </button>
               </div>
             </div>

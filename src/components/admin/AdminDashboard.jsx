@@ -715,7 +715,7 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500 mb-4"></div>
           <div className="text-white">Loading Admin Dashboard...</div>
         </div>
       </div>
@@ -729,13 +729,6 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/')}
-                className="bg-red-500 text-white hover:bg-red-600 transition duration-200 px-3 py-2 rounded-lg"
-                title="Back to Home"
-              >
-                <FiHome className="w-5 h-5" />
-              </button>
               <h1 className="text-base sm:text-xl font-bold flex items-center gap-2">
                 <FiDatabase className="text-blue-500" />
                 Admin Dashboard
@@ -918,7 +911,7 @@ export default function AdminDashboard() {
                   <div className="flex gap-2">
                     <button
                       onClick={fetchFilteredData}
-                      className="flex-1 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200"
+                      className="flex-1 bg-violet-500 hover:bg-violet-600 px-4 py-2 rounded-lg transition duration-200"
                     >
                       Apply Filters
                     </button>
@@ -1209,7 +1202,7 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">User Management</h3>
-                  <button onClick={exportUsersToCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <button onClick={exportUsersToCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
                     <FiDownloadIcon className="w-5 h-5" /> Export
                   </button>
                 </div>
@@ -1309,7 +1302,7 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500 mx-auto mb-4"></div>
                     <p className="text-gray-400">Loading user data...</p>
                   </div>
                 )}
@@ -1324,7 +1317,7 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">Educator Classes Summary</h3>
-                  <button onClick={exportClassesSummaryCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <button onClick={exportClassesSummaryCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
                     <FiDownloadIcon className="w-5 h-5" /> Export
                   </button>
                 </div>
@@ -1411,7 +1404,7 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">Class Details</h3>
-                  <button onClick={exportClassDetailsCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <button onClick={exportClassDetailsCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
                     <FiDownloadIcon className="w-5 h-5" /> Export
                   </button>
                 </div>
@@ -1659,7 +1652,7 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">Feedback Overview</h3>
-                  <button onClick={exportFeedbackCSV} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <button onClick={exportFeedbackCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
                     <FiDownloadIcon className="w-5 h-5" /> Export
                   </button>
                 </div>
@@ -1710,7 +1703,7 @@ export default function AdminDashboard() {
                       <option value="bug">Bug Report</option>
                       <option value="feature">Feature Request</option>
                     </select>
-                    <button className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">
+                    <button className="bg-violet-600 hover:bgviolet-700 px-4 py-2 rounded-lg">
                       Apply Filters
                     </button>
                   </div>
