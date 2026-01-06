@@ -774,6 +774,8 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -795,6 +797,7 @@ export default function AdminDashboard() {
               </div>
               <FiUsers className="w-8 h-8 text-blue-500" />
             </div>
+            
           </div>
 
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -809,6 +812,18 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <FiBook className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Total Feedback</p>
+                <p className="text-3xl font-bold mt-2">
+                  {feedbackStats?.total || 0}
+                </p>
+              </div>
+              <FiMessageSquare className="w-8 h-8 text-indigo-500" />
             </div>
           </div>
 
@@ -863,74 +878,6 @@ export default function AdminDashboard() {
               <FiDownload className="w-8 h-8 text-orange-500" />
             </div>
           </div>
-        </div>
-
-        {/* Filter Section */}
-        <div className="mb-8">
-          <button
-            onClick={() => setFilterOpen(!filterOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition duration-200 mb-4"
-          >
-            <FiFilter /> {filterOpen ? 'Hide Filters' : 'Show Filters'}
-          </button>
-          
-          {filterOpen && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">End Date</label>
-                  <input
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">User Role</label>
-                  <select
-                    value={filters.role}
-                    onChange={(e) => handleFilterChange('role', e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  >
-                    <option value="">All Roles</option>
-                    <option value="student">Student</option>
-                    <option value="educator">Educator</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Actions</label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={fetchFilteredData}
-                      className="flex-1 bg-violet-500 hover:bg-violet-600 px-4 py-2 rounded-lg transition duration-200"
-                    >
-                      Apply Filters
-                    </button>
-                    <button
-                      onClick={resetFilters}
-                      className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition duration-200"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Tabs */}
