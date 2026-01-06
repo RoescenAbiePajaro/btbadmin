@@ -217,7 +217,8 @@ export default function AdminDashboard() {
   const exportUsersToCSV = () => {
     if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
     const headers = ['Name','Email','Role','School','Status','Joined'];
-    const rows = filteredData.data.map(user => {
+    const sourceUsers = filters.role ? filteredData.data.filter(u => u.role === filters.role) : filteredData.data;
+    const rows = sourceUsers.map(user => {
       const values = [
         user.fullName || 'N/A',
         user.email || 'N/A',
@@ -1233,7 +1234,7 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {filteredData.data && filteredData.data.length > 0 ? (
-                          filteredData.data.map((user, index) => {
+                          (filters.role ? filteredData.data.filter(u => u.role === filters.role) : filteredData.data).map((user, index) => {
                             // Get school for educator from their classes
                             let userSchool = user.school;
                             
@@ -1686,18 +1687,30 @@ export default function AdminDashboard() {
                 {/* Feedback Filters */}
                 <div className="mb-6">
                   <div className="flex flex-wrap gap-4 mb-4">
-                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    <select
+                      value={feedbackFilters.status}
+                      onChange={(e) => setFeedbackFilters(prev => ({ ...prev, status: e.target.value }))}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
                       <option value="all">All Status</option>
                       <option value="pending">Pending</option>
                       <option value="reviewed">Reviewed</option>
                       <option value="resolved">Resolved</option>
                     </select>
-                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    <select
+                      value={feedbackFilters.role}
+                      onChange={(e) => setFeedbackFilters(prev => ({ ...prev, role: e.target.value }))}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
                       <option value="all">All Roles</option>
                       <option value="student">Student</option>
                       <option value="educator">Educator</option>
                     </select>
-                    <select className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    <select
+                      value={feedbackFilters.category}
+                      onChange={(e) => setFeedbackFilters(prev => ({ ...prev, category: e.target.value }))}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
                       <option value="all">All Categories</option>
                       <option value="general">General Feedback</option>
                       <option value="bug">Bug Report</option>
@@ -1706,7 +1719,10 @@ export default function AdminDashboard() {
                       <option value="compliment">Compliment</option>
                       <option value="other">Other</option>
                     </select>
-                    <button className="bg-violet-600 hover:bgviolet-700 px-4 py-2 rounded-lg">
+                    <button
+                      onClick={fetchFeedbackData}
+                      className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg"
+                    >
                       Apply Filters
                     </button>
                   </div>
