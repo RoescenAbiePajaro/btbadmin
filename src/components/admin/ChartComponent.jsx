@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell
@@ -19,8 +19,61 @@ export default function ChartComponent({
   timeRange,
   handleTimeRangeChange
 }) {
+  const [dateFilters, setDateFilters] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
+  // Filter data based on date range
+  const filterDataByDateRange = (data) => {
+    if (!data || (!dateFilters.startDate && !dateFilters.endDate)) {
+      return data;
+    }
+
+    return data.filter(item => {
+      const itemDate = new Date(item.date || item._id);
+      const startDate = dateFilters.startDate ? new Date(dateFilters.startDate) : null;
+      const endDate = dateFilters.endDate ? new Date(dateFilters.endDate) : null;
+      
+      if (startDate && itemDate < startDate) return false;
+      if (endDate && itemDate > endDate) return false;
+      return true;
+    });
+  };
+
   return (
     <div className="space-y-8">
+      {/* Date Range Filters */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <FiCalendar /> Chart Filters
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <input
+            type="date"
+            value={dateFilters.startDate}
+            onChange={(e) => setDateFilters(prev => ({ ...prev, startDate: e.target.value }))}
+            placeholder="Start Date"
+            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+          />
+          <input
+            type="date"
+            value={dateFilters.endDate}
+            onChange={(e) => setDateFilters(prev => ({ ...prev, endDate: e.target.value }))}
+            placeholder="End Date"
+            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+          />
+          <button
+            onClick={() => setDateFilters({ startDate: '', endDate: '' })}
+            className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-white"
+          >
+            Clear Filters
+          </button>
+        </div>
+      </div>
+
       {/* School Trends Chart */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
@@ -43,7 +96,7 @@ export default function ChartComponent({
         </div>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={schoolTrends || []}>
+            <AreaChart data={filterDataByDateRange(schoolTrends) || []}>
               <defs>
                 <linearGradient id="colorSchools" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
@@ -124,7 +177,7 @@ export default function ChartComponent({
         </div>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={classTrends?.creationTrends || []}>
+            <AreaChart data={filterDataByDateRange(classTrends?.creationTrends) || []}>
               <defs>
                 <linearGradient id="colorClasses" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
@@ -180,7 +233,7 @@ export default function ChartComponent({
           <h3 className="text-lg font-bold mb-4 text-white">Login Trends</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={analyticsData.lineCharts.loginTrends.data}>
+              <LineChart data={filterDataByDateRange(analyticsData.lineCharts.loginTrends.data)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="date" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
@@ -218,7 +271,7 @@ export default function ChartComponent({
           <h3 className="text-lg font-bold mb-4 text-white">PC App Downloads</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={analyticsData.lineCharts.downloadTrends.data}>
+              <LineChart data={filterDataByDateRange(analyticsData.lineCharts.downloadTrends.data)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="date" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
@@ -236,7 +289,7 @@ export default function ChartComponent({
           <h3 className="text-lg font-bold mb-4 text-white">Page Visits</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={analyticsData.lineCharts.pageVisitTrends.data}>
+              <LineChart data={filterDataByDateRange(analyticsData.lineCharts.pageVisitTrends.data)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="date" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
