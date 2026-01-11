@@ -16,6 +16,11 @@ export default function ClassTabComponent({
   activeTab
 }) {
   const [educatorClassData, setEducatorClassData] = useState({});
+  const [classFilters, setClassFilters] = useState({
+    sortBy: 'className-asc',
+    startDate: '',
+    endDate: ''
+  });
 
   // Fetch class-related data when component mounts or activeTab changes
   useEffect(() => {
@@ -72,6 +77,42 @@ export default function ClassTabComponent({
       filteredData.data
     : [];
 
+  // Apply sorting and date filtering
+  const getFilteredAndSortedClasses = () => {
+    let classes = [...filteredClasses];
+    
+    // Apply date filtering
+    if (classFilters.startDate || classFilters.endDate) {
+      classes = classes.filter(cls => {
+        const classDate = new Date(cls.createdAt);
+        const startDate = classFilters.startDate ? new Date(classFilters.startDate) : null;
+        const endDate = classFilters.endDate ? new Date(classFilters.endDate) : null;
+        
+        if (startDate && classDate < startDate) return false;
+        if (endDate && classDate > endDate) return false;
+        return true;
+      });
+    }
+    
+    // Apply sorting
+    classes.sort((a, b) => {
+      switch (classFilters.sortBy) {
+        case 'className-asc':
+          return (a.className || '').localeCompare(b.className || '');
+        case 'className-desc':
+          return (b.className || '').localeCompare(a.className || '');
+        case 'newest':
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        case 'oldest':
+          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        default:
+          return 0;
+      }
+    });
+    
+    return classes;
+  };
+
   return (
     <div className="space-y-8">
       {/* Search Bar */}
@@ -94,7 +135,43 @@ export default function ClassTabComponent({
           <h3 className="text-lg font-bold text-white">Educator Classes Summary</h3>
           <ExportClassesSummary filteredData={filteredData} getSchoolName={getSchoolName} />
         </div>
-        
+
+        {/* Summary Filters */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-4 mb-4">
+            <select
+              value={classFilters.sortBy}
+              onChange={(e) => setClassFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="className-asc">A to Z</option>
+              <option value="className-desc">Z to A</option>
+              <option value="oldest">Oldest</option>
+              <option value="newest">Newest</option>
+            </select>
+            <input
+              type="date"
+              value={classFilters.startDate}
+              onChange={(e) => setClassFilters(prev => ({ ...prev, startDate: e.target.value }))}
+              placeholder="Start Date"
+              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+            <input
+              type="date"
+              value={classFilters.endDate}
+              onChange={(e) => setClassFilters(prev => ({ ...prev, endDate: e.target.value }))}
+              placeholder="End Date"
+              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+            <button
+              onClick={() => setClassFilters({ sortBy: 'className-asc', startDate: '', endDate: '' })}
+              className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
         {filteredData ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -170,7 +247,7 @@ export default function ClassTabComponent({
           <h3 className="text-lg font-bold text-white">Class Details</h3>
           <ExportClassDetails filteredData={filteredData} getSchoolName={getSchoolName} />
         </div>
-        
+
         {filteredData ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -212,8 +289,8 @@ export default function ClassTabComponent({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {filteredClasses.length > 0 ? (
-                  filteredClasses.map((cls, index) => (
+                {getFilteredAndSortedClasses().length > 0 ? (
+                  getFilteredAndSortedClasses().map((cls, index) => (
                     <tr key={cls._id || index} className="hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
                         {cls.classCode}
