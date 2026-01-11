@@ -14,6 +14,7 @@ import {
   FiAlertCircle, FiCheckCircle, FiRefreshCw, FiSearch,
   FiChevronUp, FiChevronDown, FiMoreVertical, FiMessageSquare, FiStar, FiSend, FiX
 } from 'react-icons/fi';
+import { ExportClassesSummary, ExportClassDetails, ExportUsers, ExportFeedback } from './ExportComponents.jsx';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -100,86 +101,6 @@ export default function AdminDashboard() {
     return school ? school.name : identifier;
   };
 
-  const exportClassesSummaryCSV = () => {
-    if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
-    const headers = ['Educator','Email','Total Classes','Active Classes','Total Students','School'];
-    const summary = Object.entries(
-      filteredData.data.reduce((acc, cls) => {
-        const educatorId = cls.educator?._id || 'unknown';
-        if (!acc[educatorId]) {
-          acc[educatorId] = {
-            name: cls.educator?.fullName || 'N/A',
-            email: cls.educator?.email || 'N/A',
-            classes: [],
-            totalClasses: 0,
-            activeClasses: 0,
-            totalStudents: 0
-          };
-        }
-        acc[educatorId].totalClasses += 1;
-        if (cls.isActive) acc[educatorId].activeClasses += 1;
-        acc[educatorId].totalStudents += cls.students?.length || 0;
-        acc[educatorId].classes.push(cls);
-        return acc;
-      }, {})
-    );
-    const rows = summary.map(([_, data]) => {
-      const schoolId = data.classes[0]?.school;
-      const values = [
-        data.name,
-        data.email,
-        data.totalClasses,
-        data.activeClasses,
-        data.totalStudents,
-        schoolId ? getSchoolName(schoolId) : 'Not specified'
-      ];
-      return values.map(v => {
-        const s = String(v).replace(/"/g, '""');
-        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
-        return s;
-      }).join(',');
-    });
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'classes_summary_' + new Date().toISOString().slice(0,10) + '.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportClassDetailsCSV = () => {
-    if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
-    const headers = ['Class Code','Class Name','Educator','Students','Course','Year','Block','Batch','Status'];
-    const rows = filteredData.data.map(cls => {
-      const values = [
-        cls.classCode || 'N/A',
-        cls.className || 'N/A',
-        cls.educator?.fullName || 'N/A',
-        cls.students?.length || 0,
-        cls.course || 'N/A',
-        cls.year || 'N/A',
-        cls.block || 'N/A',
-        cls.description || 'N/A',
-        cls.isActive ? 'Active' : 'Inactive'
-      ];
-      return values.map(v => {
-        const s = String(v).replace(/"/g, '""');
-        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
-        return s;
-      }).join(',');
-    });
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'class_details_' + new Date().toISOString().slice(0,10) + '.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const deriveUserSchool = (user) => {
     let userSchool = user.school;
     if (user.role === 'educator') {
@@ -218,66 +139,6 @@ export default function AdminDashboard() {
       }
     }
     return 'Not specified';
-  };
-
-  const exportUsersToCSV = () => {
-    if (!filteredData || !filteredData.data || filteredData.data.length === 0) return;
-    const headers = ['Name','Email','Role','School','Status','Joined'];
-    const sourceUsers = filters.role ? filteredData.data.filter(u => u.role === filters.role) : filteredData.data;
-    const rows = sourceUsers.map(user => {
-      const values = [
-        user.fullName || 'N/A',
-        user.email || 'N/A',
-        user.role || 'N/A',
-        deriveUserSchool(user),
-        user.isActive ? 'Active' : 'Inactive',
-        user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'
-      ];
-      return values.map(v => {
-        const s = String(v).replace(/"/g, '""');
-        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
-        return s;
-      }).join(',');
-    });
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'users_export_' + new Date().toISOString().slice(0,10) + '.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportFeedbackCSV = () => {
-    if (!feedbackData || feedbackData.length === 0) return;
-    const headers = ['User','Email','Role','Rating','Category','Message','Status','Date','School'];
-    const rows = feedbackData.map(item => {
-      const values = [
-        item.userName || 'N/A',
-        item.userEmail || 'N/A',
-        item.userRole || 'N/A',
-        item.rating ?? 'N/A',
-        item.category || 'N/A',
-        item.message || 'N/A',
-        item.status || 'N/A',
-        item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A',
-        item.school || 'N/A'
-      ];
-      return values.map(v => {
-        const s = String(v).replace(/"/g, '""');
-        if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
-        return s;
-      }).join(',');
-    });
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'feedback_' + new Date().toISOString().slice(0,10) + '.csv';
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   // Fetch dashboard statistics
@@ -1299,9 +1160,7 @@ export default function AdminDashboard() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
-                <button onClick={exportUsersToCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
-                  <FiDownloadIcon className="w-5 h-5" /> Export
-                </button>
+                <ExportUsers filteredData={filteredData} filters={filters} deriveUserSchool={deriveUserSchool} />
               </div>
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4">User Management</h3>
@@ -1440,9 +1299,7 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">Educator Classes Summary</h3>
-                  <button onClick={exportClassesSummaryCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
-                    <FiDownloadIcon className="w-5 h-5" /> Export
-                  </button>
+                  <ExportClassesSummary filteredData={filteredData} getSchoolName={getSchoolName} />
                 </div>
                 {filteredData ? (
                   <div className="overflow-x-auto">
@@ -1539,9 +1396,7 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">Class Details</h3>
-                  <button onClick={exportClassDetailsCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
-                    <FiDownloadIcon className="w-5 h-5" /> Export
-                  </button>
+                  <ExportClassDetails filteredData={filteredData} getSchoolName={getSchoolName} />
                 </div>
                 {filteredData ? (
                   <div className="overflow-x-auto">
@@ -1836,9 +1691,7 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">Feedback Overview</h3>
-                  <button onClick={exportFeedbackCSV} className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2">
-                    <FiDownloadIcon className="w-5 h-5" /> Export
-                  </button>
+                  <ExportFeedback feedbackData={feedbackData} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-gray-800 p-4 rounded-lg">
