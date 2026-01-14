@@ -17,7 +17,6 @@ const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
 const feedbackRoutes = require('./routes/feedback');
-const savedImagesRoutes = require('./routes/savedImages');
 
 // Load environment variables
 dotenv.config();
@@ -1332,7 +1331,7 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
     const classObj = await Class.findOne({
       _id: classId,
       educator: educatorId
-    }).populate('students', 'fullName email username school course year block');
+    }).populate('students', 'fullName email username school course year block createdAt');
 
     if (!classObj) {
       return createToastResponse(res, 404, 'Class not found or access denied', 'error');
@@ -2341,7 +2340,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
-app.use('/api/saved-images', savedImagesRoutes);
 
 // =====================
 // 🚀 SERVER START
@@ -2361,12 +2359,6 @@ app.listen(PORT, () => {
   console.log('  GET  /api/student/classes - Get all enrolled classes for student');
   console.log('  DELETE /api/users/educator/:id - Delete educator (admin only)');
   console.log('  GET  /api/admin/cleanup - Clean up orphaned data (admin only)');
-  console.log('  GET  /api/saved-images/educator - Get educator saved images');
-  console.log('  GET  /api/saved-images/student - Get student saved images');
-  console.log('  GET  /api/saved-images/proxy/:id - Proxy image through backend');
-  console.log('  GET  /api/saved-images/thumbnail/:id - Get image thumbnail');
-  console.log('  DELETE /api/saved-images/:id - Delete saved image');
-  console.log('  POST /api/saved-images/sync - Sync images to Supabase');
 });
 
 // Handle unhandled promise rejections
