@@ -2536,6 +2536,38 @@ app.listen(PORT, () => {
   console.log('  GET  /api/student/classes - Get all enrolled classes for student');
   console.log('  DELETE /api/users/educator/:id - Delete educator (admin only)');
   console.log('  GET  /api/admin/cleanup - Clean up orphaned data (admin only)');
+  console.log('  GET  /api/debug/saved-images - Debug endpoint to check saved_images collection contents');
+});
+
+// Debug: Check what's in saved_images collection
+app.get('/api/debug/saved-images', async (req, res) => {
+  try {
+    const count = await SavedImage.countDocuments();
+    const sampleImages = await SavedImage.find()
+      .sort({ created_at: -1 })
+      .limit(10)
+      .select('user_email file_name image_type created_at file_size')
+      .lean();
+    
+    // Also check if there's data in save_uploads collection
+    const saveUploadsCount = await mongoose.connection.db.collection('save_uploads').countDocuments();
+    
+    res.json({
+      saved_images: {
+        total: count,
+        samples: sampleImages,
+        collectionName: 'saved_images'
+      },
+      save_uploads: {
+        total: saveUploadsCount,
+        collectionName: 'save_uploads'
+      },
+      database: mongoose.connection.name
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Handle unhandled promise rejections
