@@ -2246,6 +2246,173 @@ app.get('/api/files/all-classes', verifyToken, async (req, res) => {
 });
 
 // =====================
+// 🖼️ SAVED IMAGES ENDPOINTS
+// =====================
+
+// Get saved images for educator
+app.get('/api/saved-images/educator', verifyToken, requireEducator, async (req, res) => {
+  try {
+    const educatorId = req.user.id;
+    
+    const savedImages = await supabase
+      .from('saved_images')
+      .select('*')
+      .eq('user_role', 'educator')
+      .eq('user_email', req.user.email)
+      .order('created_at', { ascending: false });
+
+    if (savedImages.error) {
+      console.error('Supabase error:', savedImages.error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error fetching images from database'
+      });
+    }
+
+    res.json({
+      success: true,
+      images: savedImages.data || [],
+      count: savedImages.data?.length || 0
+    });
+  } catch (error) {
+    console.error('Error fetching educator saved images:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error fetching images'
+    });
+  }
+});
+
+// Get saved images for student
+app.get('/api/saved-images/student', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    
+    const savedImages = await supabase
+      .from('saved_images')
+      .select('*')
+      .eq('user_role', 'student')
+      .eq('user_email', req.user.email)
+      .order('created_at', { ascending: false });
+
+    if (savedImages.error) {
+      console.error('Supabase error:', savedImages.error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error fetching images from database'
+      });
+    }
+
+    res.json({
+      success: true,
+      images: savedImages.data || [],
+      count: savedImages.data?.length || 0
+    });
+  } catch (error) {
+    console.error('Error fetching student saved images:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error fetching images'
+    });
+  }
+});
+
+// Get all saved images (admin only)
+app.get('/api/saved-images/all', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const savedImages = await supabase
+      .from('saved_images')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (savedImages.error) {
+      console.error('Supabase error:', savedImages.error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error fetching images from database'
+      });
+    }
+
+    res.json({
+      success: true,
+      images: savedImages.data || [],
+      count: savedImages.data?.length || 0
+    });
+  } catch (error) {
+    console.error('Error fetching all saved images:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error fetching images'
+    });
+  }
+});
+
+// Delete saved image (owner or admin only)
+app.delete('/api/saved-images/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    const userEmail = req.user.email;
+
+    // First, get the image to check ownership
+    const { data: image, error: fetchError } = await supabase
+      .from('saved_images')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !image) {
+      return res.status(404).json({
+        success: false,
+        error: 'Image not found'
+      });
+    }
+
+    // Check permissions
+    if (userRole !== 'admin' && image.user_email !== userEmail) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only delete your own images'
+      });
+    }
+
+    // Delete the image
+    const { error: deleteError } = await supabase
+      .from('saved_images')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      return res.status(500).json({
+        success: false,
+        error: 'Error deleting image from database'
+      });
+    }
+
+    // Optionally delete from storage too
+    try {
+      await supabase.storage
+        .from(image.bucket || 'class-files')
+        .remove([image.storage_path]);
+    } catch (storageError) {
+      console.warn('Could not delete from storage:', storageError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Image deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting saved image:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error deleting image'
+    });
+  }
+});
+
+// =====================
 // 🧹 ADMIN CLEANUP
 // =====================
 
