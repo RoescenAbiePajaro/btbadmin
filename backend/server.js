@@ -2412,7 +2412,7 @@ app.get('/api/saved-images/all', verifyToken, async (req, res) => {
     // Fetch from both sources in parallel
     const [mongoResponse, supabaseResponse] = await Promise.allSettled([
       // MongoDB fetch
-      axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/saved-images/${user.role}`, {
+      axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/${user.role}`, {
         headers: { Authorization: req.headers.authorization }
       }).catch(err => ({ data: { images: [] } })),
       

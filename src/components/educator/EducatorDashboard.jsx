@@ -53,7 +53,7 @@ export default function EducatorDashboard() {
         // Use sendBeacon for reliable logout request on page unload
         const data = new FormData();
         data.append('token', token);
-        navigator.sendBeacon(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/logout`, data);
+        navigator.sendBeacon(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/logout`, data);
       }
     };
 

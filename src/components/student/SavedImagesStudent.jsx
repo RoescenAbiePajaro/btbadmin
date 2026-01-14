@@ -29,7 +29,7 @@ const SavedImagesStudent = () => {
       const token = localStorage.getItem('token');
       
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/student`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/student`,
         {
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -68,7 +68,7 @@ const SavedImagesStudent = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/proxy/${image.id || image._id}`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/proxy/${image.id || image._id}`,
         {
           headers: { 
             Authorization: `Bearer ${token}`
@@ -99,7 +99,7 @@ const SavedImagesStudent = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `${process.env.REACT_APP_API_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/${imageId}`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/${imageId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -117,7 +117,7 @@ const SavedImagesStudent = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/sync`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/sync`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -272,7 +272,7 @@ const SavedImagesStudent = () => {
             <div key={image.id || image._id} className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 group">
               <div className="relative pb-[75%] bg-gray-800 overflow-hidden">
                 <img
-                  src={image.thumbnailUrl || `${process.env.REACT_APP_API_URL || ''}/api/saved-images/thumbnail/${image.id || image._id}`}
+                  src={image.thumbnailUrl || `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/thumbnail/${image.id || image._id}`}
                   alt={image.file_name}
                   className="absolute inset-0 w-full h-full object-contain bg-gray-800 group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
@@ -407,7 +407,7 @@ const SavedImagesStudent = () => {
             
             <div className="h-[70vh] flex items-center justify-center bg-gray-800 p-4">
               <img
-                src={selectedImage.proxyUrl || `${process.env.REACT_APP_API_URL || ''}/api/saved-images/proxy/${selectedImage.id || selectedImage._id}`}
+                src={selectedImage.proxyUrl || `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/proxy/${selectedImage.id || selectedImage._id}`}
                 alt={selectedImage.file_name}
                 className="max-w-full max-h-full object-contain"
                 onError={(e) => {

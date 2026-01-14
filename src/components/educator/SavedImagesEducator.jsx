@@ -14,7 +14,7 @@ const SavedImagesEducator = () => {
       
       // Use the new combined endpoint
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/all`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/all`,
         {
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -49,7 +49,7 @@ const SavedImagesEducator = () => {
   const getImageUrl = (image) => {
     // Priority: 1. image_url, 2. supabase_url, 3. proxy_url
     return image.image_url || image.supabase_url || image.proxy_url || 
-      `${process.env.REACT_APP_API_URL || ''}/api/saved-images/proxy/${image.id || image._id}`;
+      `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/proxy/${image.id || image._id}`;
   };
 
   // Helper function to get thumbnail URL
@@ -58,7 +58,7 @@ const SavedImagesEducator = () => {
     if (image.image_url && image.image_url.includes('supabase')) {
       return `${image.image_url}?width=300&height=200&resize=cover`;
     }
-    return `${process.env.REACT_APP_API_URL || ''}/api/saved-images/thumbnail/${image.id || image._id}`;
+    return `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/thumbnail/${image.id || image._id}`;
   };
 
   // Download function
