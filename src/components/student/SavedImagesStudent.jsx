@@ -1,4 +1,4 @@
-// src/components/student/SavedImagesStudent.jsx
+// src/components/student/SavedImagesStudent.jsx - Updated
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -11,7 +11,6 @@ const SavedImagesStudent = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
       
       const response = await axios.get(
         `${process.env.REACT_APP_API_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/student`,
@@ -33,6 +32,33 @@ const SavedImagesStudent = () => {
     }
   };
 
+  const downloadImage = async (image) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL || 'https://btbtestservice.onrender.com'}/api/saved-images/proxy/${image.id}`,
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`
+          },
+          responseType: 'blob'
+        }
+      );
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', image.file_name || 'image.png');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading image:', err);
+      alert('Failed to download image');
+    }
+  };
+
   useEffect(() => {
     fetchSavedImages();
   }, []);
@@ -41,6 +67,7 @@ const SavedImagesStudent = () => {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <span className="ml-4 text-gray-400">Loading secure images...</span>
       </div>
     );
   }
@@ -49,6 +76,12 @@ const SavedImagesStudent = () => {
     return (
       <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
         <p className="text-red-300">{error}</p>
+        <button
+          onClick={fetchSavedImages}
+          className="mt-2 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
@@ -56,7 +89,12 @@ const SavedImagesStudent = () => {
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-white">My Saved Images</h3>
+        <div>
+          <h3 className="text-xl font-bold text-white">My Saved Images</h3>
+          <p className="text-gray-400 text-sm">
+            Securely loaded through backend proxy
+          </p>
+        </div>
         <button
           onClick={fetchSavedImages}
           className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center gap-2"
@@ -79,51 +117,48 @@ const SavedImagesStudent = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {images.map((image) => (
-            <div key={image.id} className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+            <div key={image.id} className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 transition-colors group">
               <div className="relative pb-[75%] bg-gray-800">
-                {image.image_url ? (
-                  <img
-                    src={image.image_url}
-                    alt={image.file_name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = '/placeholder-image.png';
-                    }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <img
+                  src={image.thumbnailUrl || `${process.env.REACT_APP_API_URL || ''}/api/saved-images/thumbnail/${image.id}`}
+                  alt={image.file_name}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `${process.env.REACT_APP_API_URL || ''}/placeholder.png`;
+                  }}
+                />
+                <div className="absolute bottom-2 right-2 bg-black/70 rounded-full p-1">
+                  <span className="text-xs text-white px-2 py-1">
+                    {image.image_type === 'transparent' ? 'Transparent' : 'Template'}
+                  </span>
+                </div>
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <button
+                    onClick={() => downloadImage(image)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                  </div>
-                )}
+                    Download
+                  </button>
+                </div>
               </div>
               <div className="p-4">
                 <p className="text-sm text-gray-300 truncate">{image.file_name}</p>
-                <div className="mt-2 flex justify-between items-center">
-                  <span className="text-xs text-gray-500">
+                <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
+                  <span>
                     {image.created_at ? new Date(image.created_at).toLocaleDateString() : 'Unknown date'}
                   </span>
-                  <div className="flex gap-2">
-                    <a
-                      href={image.image_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 text-sm"
-                    >
-                      View
-                    </a>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(image.image_url)}
-                      className="text-gray-400 hover:text-gray-300 text-sm"
-                      title="Copy URL"
-                    >
-                      Copy Link
-                    </button>
-                  </div>
+                  <span className="text-green-400 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                    Secure
+                  </span>
                 </div>
               </div>
             </div>
