@@ -4,6 +4,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
+const { createClient } = require('@supabase/supabase-js');
 
 const User = require('./models/User');
 const Class = require('./models/Class');
@@ -20,6 +22,12 @@ const feedbackRoutes = require('./routes/feedback');
 
 // Load environment variables
 dotenv.config();
+
+// Initialize Supabase client in backend
+const supabaseClient = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE // Use service role for backend
+);
 
 // Debug: Check if MongoDB URI is loaded
 console.log('Environment loaded:', process.env.NODE_ENV || 'development');
@@ -985,11 +993,11 @@ app.post('/api/classes/leave', verifyToken, requireStudent, async (req, res) => 
     const isInClass = student.classes && student.classes.some(clsId => 
       clsId && clsId.toString() === classObj._id.toString()
     );
-    
+
     if (!isInClass) {
       return createToastResponse(res, 400, 'You are not enrolled in this class', 'error');
     }
-    
+
     // Remove class from student's arrays
     student.classes = student.classes.filter(clsId => 
       clsId.toString() !== classObj._id.toString()
@@ -998,8 +1006,9 @@ app.post('/api/classes/leave', verifyToken, requireStudent, async (req, res) => 
       code !== classObj.classCode
     );
     
-    // If leaving current enrolled class, set enrolledClass to another class or null
-    if (student.enrolledClass && student.enrolledClass.toString() === classObj._id.toString()) {
+    // If leaving current enrolled class, set to another or null
+    if (student.enrolledClass && 
+        student.enrolledClass.toString() === classObj._id.toString()) {
       student.enrolledClass = student.classes.length > 0 ? student.classes[0] : null;
     }
     
@@ -1331,7 +1340,7 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
     const classObj = await Class.findOne({
       _id: classId,
       educator: educatorId
-    }).populate('students', 'fullName email username school course year block createdAt');
+    }).populate('students', 'fullName email username school course year block');
 
     if (!classObj) {
       return createToastResponse(res, 404, 'Class not found or access denied', 'error');
@@ -2330,6 +2339,159 @@ app.get('/api/admin/cleanup', verifyToken, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Cleanup error:', error);
     return createToastResponse(res, 500, 'Server error during cleanup', 'error');
+  }
+});
+
+// =====================
+// 📸 GET IMAGES FROM SUPABASE
+// =====================
+app.get('/api/supabase/images', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    // Query Supabase saved_images table
+    const { data: supabaseImages, error } = await supabaseClient
+      .from('saved_images')
+      .select('*')
+      .eq('user_email', user.email.toLowerCase())
+      .eq('user_role', user.role)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Supabase query error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch images from Supabase'
+      });
+    }
+    
+    // Process images to ensure they have proper URLs
+    const processedImages = (supabaseImages || []).map(image => {
+      // Generate the correct URL format
+      let imageUrl = image.image_url;
+      
+      // If no URL exists, generate one
+      if (!imageUrl && image.storage_path) {
+        const bucket = image.bucket_name || 'class-files';
+        imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${image.storage_path}`;
+      }
+      
+      return {
+        ...image,
+        id: image.id, // Supabase ID
+        _id: image.id, // For compatibility
+        image_url: imageUrl,
+        supabase_record_id: image.id,
+        source: 'supabase'
+      };
+    });
+    
+    res.json({
+      success: true,
+      images: processedImages,
+      count: processedImages.length,
+      source: 'supabase'
+    });
+    
+  } catch (error) {
+    console.error('Error fetching Supabase images:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error fetching images'
+    });
+  }
+});
+
+// =====================
+// 🔄 COMBINED IMAGES ENDPOINT
+// =====================
+app.get('/api/saved-images/all', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    // Fetch from both sources in parallel
+    const [mongoResponse, supabaseResponse] = await Promise.allSettled([
+      // MongoDB fetch
+      axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/saved-images/${user.role}`, {
+        headers: { Authorization: req.headers.authorization }
+      }).catch(err => ({ data: { images: [] } })),
+      
+      // Supabase fetch (using our new endpoint)
+      supabaseClient
+        .from('saved_images')
+        .select('*')
+        .eq('user_email', user.email.toLowerCase())
+        .eq('user_role', user.role)
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data || [];
+        })
+        .catch(err => [])
+    ]);
+    
+    const mongoImages = mongoResponse.status === 'fulfilled' 
+      ? (mongoResponse.value.data.images || [])
+      : [];
+    
+    const supabaseImages = supabaseResponse.status === 'fulfilled' 
+      ? supabaseResponse.value
+      : [];
+    
+    // Merge and deduplicate
+    const allImages = [...mongoImages, ...supabaseImages];
+    const uniqueImages = [];
+    const seenUrls = new Set();
+    
+    allImages.forEach(image => {
+      // Use image_url or storage_path as unique identifier
+      const uniqueKey = image.image_url || image.storage_path || image.file_path;
+      
+      if (uniqueKey && !seenUrls.has(uniqueKey)) {
+        seenUrls.add(uniqueKey);
+        
+        // Ensure URL is properly formatted
+        let displayUrl = image.image_url;
+        if (!displayUrl && image.storage_path) {
+          const bucket = image.bucket_name || 'class-files';
+          displayUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${image.storage_path}`;
+        }
+        
+        uniqueImages.push({
+          ...image,
+          id: image.id || image._id,
+          _id: image._id || image.id,
+          image_url: displayUrl,
+          supabase_url: displayUrl,
+          proxy_url: `/api/saved-images/proxy/${image.id || image._id}`,
+          source: image.supabase_record_id ? 'supabase' : 'mongodb'
+        });
+      }
+    });
+    
+    // Sort by date
+    uniqueImages.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.upload_date || 0);
+      const dateB = new Date(b.created_at || b.upload_date || 0);
+      return dateB - dateA;
+    });
+    
+    res.json({
+      success: true,
+      images: uniqueImages,
+      counts: {
+        total: uniqueImages.length,
+        supabase: supabaseImages.length,
+        mongodb: mongoImages.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching combined images:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch images'
+    });
   }
 });
 
