@@ -12,13 +12,12 @@ const AccessCode = require('./models/AccessCode');
 const Click = require('./models/Click');
 const FileActivity = require('./models/FileActivity');
 const File = require('./models/File');
-const SavedImage = require('./models/SavedImage');
 const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
 const feedbackRoutes = require('./routes/feedback');
-const savedImagesRoutes = require('./routes/savedImagesRoutes');
+const savedImagesRoutes = require('./routes/savedImages');
 
 // Load environment variables
 dotenv.config();
@@ -1333,7 +1332,7 @@ app.get('/api/classes/:classId/students', verifyToken, async (req, res) => {
     const classObj = await Class.findOne({
       _id: classId,
       educator: educatorId
-    }).populate('students', 'fullName email username school course year block createdAt');
+    }).populate('students', 'fullName email username school course year block');
 
     if (!classObj) {
       return createToastResponse(res, 404, 'Class not found or access denied', 'error');
@@ -2248,180 +2247,6 @@ app.get('/api/files/all-classes', verifyToken, async (req, res) => {
 });
 
 // =====================
-// 🖼️ SAVED IMAGES ENDPOINTS (UPDATED TO USE MONGODB)
-// =====================
-
-// Get saved images for educator
-app.get('/api/saved-images/educator', verifyToken, async (req, res) => {
-  try {
-    const user = req.user;
-    
-    // Check if user is educator
-    if (user.role !== 'educator') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Educators only.'
-      });
-    }
-
-    // Educators can see all images or filter by specific user
-    let query = {};
-    
-    // Optional: filter by specific student email if provided
-    if (req.query.user_email) {
-      query.user_email = req.query.user_email.toLowerCase();
-    }
-
-    const images = await SavedImage.find(query)
-      .sort({ created_at: -1 })
-      .select('-image_data') // Don't send base64 data
-      .lean();
-
-    res.json({
-      success: true,
-      images: images.map(img => ({
-        ...img,
-        id: img._id
-      }))
-    });
-  } catch (error) {
-    console.error('Error fetching educator saved images:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error fetching images'
-    });
-  }
-});
-
-// Get saved images for student
-app.get('/api/saved-images/student', verifyToken, async (req, res) => {
-  try {
-    const user = req.user;
-    
-    // Only students can access their own images
-    if (user.role !== 'student') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Students only.'
-      });
-    }
-
-    // Get student's images
-    const images = await SavedImage.find({ 
-      user_email: user.email.toLowerCase()
-    })
-    .sort({ created_at: -1 })
-    .select('-image_data') // Don't send base64 data
-    .lean();
-
-    res.json({
-      success: true,
-      images: images.map(img => ({
-        ...img,
-        id: img._id
-      }))
-    });
-  } catch (error) {
-    console.error('Error fetching student saved images:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error fetching images'
-    });
-  }
-});
-
-// Delete saved image
-app.delete('/api/saved-images/:id', verifyToken, async (req, res) => {
-  try {
-    const user = req.user;
-    const imageId = req.params.id;
-
-    const image = await SavedImage.findById(imageId);
-
-    if (!image) {
-      return res.status(404).json({
-        success: false,
-        message: 'Image not found'
-      });
-    }
-
-    // Check permissions
-    // Students can only delete their own images
-    // Educators can delete any image
-    if (user.role === 'student' && image.user_email !== user.email.toLowerCase()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only delete your own images.'
-      });
-    }
-
-    await SavedImage.findByIdAndDelete(imageId);
-
-    res.json({
-      success: true,
-      message: 'Image deleted successfully'
-    });
-  } catch (error) {
-    console.error('Error deleting saved image:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error deleting image'
-    });
-  }
-});
-
-// Save image from VirtualPainter
-app.post('/api/saved-images', verifyToken, async (req, res) => {
-  try {
-    const user = req.user;
-    const {
-      file_name,
-      file_size,
-      image_data,
-      image_type = 'template',
-      image_url = '',
-      storage_path = ''
-    } = req.body;
-
-    // Validate required fields
-    if (!file_name || !file_size || !image_data) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: file_name, file_size, image_data'
-      });
-    }
-
-    // Create new saved image
-    const savedImage = new SavedImage({
-      user_email: user.email.toLowerCase(),
-      user_role: user.role,
-      full_name: user.fullName || '',
-      file_name,
-      file_size,
-      image_data, // base64 encoded
-      image_type,
-      image_url,
-      storage_path,
-      app_version: '1.0.0'
-    });
-
-    await savedImage.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Image saved successfully',
-      image: savedImage.toResponse()
-    });
-  } catch (error) {
-    console.error('Error saving image:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error saving image'
-    });
-  }
-});
-
-// =====================
 // 🧹 ADMIN CLEANUP
 // =====================
 
@@ -2536,38 +2361,12 @@ app.listen(PORT, () => {
   console.log('  GET  /api/student/classes - Get all enrolled classes for student');
   console.log('  DELETE /api/users/educator/:id - Delete educator (admin only)');
   console.log('  GET  /api/admin/cleanup - Clean up orphaned data (admin only)');
-  console.log('  GET  /api/debug/saved-images - Debug endpoint to check saved_images collection contents');
-});
-
-// Debug: Check what's in saved_images collection
-app.get('/api/debug/saved-images', async (req, res) => {
-  try {
-    const count = await SavedImage.countDocuments();
-    const sampleImages = await SavedImage.find()
-      .sort({ created_at: -1 })
-      .limit(10)
-      .select('user_email file_name image_type created_at file_size')
-      .lean();
-    
-    // Also check if there's data in save_uploads collection
-    const saveUploadsCount = await mongoose.connection.db.collection('save_uploads').countDocuments();
-    
-    res.json({
-      saved_images: {
-        total: count,
-        samples: sampleImages,
-        collectionName: 'saved_images'
-      },
-      save_uploads: {
-        total: saveUploadsCount,
-        collectionName: 'save_uploads'
-      },
-      database: mongoose.connection.name
-    });
-  } catch (error) {
-    console.error('Debug error:', error);
-    res.status(500).json({ error: error.message });
-  }
+  console.log('  GET  /api/saved-images/educator - Get educator saved images');
+  console.log('  GET  /api/saved-images/student - Get student saved images');
+  console.log('  GET  /api/saved-images/proxy/:id - Proxy image through backend');
+  console.log('  GET  /api/saved-images/thumbnail/:id - Get image thumbnail');
+  console.log('  DELETE /api/saved-images/:id - Delete saved image');
+  console.log('  POST /api/saved-images/sync - Sync images to Supabase');
 });
 
 // Handle unhandled promise rejections
