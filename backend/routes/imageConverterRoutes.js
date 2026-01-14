@@ -14,6 +14,8 @@ const { PDFDocument: PDFLibDocument } = require('pdf-lib');
 const mammoth = require('mammoth');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
+const officegen = require('officegen');
+const PptxGenJS = require('pptxgenjs');
 
 // Ensure temp directories exist
 const tempUploadDir = 'temp-uploads';
@@ -176,10 +178,10 @@ async function processConversion(conversionId, files, conversionType, classCode,
         result = await convertImagesToPDF(files, outputFilePath);
         break;
       case 'docx':
-        result = await convertImagesToSimpleDOCX(files, outputFilePath);
+        result = await convertImagesToDOCX(files, outputFilePath);
         break;
       case 'pptx':
-        result = await convertImagesToSimplePPTX(files, outputFilePath);
+        result = await convertImagesToPPTX(files, outputFilePath);
         break;
       default:
         throw new Error(`Unsupported conversion type: ${conversionType}`);
@@ -289,35 +291,27 @@ async function convertImagesToPDF(files, outputPath) {
       const writeStream = fs.createWriteStream(outputPath);
       doc.pipe(writeStream);
 
-      // Process each image
       for (const file of files) {
         try {
-          // Create a new page for each image
           doc.addPage();
           
-          // Get image dimensions
           const imageInfo = await sharp(file.path).metadata();
-          
-          // Calculate dimensions to fit page (with margins)
-          const pageWidth = doc.page.width - 100; // 50px margins on both sides
+          const pageWidth = doc.page.width - 100;
           const pageHeight = doc.page.height - 100;
           
           let width = imageInfo.width;
           let height = imageInfo.height;
           
-          // Scale image to fit page while maintaining aspect ratio
           const widthRatio = pageWidth / width;
           const heightRatio = pageHeight / height;
-          const scale = Math.min(widthRatio, heightRatio, 1); // Don't scale up
+          const scale = Math.min(widthRatio, heightRatio, 1);
           
           width *= scale;
           height *= scale;
           
-          // Center the image on the page
           const x = (doc.page.width - width) / 2;
           const y = (doc.page.height - height) / 2;
           
-          // Add image to PDF
           doc.image(file.path, x, y, {
             width: width,
             height: height,
@@ -326,7 +320,6 @@ async function convertImagesToPDF(files, outputPath) {
             valign: 'center'
           });
           
-          // Add image filename as caption
           doc.moveDown();
           doc.fontSize(10);
           doc.text(path.basename(file.originalname), {
@@ -336,7 +329,6 @@ async function convertImagesToPDF(files, outputPath) {
           
         } catch (imageError) {
           console.warn(`Error processing image ${file.originalname}:`, imageError.message);
-          // Add placeholder for failed image
           doc.addPage();
           doc.fontSize(16).text(`Image: ${path.basename(file.originalname)}`, 50, 50);
           doc.fontSize(12).text('(Could not process this image)', 50, 80);
@@ -360,169 +352,312 @@ async function convertImagesToPDF(files, outputPath) {
   });
 }
 
-// Convert images to DOCX (create a simple HTML and convert to DOCX)
+// Convert images to DOCX using officegen
 async function convertImagesToDOCX(files, outputPath) {
+  return new Promise((resolve, reject) => {
+    try {
+      const docx = officegen('docx');
+      
+      docx.on('finalize', function(written) {
+        console.log(`DOCX created successfully: ${outputPath}, size: ${written} bytes`);
+        resolve();
+      });
+      
+      docx.on('error', function(err) {
+        reject(err);
+      });
+      
+      const output = fs.createWriteStream(outputPath);
+      docx.generate(output);
+      
+      const pObj = docx.createP();
+      pObj.addText('Converted Images Document', { 
+        font_size: 24, 
+        bold: true, 
+        align: 'center' 
+      });
+      
+      const pMeta = docx.createP();
+      pMeta.addText(`Total images: ${files.length}`, { font_size: 12 });
+      
+      files.forEach((file, index) => {
+        if (index > 0) {
+          docx.createPageBreak();
+        }
+        
+        const pTitle = docx.createP();
+        pTitle.addText(`Image ${index + 1}: ${path.basename(file.originalname)}`, { 
+          font_size: 14, 
+          bold: true 
+        });
+        
+        try {
+          const imageBuffer = fs.readFileSync(file.path);
+          docx.createImage({
+            path: file.path,
+            cx: 400, 
+            cy: 300, 
+          });
+          
+          const pInfo = docx.createP();
+          pInfo.addText(`Size: ${formatFileSize(file.size)} | Position: ${index + 1}/${files.length}`, {
+            font_size: 10,
+            color: '666666'
+          });
+          
+        } catch (imageError) {
+          console.warn(`Error adding image to DOCX: ${imageError.message}`);
+          
+          const pError = docx.createP();
+          pError.addText(`[Image ${index + 1}: ${path.basename(file.originalname)} - Failed to load]`, {
+            font_size: 12,
+            color: 'ff0000',
+            italics: true
+          });
+        }
+      });
+      
+      output.on('finish', function() {
+        console.log('DOCX generation complete');
+      });
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+// Convert images to PPTX using pptxgenjs
+async function convertImagesToPPTX(files, outputPath) {
   return new Promise(async (resolve, reject) => {
     try {
-      // Create HTML content with images
-      let htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            .image-container { margin: 20px 0; text-align: center; }
-            img { max-width: 100%; height: auto; }
-            .caption { font-size: 12px; color: #666; margin-top: 10px; }
-            .page-break { page-break-after: always; }
-          </style>
-        </head>
-        <body>
-          <h1>Converted Images Document</h1>
-          <p>Total images: ${files.length}</p>
-      `;
-
-      // Add each image to HTML
+      const pptx = new PptxGenJS();
+      
+      pptx.title = 'Converted Images Presentation';
+      pptx.author = 'EduPulse Image Converter';
+      pptx.company = 'EduPulse';
+      
+      pptx.layout = 'LAYOUT_WIDE';
+      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        
         try {
-          // Convert image to base64 for embedding in HTML
+          const slide = pptx.addSlide();
+          
+          slide.addText(`Slide ${i + 1}: ${path.basename(file.originalname)}`, {
+            x: 1.0,
+            y: 0.5,
+            w: 8.0,
+            h: 1.0,
+            fontSize: 24,
+            bold: true,
+            align: 'center'
+          });
+          
           const imageBuffer = fs.readFileSync(file.path);
           const base64Image = imageBuffer.toString('base64');
           const mimeType = file.mimetype;
           
-          htmlContent += `
-            <div class="image-container">
-              <img src="data:${mimeType};base64,${base64Image}" 
-                   alt="${path.basename(file.originalname)}"
-                   style="max-width: 600px; max-height: 800px;">
-              <div class="caption">
-                Image ${i + 1}: ${path.basename(file.originalname)}
-              </div>
-            </div>
-          `;
+          let imageExt = 'png';
+          if (mimeType.includes('jpeg') || mimeType.includes('jpg')) imageExt = 'jpeg';
+          else if (mimeType.includes('png')) imageExt = 'png';
+          else if (mimeType.includes('gif')) imageExt = 'gif';
           
-          // Add page break except for last image
-          if (i < files.length - 1) {
-            htmlContent += '<div class="page-break"></div>';
-          }
+          slide.addImage({
+            data: `data:${mimeType};base64,${base64Image}`,
+            x: 1.0,
+            y: 2.0,
+            w: 8.0,
+            h: 4.5,
+            sizing: { type: 'contain', w: 8.0, h: 4.5 }
+          });
+          
+          slide.addText(
+            `Image ${i + 1} of ${files.length} | Size: ${formatFileSize(file.size)}`,
+            {
+              x: 1.0,
+              y: 6.8,
+              w: 8.0,
+              h: 0.5,
+              fontSize: 12,
+              color: '666666',
+              align: 'center'
+            }
+          );
+          
         } catch (imageError) {
-          console.warn(`Error processing image for DOCX: ${imageError.message}`);
-          htmlContent += `
-            <div class="image-container">
-              <div style="border: 1px dashed #ccc; padding: 20px; text-align: center;">
-                <p>Image ${i + 1}: ${path.basename(file.originalname)}</p>
-                <p style="color: #999;">(Could not load this image)</p>
-              </div>
-            </div>
-          `;
+          console.warn(`Error processing image for PPTX: ${imageError.message}`);
+          
+          const errorSlide = pptx.addSlide();
+          errorSlide.addText(
+            `Slide ${i + 1}: ${path.basename(file.originalname)}`,
+            {
+              x: 1.0,
+              y: 1.0,
+              w: 8.0,
+              h: 1.0,
+              fontSize: 24,
+              bold: true,
+              align: 'center'
+            }
+          );
+          
+          errorSlide.addText(
+            'Failed to load image',
+            {
+              x: 1.0,
+              y: 3.0,
+              w: 8.0,
+              h: 1.0,
+              fontSize: 18,
+              color: 'ff0000',
+              align: 'center'
+            }
+          );
         }
       }
-
-      htmlContent += `
-        </body>
-        </html>
-      `;
-
-      // Write HTML to temporary file
-      const tempHtmlPath = outputPath.replace('.docx', '.html');
-      fs.writeFileSync(tempHtmlPath, htmlContent);
-
-      // Convert HTML to DOCX using mammoth
-      const result = await mammoth.convertToHtml({ path: tempHtmlPath });
       
-      // For now, we'll create a simple DOCX by copying the HTML
-      // In production, you would use a proper DOCX generation library
-      const docxContent = `Images converted to DOCX\n\nTotal images: ${files.length}\n\n`;
+      const titleSlide = pptx.addSlide();
+      titleSlide.addText(
+        'Converted Images Presentation',
+        {
+          x: 1.0,
+          y: 2.0,
+          w: 8.0,
+          h: 1.5,
+          fontSize: 36,
+          bold: true,
+          align: 'center'
+        }
+      );
       
-      files.forEach((file, index) => {
-        docxContent += `Image ${index + 1}: ${path.basename(file.originalname)}\n`;
-      });
-
-      fs.writeFileSync(outputPath, docxContent);
-
-      // Clean up temporary HTML file
-      if (fs.existsSync(tempHtmlPath)) {
-        fs.unlinkSync(tempHtmlPath);
-      }
-
-      console.log(`DOCX created successfully: ${outputPath}`);
+      titleSlide.addText(
+        `Total Images: ${files.length}`,
+        {
+          x: 1.0,
+          y: 4.0,
+          w: 8.0,
+          h: 1.0,
+          fontSize: 24,
+          align: 'center',
+          color: '666666'
+        }
+      );
+      
+      await pptx.writeFile({ fileName: outputPath });
+      
+      console.log(`PPTX created successfully: ${outputPath}`);
       resolve();
-
+      
     } catch (error) {
       reject(error);
     }
   });
 }
 
-// Convert images to PPTX (create a simple text file for now)
-async function convertImagesToPPTX(files, outputPath) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // For PPTX, we'll create a simple text representation
-      // In production, you would use a library like pptxgenjs
-      let pptxContent = `PPTX Presentation - Converted Images\n`;
-      pptxContent += `========================================\n\n`;
-      pptxContent += `Total Slides: ${files.length}\n\n`;
-      
-      files.forEach((file, index) => {
-        pptxContent += `Slide ${index + 1}:\n`;
-        pptxContent += `  Title: ${path.basename(file.originalname)}\n`;
-        pptxContent += `  Content: Image ${index + 1} of ${files.length}\n`;
-        pptxContent += `  Size: ${formatFileSize(file.size)}\n\n`;
-      });
-
-      fs.writeFileSync(outputPath, pptxContent);
-      console.log(`PPTX placeholder created: ${outputPath}`);
-      resolve();
-
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-// Simple DOCX converter as fallback
+// Fallback function for DOCX (simpler version using officegen)
 async function convertImagesToSimpleDOCX(files, outputPath) {
   return new Promise((resolve, reject) => {
     try {
-      // Create a simple text file with image references
-      let docxContent = 'Images Converted to DOCX\n\n';
-      docxContent += `Total Images: ${files.length}\n\n`;
+      const docx = officegen('docx');
       
-      files.forEach((file, index) => {
-        docxContent += `Image ${index + 1}: ${path.basename(file.originalname)}\n`;
-        docxContent += `Size: ${formatFileSize(file.size)}\n\n`;
+      docx.on('finalize', function(written) {
+        console.log(`Simple DOCX created: ${outputPath}, size: ${written} bytes`);
+        resolve();
       });
       
-      fs.writeFileSync(outputPath, docxContent);
-      console.log(`Simple DOCX created: ${outputPath}`);
-      resolve();
+      docx.on('error', function(err) {
+        reject(err);
+      });
+      
+      const output = fs.createWriteStream(outputPath);
+      docx.generate(output);
+      
+      const pTitle = docx.createP();
+      pTitle.addText('Converted Images', { font_size: 20, bold: true, align: 'center' });
+      
+      files.forEach((file, index) => {
+        const p = docx.createP();
+        p.addText(`${index + 1}. ${path.basename(file.originalname)}`, { font_size: 12 });
+        
+        const pInfo = docx.createP({ indent: 0.5 });
+        pInfo.addText(`Size: ${formatFileSize(file.size)}`, { font_size: 10, color: '666666' });
+      });
+      
+      output.on('finish', function() {
+        console.log('Simple DOCX generation complete');
+      });
+      
     } catch (error) {
       reject(error);
     }
   });
 }
 
-// Simple PPTX converter as fallback
+// Fallback function for PPTX (simpler version using pptxgenjs)
 async function convertImagesToSimplePPTX(files, outputPath) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
-      // Create a simple text file
-      let pptxContent = 'PPTX Presentation - Converted Images\n';
-      pptxContent += '========================================\n\n';
-      pptxContent += `Total Slides: ${files.length}\n\n`;
+      const pptx = new PptxGenJS();
+      
+      const titleSlide = pptx.addSlide();
+      titleSlide.addText(
+        'Converted Images',
+        {
+          x: 1.0,
+          y: 2.0,
+          w: 8.0,
+          h: 1.5,
+          fontSize: 36,
+          bold: true,
+          align: 'center'
+        }
+      );
+      
+      titleSlide.addText(
+        `Total: ${files.length} images`,
+        {
+          x: 1.0,
+          y: 4.0,
+          w: 8.0,
+          h: 1.0,
+          fontSize: 24,
+          align: 'center'
+        }
+      );
+      
+      const listSlide = pptx.addSlide();
+      listSlide.addText(
+        'Image List',
+        {
+          x: 1.0,
+          y: 0.5,
+          w: 8.0,
+          h: 1.0,
+          fontSize: 28,
+          bold: true
+        }
+      );
       
       files.forEach((file, index) => {
-        pptxContent += `Slide ${index + 1}:\n`;
-        pptxContent += `  Image: ${path.basename(file.originalname)}\n`;
-        pptxContent += `  Size: ${formatFileSize(file.size)}\n\n`;
+        listSlide.addText(
+          `${index + 1}. ${path.basename(file.originalname)}`,
+          {
+            x: 1.5,
+            y: 1.5 + (index * 0.5),
+            w: 7.0,
+            h: 0.4,
+            fontSize: 14
+          }
+        );
       });
       
-      fs.writeFileSync(outputPath, pptxContent);
+      await pptx.writeFile({ fileName: outputPath });
+      
       console.log(`Simple PPTX created: ${outputPath}`);
       resolve();
+      
     } catch (error) {
       reject(error);
     }
@@ -751,7 +886,7 @@ router.get('/test-setup', verifyToken, async (req, res) => {
     });
     
     // Check required packages
-    const packages = ['pdfkit', 'sharp', 'pdf-lib'];
+    const packages = ['pdfkit', 'sharp', 'pdf-lib', 'officegen', 'pptxgenjs'];
     const packageStatus = {};
     
     packages.forEach(pkg => {

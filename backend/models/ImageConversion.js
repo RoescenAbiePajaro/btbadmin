@@ -1,3 +1,4 @@
+// backend/models/ImageConversion.js
 const mongoose = require('mongoose');
 
 const imageConversionSchema = new mongoose.Schema({

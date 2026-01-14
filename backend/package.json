@@ -22,10 +22,15 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
+    "mammoth": "^1.11.0",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
+    "officegen": "^0.6.5",
+    "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
     "pm2": "^6.0.14",
+    "pptxgenjs": "^4.0.1",
+    "sharp": "^0.34.5",
     "ua-parser-js": "^2.0.6",
     "uuid": "^13.0.0"
   }
