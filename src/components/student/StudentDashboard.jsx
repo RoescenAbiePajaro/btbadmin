@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import StudentFileSharing from './StudentFileSharing'; // Import the component
 import StudFeedback from './StudFeedback';
-import SavedImagesStudent from './SavedImagesStudent';
 import { FiMessageSquare, FiHome } from 'react-icons/fi';
 
 export default function StudentDashboard() {
