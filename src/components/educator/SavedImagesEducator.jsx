@@ -47,18 +47,38 @@ const SavedImagesEducator = () => {
 
   // Helper function to get display URL
   const getImageUrl = (image) => {
-    // Priority: 1. image_url, 2. supabase_url, 3. proxy_url
-    return image.image_url || image.supabase_url || image.proxy_url || 
-      `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/proxy/${image.id || image._id}`;
+    // Priority: 1. image_url, 2. supabase_url, 3. base64 image_data, 4. proxy_url
+    if (image.image_url) {
+      return image.image_url;
+    }
+    
+    if (image.supabase_url) {
+      return image.supabase_url;
+    }
+    
+    if (image.image_data) {
+      // Base64 data - ensure it has correct prefix
+      if (image.image_data.startsWith('data:image/')) {
+        return image.image_data;
+      }
+      return `data:image/png;base64,${image.image_data}`;
+    }
+    
+    return image.proxy_url || `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/proxy/${image.id || image._id}`;
   };
 
   // Helper function to get thumbnail URL
   const getThumbnailUrl = (image) => {
-    // If it's a Supabase image, we can use a smaller version
-    if (image.image_url && image.image_url.includes('supabase')) {
-      return `${image.image_url}?width=300&height=200&resize=cover`;
+    // Use getImageUrl for consistency, but try to get smaller version for Supabase images
+    const fullUrl = getImageUrl(image);
+    
+    // If it's a Supabase image, we can add resize parameters
+    if (fullUrl && fullUrl.includes('supabase')) {
+      return `${fullUrl}?width=300&height=200&resize=cover`;
     }
-    return `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/thumbnail/${image.id || image._id}`;
+    
+    // For base64 images, return the full URL (they're already optimized)
+    return fullUrl;
   };
 
   // Download function

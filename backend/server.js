@@ -19,6 +19,7 @@ const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
 const feedbackRoutes = require('./routes/feedback');
+const savedImagesRoutes = require('./routes/savedImagesRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -2496,18 +2497,23 @@ app.get('/api/saved-images/all', verifyToken, async (req, res) => {
 });
 
 // =====================
-// 📁 ROUTES
+// ROUTES
 // =====================
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/saved-images', savedImagesRoutes);
 
 // =====================
-// 🚀 SERVER START
+// SERVER START
 // =====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+  console.log(` Server running on port ${PORT}`);
+  console.log(' Health check endpoint: GET /api/health');
+  console.log(' Database test endpoint: GET /api/test-db');
+  console.log(' File sharing endpoints available:');
   console.log(`🚀 Server running on port ${PORT}`);
   console.log('✅ Health check endpoint: GET /api/health');
   console.log('✅ Database test endpoint: GET /api/test-db');

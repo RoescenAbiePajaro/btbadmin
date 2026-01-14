@@ -162,6 +162,29 @@ const SavedImagesStudent = () => {
     return true;
   });
 
+  // Helper function to get image URL
+  const getImageUrl = (image) => {
+    // Priority: 1. image_url, 2. supabase_url, 3. base64 image_data, 4. proxy endpoint
+    if (image.image_url) {
+      return image.image_url;
+    }
+    
+    if (image.supabase_url) {
+      return image.supabase_url;
+    }
+    
+    if (image.image_data) {
+      // Base64 data - ensure it has the correct prefix
+      if (image.image_data.startsWith('data:image/')) {
+        return image.image_data;
+      }
+      return `data:image/png;base64,${image.image_data}`;
+    }
+    
+    // Fallback to proxy endpoint
+    return `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/proxy/${image.id || image._id}`;
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
@@ -272,7 +295,7 @@ const SavedImagesStudent = () => {
             <div key={image.id || image._id} className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 group">
               <div className="relative pb-[75%] bg-gray-800 overflow-hidden">
                 <img
-                  src={image.thumbnailUrl || `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/thumbnail/${image.id || image._id}`}
+                  src={getImageUrl(image)}
                   alt={image.file_name}
                   className="absolute inset-0 w-full h-full object-contain bg-gray-800 group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
@@ -407,7 +430,7 @@ const SavedImagesStudent = () => {
             
             <div className="h-[70vh] flex items-center justify-center bg-gray-800 p-4">
               <img
-                src={selectedImage.proxyUrl || `${process.env.REACT_APP_BACKEND_URL || ''}/api/saved-images/proxy/${selectedImage.id || selectedImage._id}`}
+                src={getImageUrl(selectedImage)}
                 alt={selectedImage.file_name}
                 className="max-w-full max-h-full object-contain"
                 onError={(e) => {
