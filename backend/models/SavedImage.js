@@ -1,3 +1,4 @@
+//backend/models/SaveImage.js
 const mongoose = require('mongoose');
 
 const savedImageSchema = new mongoose.Schema({

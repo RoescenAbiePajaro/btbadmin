@@ -12,6 +12,7 @@ const AccessCode = require('./models/AccessCode');
 const Click = require('./models/Click');
 const FileActivity = require('./models/FileActivity');
 const File = require('./models/File');
+const SavedImage = require('./models/SavedImage');
 const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
@@ -2247,33 +2248,41 @@ app.get('/api/files/all-classes', verifyToken, async (req, res) => {
 });
 
 // =====================
-// 🖼️ SAVED IMAGES ENDPOINTS
+// 🖼️ SAVED IMAGES ENDPOINTS (UPDATED TO USE MONGODB)
 // =====================
 
 // Get saved images for educator
-app.get('/api/saved-images/educator', verifyToken, requireEducator, async (req, res) => {
+app.get('/api/saved-images/educator', verifyToken, async (req, res) => {
   try {
-    const educatorId = req.user.id;
+    const user = req.user;
     
-    const savedImages = await supabase
-      .from('saved_images')
-      .select('*')
-      .eq('user_role', 'educator')
-      .eq('user_email', req.user.email)
-      .order('created_at', { ascending: false });
-
-    if (savedImages.error) {
-      console.error('Supabase error:', savedImages.error);
-      return res.status(500).json({
+    // Check if user is educator
+    if (user.role !== 'educator') {
+      return res.status(403).json({
         success: false,
-        error: 'Error fetching images from database'
+        message: 'Access denied. Educators only.'
       });
     }
 
+    // Educators can see all images or filter by specific user
+    let query = {};
+    
+    // Optional: filter by specific student email if provided
+    if (req.query.user_email) {
+      query.user_email = req.query.user_email.toLowerCase();
+    }
+
+    const images = await SavedImage.find(query)
+      .sort({ created_at: -1 })
+      .select('-image_data') // Don't send base64 data
+      .lean();
+
     res.json({
       success: true,
-      images: savedImages.data || [],
-      count: savedImages.data?.length || 0
+      images: images.map(img => ({
+        ...img,
+        id: img._id
+      }))
     });
   } catch (error) {
     console.error('Error fetching educator saved images:', error);
@@ -2285,29 +2294,32 @@ app.get('/api/saved-images/educator', verifyToken, requireEducator, async (req, 
 });
 
 // Get saved images for student
-app.get('/api/saved-images/student', verifyToken, requireStudent, async (req, res) => {
+app.get('/api/saved-images/student', verifyToken, async (req, res) => {
   try {
-    const studentId = req.user.id;
+    const user = req.user;
     
-    const savedImages = await supabase
-      .from('saved_images')
-      .select('*')
-      .eq('user_role', 'student')
-      .eq('user_email', req.user.email)
-      .order('created_at', { ascending: false });
-
-    if (savedImages.error) {
-      console.error('Supabase error:', savedImages.error);
-      return res.status(500).json({
+    // Only students can access their own images
+    if (user.role !== 'student') {
+      return res.status(403).json({
         success: false,
-        error: 'Error fetching images from database'
+        message: 'Access denied. Students only.'
       });
     }
 
+    // Get student's images
+    const images = await SavedImage.find({ 
+      user_email: user.email.toLowerCase()
+    })
+    .sort({ created_at: -1 })
+    .select('-image_data') // Don't send base64 data
+    .lean();
+
     res.json({
       success: true,
-      images: savedImages.data || [],
-      count: savedImages.data?.length || 0
+      images: images.map(img => ({
+        ...img,
+        id: img._id
+      }))
     });
   } catch (error) {
     console.error('Error fetching student saved images:', error);
@@ -2318,87 +2330,32 @@ app.get('/api/saved-images/student', verifyToken, requireStudent, async (req, re
   }
 });
 
-// Get all saved images (admin only)
-app.get('/api/saved-images/all', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const savedImages = await supabase
-      .from('saved_images')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (savedImages.error) {
-      console.error('Supabase error:', savedImages.error);
-      return res.status(500).json({
-        success: false,
-        error: 'Error fetching images from database'
-      });
-    }
-
-    res.json({
-      success: true,
-      images: savedImages.data || [],
-      count: savedImages.data?.length || 0
-    });
-  } catch (error) {
-    console.error('Error fetching all saved images:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error fetching images'
-    });
-  }
-});
-
-// Delete saved image (owner or admin only)
+// Delete saved image
 app.delete('/api/saved-images/:id', verifyToken, async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.id;
-    const userRole = req.user.role;
-    const userEmail = req.user.email;
+    const user = req.user;
+    const imageId = req.params.id;
 
-    // First, get the image to check ownership
-    const { data: image, error: fetchError } = await supabase
-      .from('saved_images')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const image = await SavedImage.findById(imageId);
 
-    if (fetchError || !image) {
+    if (!image) {
       return res.status(404).json({
         success: false,
-        error: 'Image not found'
+        message: 'Image not found'
       });
     }
 
     // Check permissions
-    if (userRole !== 'admin' && image.user_email !== userEmail) {
+    // Students can only delete their own images
+    // Educators can delete any image
+    if (user.role === 'student' && image.user_email !== user.email.toLowerCase()) {
       return res.status(403).json({
         success: false,
-        error: 'You can only delete your own images'
+        message: 'Access denied. You can only delete your own images.'
       });
     }
 
-    // Delete the image
-    const { error: deleteError } = await supabase
-      .from('saved_images')
-      .delete()
-      .eq('id', id);
-
-    if (deleteError) {
-      return res.status(500).json({
-        success: false,
-        error: 'Error deleting image from database'
-      });
-    }
-
-    // Optionally delete from storage too
-    try {
-      await supabase.storage
-        .from(image.bucket || 'class-files')
-        .remove([image.storage_path]);
-    } catch (storageError) {
-      console.warn('Could not delete from storage:', storageError);
-    }
+    await SavedImage.findByIdAndDelete(imageId);
 
     res.json({
       success: true,
@@ -2409,6 +2366,57 @@ app.delete('/api/saved-images/:id', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error deleting image'
+    });
+  }
+});
+
+// Save image from VirtualPainter
+app.post('/api/saved-images', verifyToken, async (req, res) => {
+  try {
+    const user = req.user;
+    const {
+      file_name,
+      file_size,
+      image_data,
+      image_type = 'template',
+      image_url = '',
+      storage_path = ''
+    } = req.body;
+
+    // Validate required fields
+    if (!file_name || !file_size || !image_data) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: file_name, file_size, image_data'
+      });
+    }
+
+    // Create new saved image
+    const savedImage = new SavedImage({
+      user_email: user.email.toLowerCase(),
+      user_role: user.role,
+      full_name: user.fullName || '',
+      file_name,
+      file_size,
+      image_data, // base64 encoded
+      image_type,
+      image_url,
+      storage_path,
+      app_version: '1.0.0'
+    });
+
+    await savedImage.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Image saved successfully',
+      image: savedImage.toResponse()
+    });
+  } catch (error) {
+    console.error('Error saving image:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error saving image'
     });
   }
 });
