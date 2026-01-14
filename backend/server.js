@@ -17,6 +17,7 @@ const fileRoutes = require('./routes/fileRoutes');
 const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
 const feedbackRoutes = require('./routes/feedback');
+const imageConverterRoutes = require('./routes/imageConverterRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -2340,6 +2341,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/image-converter', imageConverterRoutes);
 
 // =====================
 // 🚀 SERVER START

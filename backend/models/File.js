@@ -1,4 +1,3 @@
-// backend/models/File.js
 const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
@@ -32,7 +31,7 @@ const fileSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['material'],
+    enum: ['material', 'assignment', 'converted'],
     default: 'material'
   },
   uploadedBy: {
@@ -46,6 +45,22 @@ const fileSchema = new mongoose.Schema({
   },
   supabaseId: {
     type: String
+  },
+  // Conversion tracking fields
+  isConverted: {
+    type: Boolean,
+    default: false
+  },
+  originalConversionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ImageConversion'
+  },
+  conversionType: {
+    type: String,
+    enum: ['pdf', 'docx', 'pptx']
+  },
+  originalImageCount: {
+    type: Number
   }
 }, {
   timestamps: true

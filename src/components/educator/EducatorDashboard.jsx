@@ -1,13 +1,13 @@
-// src/components/educator/EducatorDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ClassManagement from './ClassManagement';
 import AcademicSettings from './AcademicSettings';
 import StudentList from './StudentList';
-import FileSharing from './FileSharing'; // New component
+import FileSharing from './FileSharing';
 import SavedImagesEducator from './SavedImagesEducator';
 import EducFeedback from './EducFeedback';
+import ImageConverter from './ImageConverter'; // New component
 import { FiMessageSquare } from 'react-icons/fi';
 
 export default function EducatorDashboard() {
@@ -198,6 +198,23 @@ export default function EducatorDashboard() {
                 File Sharing
               </span>
             </button>
+            {/* Add new Image Converter tab */}
+            <button
+              onClick={() => setActiveTab('image-converter')}
+              className={`whitespace-nowrap py-4 px-1 font-medium text-sm border-b-2 transition duration-200 ${
+                activeTab === 'image-converter'
+                  ? 'border-pink-500 text-pink-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4 4 0 003 15z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                </svg>
+                Image Converter
+              </span>
+            </button>
             <button
               onClick={() => setActiveTab('feedback')}
               className={`whitespace-nowrap py-3 px-1 font-medium text-sm border-b-2 transition duration-200 ${
@@ -235,6 +252,7 @@ export default function EducatorDashboard() {
           {activeTab === 'academic' && <AcademicSettings />}
           {activeTab === 'students' && <StudentList />}
           {activeTab === 'files' && <FileSharing educatorId={user?._id} />}
+          {activeTab === 'image-converter' && <ImageConverter educatorId={user?._id} />}
           {activeTab === 'saved-images' && <SavedImagesEducator />}
           {activeTab === 'feedback' ? (
             <EducFeedback educator={user} />
