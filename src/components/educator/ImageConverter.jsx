@@ -139,41 +139,111 @@ const ImageConverter = ({ educatorId }) => {
       setConversionProgress(0);
       
       const token = localStorage.getItem('token');
+      console.log('Starting conversion...', {
+        images: images.length,
+        conversionType,
+        classCode: selectedClassCode
+      });
+
+      // Update progress for upload
+      setConversionProgress(10);
+      
       const response = await axios.post(
         'https://btbtestservice.onrender.com/api/image-converter/convert',
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}` 
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setConversionProgress(percentCompleted);
+            // Cap at 90% to leave room for processing
+            setConversionProgress(Math.min(90, percentCompleted));
           }
         }
       );
 
+      console.log('Conversion response:', response.data);
+
       if (response.data.success) {
-        showToast(`Images converted to ${conversionType.toUpperCase()} successfully!`, 'success');
+        showToast(`Images conversion started! The ${conversionType.toUpperCase()} file will be shared with the class shortly.`, 'success');
+        setConversionProgress(95);
         
-        // Clear images after successful conversion
-        setImages([]);
-        setConversionProgress(100);
-        
-        // Reset progress after 2 seconds
-        setTimeout(() => {
-          setConversionProgress(0);
-        }, 2000);
+        // Start polling for completion
+        const conversionId = response.data.conversionId;
+        if (conversionId) {
+          pollConversionStatus(conversionId);
+        } else {
+          // Fallback: just clear images after delay
+          setTimeout(() => {
+            setImages([]);
+            setConversionProgress(100);
+            setTimeout(() => setConversionProgress(0), 2000);
+            setConverting(false);
+          }, 3000);
+        }
       } else {
-        throw new Error(response.data.error || 'Conversion failed');
+        throw new Error(response.data.error || 'Conversion failed to start');
       }
     } catch (error) {
       console.error('Error converting images:', error);
       showToast(error.response?.data?.error || error.message || 'Failed to convert images', 'error');
-    } finally {
       setConverting(false);
+      setConversionProgress(0);
     }
+  };
+
+  // Add polling function
+  const pollConversionStatus = async (conversionId) => {
+    const maxAttempts = 30; // 30 attempts * 3 seconds = 90 seconds max
+    let attempts = 0;
+    
+    const checkStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `https://btbtestservice.onrender.com/api/image-converter/status/${conversionId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.data.success) {
+          const { status, convertedFile, error } = response.data.conversion;
+          
+          if (status === 'completed') {
+            showToast(`File converted and shared successfully!`, 'success');
+            setImages([]);
+            setConversionProgress(100);
+            setConverting(false);
+            setTimeout(() => setConversionProgress(0), 2000);
+            return true;
+          } else if (status === 'failed') {
+            showToast(`Conversion failed: ${error}`, 'error');
+            setConverting(false);
+            setConversionProgress(0);
+            return true;
+          }
+          // Still processing, continue polling
+        }
+      } catch (error) {
+        console.error('Error checking conversion status:', error);
+      }
+      
+      attempts++;
+      if (attempts >= maxAttempts) {
+        showToast('Conversion is taking longer than expected. Please check your files later.', 'warning');
+        setConverting(false);
+        setConversionProgress(0);
+        return true;
+      }
+      
+      // Continue polling after 3 seconds
+      setTimeout(checkStatus, 3000);
+      return false;
+    };
+    
+    // Start polling
+    setTimeout(checkStatus, 3000);
   };
 
   const downloadSampleFile = () => {

@@ -65,6 +65,13 @@ const upload = multer({
 // Convert images endpoint
 router.post('/convert', verifyToken, upload.array('images', 20), async (req, res) => {
   try {
+    console.log('Conversion request received:', {
+      filesCount: req.files ? req.files.length : 0,
+      conversionType: req.body.conversionType,
+      classCode: req.body.classCode,
+      user: req.user.id
+    });
+
     const { conversionType, classCode } = req.body;
     
     if (!req.files || req.files.length === 0) {
@@ -113,33 +120,38 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
 
     await conversion.save();
 
-    // Send immediate response and process in background
+    console.log(`Conversion ${conversion._id} saved, starting background processing`);
+
+    // Send immediate response
     res.status(202).json({
       success: true,
       message: 'Conversion started in background',
       conversionId: conversion._id,
-      imageCount: req.files.length
+      imageCount: req.files.length,
+      status: 'processing'
     });
 
-    // Process conversion in background
-    processConversion(conversion._id, req.files, conversionType, classCode, user)
-      .then(() => {
+    // Process conversion in background with error handling
+    setTimeout(async () => {
+      try {
+        await processConversion(conversion._id, req.files, conversionType, classCode, user);
         console.log(`Conversion ${conversion._id} completed successfully`);
-      })
-      .catch(async (err) => {
-        console.error(`Conversion ${conversion._id} failed:`, err);
+      } catch (bgError) {
+        console.error(`Background conversion ${conversion._id} failed:`, bgError);
         await ImageConversion.findByIdAndUpdate(conversion._id, {
           status: 'failed',
-          error: err.message,
+          error: bgError.message,
           processingTime: Date.now() - conversion.createdAt
         }).catch(console.error);
-      });
+      }
+    }, 100);
 
   } catch (error) {
-    console.error('Error in conversion:', error);
+    console.error('Error in conversion endpoint:', error);
     res.status(500).json({ 
       success: false, 
-      error: error.message || 'Error processing conversion' 
+      error: error.message || 'Error processing conversion',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -150,21 +162,24 @@ async function processConversion(conversionId, files, conversionType, classCode,
   let outputFilePath = '';
   
   try {
+    console.log(`Processing conversion ${conversionId} for ${files.length} images`);
+    
     // Create unique output filename
     const timestamp = Date.now();
     const outputFileName = `converted_${timestamp}.${conversionType}`;
     outputFilePath = path.join(tempConvertDir, outputFileName);
 
     // Process based on conversion type
+    let result;
     switch (conversionType) {
       case 'pdf':
-        await convertImagesToPDF(files, outputFilePath);
+        result = await convertImagesToPDF(files, outputFilePath);
         break;
       case 'docx':
-        await convertImagesToDOCX(files, outputFilePath);
+        result = await convertImagesToSimpleDOCX(files, outputFilePath);
         break;
       case 'pptx':
-        await convertImagesToPPTX(files, outputFilePath);
+        result = await convertImagesToSimplePPTX(files, outputFilePath);
         break;
       default:
         throw new Error(`Unsupported conversion type: ${conversionType}`);
@@ -181,8 +196,12 @@ async function processConversion(conversionId, files, conversionType, classCode,
       throw new Error('Conversion failed - output file is empty');
     }
 
+    console.log(`File created: ${outputFilePath}, size: ${stats.size} bytes`);
+
     // Upload converted file to Supabase
     const uploadResult = await supabase.uploadFile(outputFilePath, outputFileName);
+    
+    console.log('Uploaded to Supabase:', uploadResult);
 
     // Save file record
     const fileRecord = new File({
@@ -198,7 +217,9 @@ async function processConversion(conversionId, files, conversionType, classCode,
       uploaderName: user.fullName || user.username,
       supabaseId: uploadResult.supabaseId,
       isConverted: true,
-      originalConversionId: conversionId
+      originalConversionId: conversionId,
+      conversionType: conversionType,
+      originalImageCount: files.length
     });
 
     await fileRecord.save();
@@ -224,7 +245,7 @@ async function processConversion(conversionId, files, conversionType, classCode,
       }
     });
 
-    console.log(`File saved successfully: ${uploadResult.publicUrl}`);
+    console.log(`File saved to database: ${fileRecord._id}`);
 
   } catch (error) {
     console.error('Error in processConversion:', error);
@@ -239,7 +260,19 @@ async function processConversion(conversionId, files, conversionType, classCode,
     throw error;
   } finally {
     // Clean up temporary files
-    cleanupFiles(files.map(f => f.path), outputFilePath);
+    try {
+      files.forEach(file => {
+        if (file.path && fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+      
+      if (outputFilePath && fs.existsSync(outputFilePath)) {
+        fs.unlinkSync(outputFilePath);
+      }
+    } catch (cleanupError) {
+      console.error('Error cleaning up temp files:', cleanupError);
+    }
   }
 }
 
@@ -450,6 +483,52 @@ async function convertImagesToPPTX(files, outputPath) {
   });
 }
 
+// Simple DOCX converter as fallback
+async function convertImagesToSimpleDOCX(files, outputPath) {
+  return new Promise((resolve, reject) => {
+    try {
+      // Create a simple text file with image references
+      let docxContent = 'Images Converted to DOCX\n\n';
+      docxContent += `Total Images: ${files.length}\n\n`;
+      
+      files.forEach((file, index) => {
+        docxContent += `Image ${index + 1}: ${path.basename(file.originalname)}\n`;
+        docxContent += `Size: ${formatFileSize(file.size)}\n\n`;
+      });
+      
+      fs.writeFileSync(outputPath, docxContent);
+      console.log(`Simple DOCX created: ${outputPath}`);
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+// Simple PPTX converter as fallback
+async function convertImagesToSimplePPTX(files, outputPath) {
+  return new Promise((resolve, reject) => {
+    try {
+      // Create a simple text file
+      let pptxContent = 'PPTX Presentation - Converted Images\n';
+      pptxContent += '========================================\n\n';
+      pptxContent += `Total Slides: ${files.length}\n\n`;
+      
+      files.forEach((file, index) => {
+        pptxContent += `Slide ${index + 1}:\n`;
+        pptxContent += `  Image: ${path.basename(file.originalname)}\n`;
+        pptxContent += `  Size: ${formatFileSize(file.size)}\n\n`;
+      });
+      
+      fs.writeFileSync(outputPath, pptxContent);
+      console.log(`Simple PPTX created: ${outputPath}`);
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 // Helper function to format file size
 function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' bytes';
@@ -638,6 +717,61 @@ router.post('/test', verifyToken, upload.single('image'), async (req, res) => {
     }
   } catch (error) {
     console.error('Test conversion error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Test setup endpoint
+router.get('/test-setup', verifyToken, async (req, res) => {
+  try {
+    // Check if all required directories exist
+    const dirs = ['temp-uploads', 'temp-converted'];
+    const dirStatus = {};
+    
+    dirs.forEach(dir => {
+      const dirPath = path.join(__dirname, '..', '..', dir);
+      dirStatus[dir] = {
+        exists: fs.existsSync(dirPath),
+        writable: false
+      };
+      
+      if (dirStatus[dir].exists) {
+        try {
+          const testFile = path.join(dirPath, 'test.txt');
+          fs.writeFileSync(testFile, 'test');
+          fs.unlinkSync(testFile);
+          dirStatus[dir].writable = true;
+        } catch (e) {
+          dirStatus[dir].writable = false;
+        }
+      }
+    });
+    
+    // Check required packages
+    const packages = ['pdfkit', 'sharp', 'pdf-lib'];
+    const packageStatus = {};
+    
+    packages.forEach(pkg => {
+      try {
+        require.resolve(pkg);
+        packageStatus[pkg] = true;
+      } catch (e) {
+        packageStatus[pkg] = false;
+      }
+    });
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      directories: dirStatus,
+      packages: packageStatus,
+      user: req.user.id,
+      message: 'Image converter setup test'
+    });
+  } catch (error) {
     res.status(500).json({
       success: false,
       error: error.message

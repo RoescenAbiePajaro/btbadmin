@@ -18,6 +18,8 @@ const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
 const feedbackRoutes = require('./routes/feedback');
 const imageConverterRoutes = require('./routes/imageConverterRoutes');
+const path = require('path');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
@@ -38,6 +40,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:4173',
+  // Add your frontend URLs here
 ];
 
 app.use(cors({
@@ -45,29 +48,39 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Allow all origins in development
-    if (process.env.NODE_ENV === 'development') {
-      return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      // In development, you might want to be more permissive
-      if (process.env.NODE_ENV === 'development') {
-        console.log('CORS: Allowing origin in development:', origin);
-        return callback(null, true);
-      }
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Disposition']
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Ensure temp directories exist
+const tempDirs = ['temp-uploads', 'temp-converted'];
+tempDirs.forEach(dir => {
+  const dirPath = path.join(__dirname, dir);
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+});
+
+// Add file upload middleware specifically for image converter
+app.use('/api/image-converter', (req, res, next) => {
+  // Set higher limits for file uploads
+  if (req.method === 'POST' && req.path === '/convert') {
+    express.json({ limit: '100mb' })(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
