@@ -1157,6 +1157,39 @@ app.get('/api/classes/my-classes', verifyToken, requireEducator, async (req, res
   }
 });
 
+// Get all classes for admin
+app.get('/api/classes/all', verifyToken, async (req, res) => {
+  try {
+    const { includeSchool = false, includeEducator = false } = req.query;
+    
+    let query = Class.find({}).sort({ createdAt: -1 });
+    
+    if (includeEducator === 'true') {
+      query = query.populate('educator', 'fullName email');
+    }
+    
+    if (includeSchool === 'true') {
+      query = query.select('classCode className description educator school course year block students isActive createdAt updatedAt');
+    } else {
+      query = query.select('classCode className description educator school course year block students isActive createdAt updatedAt');
+    }
+    
+    const classes = await query;
+    
+    return res.json({
+      success: true,
+      classes: classes
+    });
+
+  } catch (error) {
+    console.error('Get all classes error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Server error fetching classes'
+    });
+  }
+});
+
 // Get class by ID
 app.get('/api/classes/:id', verifyToken, async (req, res) => {
   try {

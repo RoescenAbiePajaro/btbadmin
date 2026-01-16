@@ -231,6 +231,8 @@ export default function LearningMaterialsComponent({
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">File Name</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class Code</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Batch</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Type</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Uploaded</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Size</th>
@@ -263,12 +265,13 @@ export default function LearningMaterialsComponent({
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
-                                  <div className="flex flex-col">
-                                    <span className="text-white">{classItem?.className || file.classCode}</span>
-                                    {classItem?.description && (
-                                      <span className="text-xs text-gray-400">{classItem.description}</span>
-                                    )}
-                                  </div>
+                                  <span className="font-mono text-xs">{file.classCode}</span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                  {classItem?.className || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                  {classItem?.description || 'N/A'}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
                                   <span className={`px-2 py-1 rounded text-xs ${
