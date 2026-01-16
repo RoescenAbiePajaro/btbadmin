@@ -38,6 +38,7 @@
     "mongoose": "^8.20.1",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.11",
+    "officegen": "^0.6.5",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
     "react": "^19.1.1",
