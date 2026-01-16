@@ -569,10 +569,12 @@ export default function AdminDashboard() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (educatorSharedFiles.length > 0) {
-      debugEducatorData(educatorSharedFiles);
+    if (activeTab === 'users') {
+      fetchEducatorClassSummary();
+      fetchAllClassCodes();
+      fetchEducatorUsers();
     }
-  }, [educatorSharedFiles]);
+  }, [activeTab]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
