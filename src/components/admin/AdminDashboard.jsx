@@ -1057,10 +1057,10 @@ export default function AdminDashboard() {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">#</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Educator Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">School</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Files Shared</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Classes</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Students</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
@@ -1068,7 +1068,7 @@ export default function AdminDashboard() {
                         {Object.entries(
                           (materialSearch ? educatorSharedFiles.filter(educator => {
                             const q = materialSearch.toLowerCase();
-                            const nameEmail = [educator.educatorName, educator.educatorEmail].filter(Boolean).join(' ').toLowerCase();
+                            const nameEmail = [educator.educatorName, educator.educatorSchool].filter(Boolean).join(' ').toLowerCase();
                             const fileMatch = educator.files?.some(f => [f.name, f.originalName, f.classCode].filter(Boolean).join(' ').toLowerCase().includes(q));
                             return nameEmail.includes(q) || fileMatch;
                           }) : educatorSharedFiles).reduce((acc, educator, index) => {
@@ -1078,7 +1078,6 @@ export default function AdminDashboard() {
                                 index: index + 1,
                                 educatorId: educatorId,
                                 name: educator.educatorName || 'N/A',
-                                email: educator.educatorEmail || educatorUsers[educatorId]?.email || 'N/A',
                                 school: educator.educatorSchool || educatorUsers[educatorId]?.school || educatorClassSummary?.[educatorId]?.school || null,
                                 totalFiles: educator.files.length,
                                 // Count unique classes for this educator
@@ -1105,9 +1104,6 @@ export default function AdminDashboard() {
                               <div className="font-medium text-white">{data.name}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {data.email}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               {data.school ? getSchoolName(data.school) : 'Not specified'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -1118,6 +1114,11 @@ export default function AdminDashboard() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
                                 {data.totalClasses} classes
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200">
+                                {educatorClassSummary?.[educatorId]?.totalStudents || 0} students
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -1192,8 +1193,6 @@ export default function AdminDashboard() {
                               <div>
                                 <h4 className="text-white font-semibold text-lg">{educator.educatorName}</h4>
                                 <div className="flex flex-wrap items-center gap-3 mt-2">
-                                  <span className="text-gray-400 text-sm">{educator.educatorEmail}</span>
-                                  <span className="text-gray-500">•</span>
                                   <span className="text-sm text-gray-300">
                                     School: {educator.educatorSchool || educatorUsers[educatorId]?.school || 'Not specified'}
                                   </span>
@@ -1204,6 +1203,9 @@ export default function AdminDashboard() {
                                   </span>
                                   <span className="text-sm text-green-300">
                                     {new Set(filteredFiles.map(f => f.classCode)).size} classes
+                                  </span>
+                                  <span className="text-sm text-purple-300">
+                                    {educatorClassSummary?.[educatorId]?.totalStudents || 0} students
                                   </span>
                                 </div>
                               </div>
