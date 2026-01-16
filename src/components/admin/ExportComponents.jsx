@@ -183,6 +183,51 @@ export const ExportFeedback = ({ feedbackData }) => {
   );
 };
 
+// Export Learning Materials Component
+export const ExportLearningMaterials = ({ educatorSharedFiles, getSchoolName, classCodes }) => {
+  const exportLearningMaterialsCSV = () => {
+    if (!educatorSharedFiles || educatorSharedFiles.length === 0) return;
+    
+    const headers = ['Educator Name', 'Email', 'School', 'File Name', 'Class Code', 'Class Name', 'Type', 'Size', 'Uploaded Date'];
+    
+    const rows = [];
+    educatorSharedFiles.forEach(educator => {
+      educator.files.forEach(file => {
+        const classItem = classCodes.find(c => c.classCode === file.classCode);
+        const values = [
+          educator.educatorName || 'N/A',
+          educator.educatorEmail || 'N/A',
+          educator.educatorSchool ? getSchoolName(educator.educatorSchool) : 'Not specified',
+          file.name || file.originalName || 'N/A',
+          file.classCode || 'N/A',
+          classItem?.className || 'N/A',
+          file.type || 'material',
+          file.size ? `${(file.size / 1024).toFixed(2)} KB` : 'N/A',
+          file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'
+        ];
+        
+        rows.push(values.map(v => {
+          const s = String(v).replace(/"/g, '""');
+          if (s.search(/([",\n])/g) >= 0) return '"' + s + '"';
+          return s;
+        }).join(','));
+      });
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    downloadCSV(csv, 'learning_materials');
+  };
+
+  return (
+    <button 
+      onClick={exportLearningMaterialsCSV}
+      className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2"
+    >
+      <FiDownload className="w-5 h-5" /> Export
+    </button>
+  );
+};
+
 // Helper function to download CSV
 const downloadCSV = (csvContent, filename) => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

@@ -2,6 +2,7 @@ import React from 'react';
 import {
   FiUsers, FiFileText, FiDownload, FiEye, FiSearch
 } from 'react-icons/fi';
+import { ExportLearningMaterials } from './ExportComponents.jsx';
 
 export default function LearningMaterialsComponent({
   materialSearch,
@@ -41,7 +42,10 @@ export default function LearningMaterialsComponent({
       
       {/* Educator Summary Section - Unique Educators */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <h3 className="text-lg font-bold mb-4 text-white">Educators Summary</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white">Educators Summary</h3>
+          <ExportLearningMaterials educatorSharedFiles={educatorSharedFiles} getSchoolName={getSchoolName} classCodes={classCodes} />
+        </div>
         {educatorSharedFiles.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -139,7 +143,10 @@ export default function LearningMaterialsComponent({
 
       {/* Educator Shared Files Section - Separated by Educator */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <h3 className="text-lg font-bold mb-6 text-white">Files Shared by Educator</h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-white">Files Shared by Educator</h3>
+          <ExportLearningMaterials educatorSharedFiles={educatorSharedFiles} getSchoolName={getSchoolName} classCodes={classCodes} />
+        </div>
         {educatorSharedFiles.length > 0 ? (
           <div className="space-y-8">
             {/* First, group educators by ID to avoid duplicates */}
