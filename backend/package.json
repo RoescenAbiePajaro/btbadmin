@@ -18,9 +18,11 @@
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
+    "docx": "^9.5.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "libreoffice": "^0.4.5",
     "lodash": "^4.17.21",
     "mammoth": "^1.11.0",
     "mongoose": "^8.19.1",
@@ -32,6 +34,7 @@
     "pptxgenjs": "^4.0.1",
     "sharp": "^0.34.5",
     "ua-parser-js": "^2.0.6",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "vips": "^1.0.0"
   }
 }
