@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React from 'react';
 import {
   FiUsers, FiFileText, FiDownload, FiEye, FiSearch
 } from 'react-icons/fi';
@@ -15,6 +14,16 @@ export default function LearningMaterialsComponent({
   formatFileSize
 }) {
   
+  // Helper function to get educator school with proper formatting
+  const getEducatorSchool = (educatorId, educatorData) => {
+    const school = 
+      educatorData?.educatorSchool || 
+      educatorUsers[educatorId]?.school || 
+      educatorClassSummary?.[educatorId]?.school;
+    
+    return school ? getSchoolName(school) : 'Not specified';
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between mb-4">
@@ -177,7 +186,7 @@ export default function LearningMaterialsComponent({
                         <h4 className="text-white font-semibold text-lg">{educator.educatorName}</h4>
                         <div className="flex flex-wrap items-center gap-3 mt-2">
                           <span className="text-sm text-gray-300">
-                            School: {educator.educatorSchool || educatorUsers[educatorId]?.school || 'Not specified'}
+                            School: {getEducatorSchool(educatorId, educator)}
                           </span>
                         </div>
                         <div className="flex items-center gap-4 mt-3">
