@@ -508,11 +508,20 @@ async function convertImagesToDOCX(files, outputPath) {
       });
       
       docx.on('error', function(err) {
+        console.error('DOCX generation error:', err);
         reject(err);
       });
       
       // Create a write stream
       const output = fs.createWriteStream(outputPath);
+      
+      // Handle stream errors
+      output.on('error', function(err) {
+        console.error('Output stream error:', err);
+        reject(err);
+      });
+      
+      // Start generating the document
       docx.generate(output);
       
       // Add title
@@ -526,12 +535,16 @@ async function convertImagesToDOCX(files, outputPath) {
       // Add metadata
       const pMeta = docx.createP();
       pMeta.addText(`Total images: ${files.length}`, { font_size: 12 });
+      pMeta.addLineBreak();
       pMeta.addText(`Generated on: ${new Date().toLocaleDateString()}`, { font_size: 10, color: '666666' });
       
       // Add page break
       docx.createPageBreak();
       
-      // Process each image
+      // Process each image asynchronously
+      let processedImages = 0;
+      const totalImages = files.length;
+      
       files.forEach((file, index) => {
         // Add image title
         const pTitle = docx.createP();
@@ -541,26 +554,36 @@ async function convertImagesToDOCX(files, outputPath) {
         });
         
         try {
-          // Add image to document
-          docx.createImage({
-            path: file.path,
-            cx: 400, // Image width
-            cy: 300, // Image height
-          });
-          
-          // Add image info
-          const pInfo = docx.createP();
-          pInfo.addText(`Size: ${formatFileSize(file.size)} | Position: ${index + 1}/${files.length}`, {
-            font_size: 10,
-            color: '666666'
-          });
+          // Check if file exists before trying to add it
+          if (fs.existsSync(file.path)) {
+            // Add image to document with proper error handling
+            const imageObj = {
+              path: file.path,
+              cx: 400, // Image width in EMUs (approximately 400 pixels)
+              cy: 300, // Image height in EMUs (approximately 300 pixels)
+              alt: `Image ${index + 1}: ${path.basename(file.originalname)}`
+            };
+            
+            docx.createImage(imageObj);
+            console.log(`Added image ${index + 1} to DOCX`);
+            
+            // Add image info
+            const pInfo = docx.createP();
+            pInfo.addText(`Size: ${formatFileSize(file.size)} | Position: ${index + 1}/${files.length}`, {
+              font_size: 10,
+              color: '666666'
+            });
+          } else {
+            console.warn(`Image file not found: ${file.path}`);
+            throw new Error(`Image file not found: ${file.path}`);
+          }
           
         } catch (imageError) {
           console.warn(`Error adding image to DOCX: ${imageError.message}`);
           
           // Add placeholder text if image can't be added
           const pError = docx.createP();
-          pError.addText(`[Image ${index + 1}: ${path.basename(file.originalname)} - Failed to load]`, {
+          pError.addText(`[Image ${index + 1}: ${path.basename(file.originalname)} - Failed to load: ${imageError.message}]`, {
             font_size: 12,
             color: 'ff0000',
             italics: true
@@ -571,14 +594,17 @@ async function convertImagesToDOCX(files, outputPath) {
         if (index < files.length - 1) {
           docx.createPageBreak();
         }
-      });
-      
-      // Finalize the document
-      output.on('finish', function() {
-        console.log('DOCX generation complete');
+        
+        processedImages++;
+        
+        // If all images are processed, the finalize event will handle the rest
+        if (processedImages === totalImages) {
+          console.log('All images processed for DOCX generation');
+        }
       });
       
     } catch (error) {
+      console.error('Error in convertImagesToDOCX:', error);
       reject(error);
     }
   });
@@ -596,10 +622,18 @@ async function convertImagesToSimpleDOCX(files, outputPath) {
       });
       
       docx.on('error', function(err) {
+        console.error('Simple DOCX generation error:', err);
         reject(err);
       });
       
       const output = fs.createWriteStream(outputPath);
+      
+      // Handle stream errors
+      output.on('error', function(err) {
+        console.error('Simple DOCX output stream error:', err);
+        reject(err);
+      });
+      
       docx.generate(output);
       
       // Add title
@@ -608,16 +642,28 @@ async function convertImagesToSimpleDOCX(files, outputPath) {
       
       const pSubtitle = docx.createP();
       pSubtitle.addText(`Total: ${files.length} images`, { font_size: 14, align: 'center' });
+      pSubtitle.addLineBreak();
+      pSubtitle.addText(`Generated on: ${new Date().toLocaleDateString()}`, { font_size: 10, color: '666666', align: 'center' });
+      
+      // Add page break
+      docx.createPageBreak();
       
       // Add image list
       files.forEach((file, index) => {
         const p = docx.createP();
-        p.addText(`${index + 1}. ${path.basename(file.originalname)}`, { font_size: 12 });
+        p.addText(`${index + 1}. ${path.basename(file.originalname)}`, { font_size: 12, bold: true });
         
         const pInfo = docx.createP({ indent: 0.5 });
         pInfo.addText(`Size: ${formatFileSize(file.size)} | Type: ${file.mimetype}`, { 
           font_size: 10, 
           color: '666666' 
+        });
+        
+        // Add file path for debugging
+        const pPath = docx.createP({ indent: 0.5 });
+        pPath.addText(`Path: ${file.path}`, { 
+          font_size: 8, 
+          color: '999999' 
         });
       });
       
@@ -626,6 +672,7 @@ async function convertImagesToSimpleDOCX(files, outputPath) {
       });
       
     } catch (error) {
+      console.error('Error in convertImagesToSimpleDOCX:', error);
       reject(error);
     }
   });
@@ -1158,27 +1205,166 @@ router.post('/test', verifyToken, upload.single('image'), async (req, res) => {
       });
     }
 
-    const testOutputPath = path.join(tempConvertDir, `test_${Date.now()}.pdf`);
-    await convertImagesToPDF([req.file], testOutputPath);
-
-    if (fs.existsSync(testOutputPath)) {
-      const stats = fs.statSync(testOutputPath);
-      
-      // Clean up
-      fs.unlinkSync(req.file.path);
-      fs.unlinkSync(testOutputPath);
-
-      res.json({
-        success: true,
-        message: 'Test conversion successful',
-        originalSize: req.file.size,
-        convertedSize: stats.size
-      });
-    } else {
-      throw new Error('Test conversion failed - no output file');
+    console.log('Testing conversion with file:', req.file.path);
+    
+    // Test all conversion types
+    const results = {};
+    
+    try {
+      // Test PDF
+      const pdfPath = path.join(tempConvertDir, `test_${Date.now()}.pdf`);
+      await convertImagesToPDF([req.file], pdfPath);
+      results.pdf = 'Success';
+      fs.unlinkSync(pdfPath);
+    } catch (error) {
+      results.pdf = `Failed: ${error.message}`;
     }
+    
+    try {
+      // Test DOCX
+      const docxPath = path.join(tempConvertDir, `test_${Date.now()}.docx`);
+      await convertImagesToDOCX([req.file], docxPath);
+      results.docx = 'Success';
+      fs.unlinkSync(docxPath);
+    } catch (error) {
+      results.docx = `Failed: ${error.message}`;
+      console.error('DOCX test failed:', error);
+    }
+    
+    try {
+      // Test PPTX
+      const pptxPath = path.join(tempConvertDir, `test_${Date.now()}.pptx`);
+      await convertImagesToPPTX([req.file], pptxPath);
+      results.pptx = 'Success';
+      fs.unlinkSync(pptxPath);
+    } catch (error) {
+      results.pptx = `Failed: ${error.message}`;
+    }
+    
+    // Clean up uploaded file
+    if (req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.json({
+      success: true,
+      results,
+      file: {
+        name: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        path: req.file.path
+      }
+    });
   } catch (error) {
     console.error('Test conversion error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Specific DOCX test endpoint
+router.post('/test-docx', verifyToken, upload.array('images', 3), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No images uploaded'
+      });
+    }
+
+    console.log(`Testing DOCX conversion with ${req.files.length} files`);
+    
+    const timestamp = Date.now();
+    const docxPath = path.join(tempConvertDir, `test_docx_${timestamp}.docx`);
+    
+    try {
+      // Try full DOCX conversion first
+      await convertImagesToDOCX(req.files, docxPath);
+      
+      // Check if file was created and has content
+      if (fs.existsSync(docxPath)) {
+        const stats = fs.statSync(docxPath);
+        console.log(`DOCX test successful: ${docxPath}, size: ${stats.size} bytes`);
+        
+        // Read file for debugging (first 100 bytes)
+        const fileStart = fs.readFileSync(docxPath, { start: 0, end: 100 });
+        console.log('DOCX file start:', fileStart.toString('hex'));
+        
+        res.json({
+          success: true,
+          message: 'DOCX conversion successful',
+          outputPath: docxPath,
+          fileSize: stats.size,
+          fileStart: fileStart.toString('hex'),
+          imagesProcessed: req.files.length
+        });
+        
+        // Clean up after a delay
+        setTimeout(() => {
+          if (fs.existsSync(docxPath)) {
+            fs.unlinkSync(docxPath);
+          }
+        }, 5000);
+        
+      } else {
+        throw new Error('DOCX file was not created');
+      }
+      
+    } catch (docxError) {
+      console.error('DOCX conversion failed:', docxError);
+      
+      // Try simple DOCX as fallback
+      try {
+        const simpleDocxPath = path.join(tempConvertDir, `test_simple_docx_${timestamp}.docx`);
+        await convertImagesToSimpleDOCX(req.files, simpleDocxPath);
+        
+        if (fs.existsSync(simpleDocxPath)) {
+          const stats = fs.statSync(simpleDocxPath);
+          console.log(`Simple DOCX successful: ${simpleDocxPath}, size: ${stats.size} bytes`);
+          
+          res.json({
+            success: true,
+            message: 'Simple DOCX conversion successful (fallback used)',
+            outputPath: simpleDocxPath,
+            fileSize: stats.size,
+            fallback: true,
+            imagesProcessed: req.files.length,
+            originalError: docxError.message
+          });
+          
+          setTimeout(() => {
+            if (fs.existsSync(simpleDocxPath)) {
+              fs.unlinkSync(simpleDocxPath);
+            }
+          }, 5000);
+          
+        } else {
+          throw new Error('Simple DOCX file was not created');
+        }
+        
+      } catch (simpleDocxError) {
+        console.error('Simple DOCX also failed:', simpleDocxError);
+        res.status(500).json({
+          success: false,
+          error: 'Both DOCX conversions failed',
+          mainError: docxError.message,
+          fallbackError: simpleDocxError.message
+        });
+      }
+    }
+    
+    // Clean up uploaded files
+    req.files.forEach(file => {
+      if (file.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+    });
+    
+  } catch (error) {
+    console.error('DOCX test error:', error);
     res.status(500).json({
       success: false,
       error: error.message
