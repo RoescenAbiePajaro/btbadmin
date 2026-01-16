@@ -1,3 +1,5 @@
+
+// src/components/admin/ExportComponents.jsx
 import React from 'react';
 import { FiDownload } from 'react-icons/fi';
 
@@ -184,7 +186,7 @@ export const ExportFeedback = ({ feedbackData }) => {
 };
 
 // Export Learning Materials Component
-export const ExportLearningMaterials = ({ educatorSharedFiles, getSchoolName, classCodes }) => {
+export const ExportLearningMaterials = ({ educatorSharedFiles, getSchoolName, classCodes, educatorUsers, educatorClassSummary }) => {
   const exportLearningMaterialsCSV = () => {
     if (!educatorSharedFiles || educatorSharedFiles.length === 0) return;
     
@@ -194,10 +196,15 @@ export const ExportLearningMaterials = ({ educatorSharedFiles, getSchoolName, cl
     educatorSharedFiles.forEach(educator => {
       educator.files.forEach(file => {
         const classItem = classCodes.find(c => c.classCode === file.classCode);
+        // Get school with fallback logic
+        const schoolId = educator.educatorSchool || 
+                         educatorUsers[educator.educatorId]?.school || 
+                         educatorClassSummary?.[educator.educatorId]?.school;
+        
         const values = [
           educator.educatorName || 'N/A',
           educator.educatorEmail || 'N/A',
-          educator.educatorSchool ? getSchoolName(educator.educatorSchool) : 'Not specified',
+          schoolId ? getSchoolName(schoolId) : 'Not specified',
           file.name || file.originalName || 'N/A',
           file.classCode || 'N/A',
           classItem?.className || 'N/A',

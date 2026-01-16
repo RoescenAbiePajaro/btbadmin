@@ -44,7 +44,13 @@ export default function LearningMaterialsComponent({
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">Educators Summary</h3>
-          <ExportLearningMaterials educatorSharedFiles={educatorSharedFiles} getSchoolName={getSchoolName} classCodes={classCodes} />
+          <ExportLearningMaterials 
+            educatorSharedFiles={educatorSharedFiles} 
+            getSchoolName={getSchoolName} 
+            classCodes={classCodes}
+            educatorUsers={educatorUsers}
+            educatorClassSummary={educatorClassSummary}
+          />
         </div>
         {educatorSharedFiles.length > 0 ? (
           <div className="overflow-x-auto">
@@ -145,7 +151,13 @@ export default function LearningMaterialsComponent({
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-white">Files Shared by Educator</h3>
-          <ExportLearningMaterials educatorSharedFiles={educatorSharedFiles} getSchoolName={getSchoolName} classCodes={classCodes} />
+          <ExportLearningMaterials 
+            educatorSharedFiles={educatorSharedFiles} 
+            getSchoolName={getSchoolName} 
+            classCodes={classCodes}
+            educatorUsers={educatorUsers}
+            educatorClassSummary={educatorClassSummary}
+          />
         </div>
         {educatorSharedFiles.length > 0 ? (
           <div className="space-y-8">

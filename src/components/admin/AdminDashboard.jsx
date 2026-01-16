@@ -401,7 +401,7 @@ export default function AdminDashboard() {
             educatorName: educatorName,
             educatorId: educatorId,
             educatorEmail: file.uploadedBy?.email || 'N/A',
-            educatorSchool: file.uploadedBy?.school || null,
+            educatorSchool: file.uploadedBy?.school || educatorUsers[educatorId]?.school || null,
             files: []
           };
         }
