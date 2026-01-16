@@ -178,7 +178,7 @@ export default function ClassTabComponent({
               <thead className="bg-gray-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    <FiUser className="inline mr-1" /> Educator
+                    <FiUser className="inline mr-1" /> Educator Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Email
@@ -260,7 +260,7 @@ export default function ClassTabComponent({
                     Class Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Educator
+                    Educator Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Email
@@ -269,7 +269,7 @@ export default function ClassTabComponent({
                     School
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Students
+                    Total Students
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Course
