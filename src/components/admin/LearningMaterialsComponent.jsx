@@ -111,17 +111,17 @@ export default function LearningMaterialsComponent({
                       {data.school ? getSchoolName(data.school) : 'Not specified'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+                      <span className="px-2 py-1 rounded text-xs bg-pink-500/20 text-pink-400">
                         {data.totalFiles} files
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
+                      <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
                         {data.totalClasses} classes
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200">
+                      <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400">
                         {educatorClassSummary?.[educatorId]?.totalStudents || 0} students
                       </span>
                     </td>

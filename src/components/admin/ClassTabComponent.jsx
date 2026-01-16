@@ -311,7 +311,7 @@ export default function ClassTabComponent({
                         <span className={`px-2 py-1 rounded text-xs ${
                           (cls.students?.length || 0) > 20 ? 'bg-green-500/20 text-green-400' :
                           (cls.students?.length || 0) > 10 ? 'bg-blue-500/20 text-blue-400' :
-                          'bg-yellow-500/20 text-yellow-400'
+                          'bg-blue-500/20 text-blue-400'
                         }`}>
                           {cls.students?.length || 0} students
                         </span>
