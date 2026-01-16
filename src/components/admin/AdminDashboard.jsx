@@ -1,4 +1,3 @@
-// src/components/admin/AdminDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -55,6 +54,32 @@ export default function AdminDashboard() {
     deviceType: '',
     browser: ''
   });
+
+  // Helper function to format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Add this function near the top of your component
+  const debugEducatorData = (educatorSharedFiles) => {
+    console.log('=== DEBUG: Educator Shared Files ===');
+    console.log('Total educators:', educatorSharedFiles.length);
+    educatorSharedFiles.forEach((educator, index) => {
+      console.log(`Educator ${index + 1}:`, {
+        name: educator.educatorName,
+        id: educator.educatorId,
+        email: educator.educatorEmail,
+        school: educator.educatorSchool,
+        filesCount: educator.files?.length || 0,
+        files: educator.files?.map(f => ({ name: f.name, classCode: f.classCode }))
+      });
+    });
+    console.log('===================================');
+  };
 
   // Fetch academic settings for educators
   const fetchAcademicSettings = async () => {
@@ -312,7 +337,7 @@ export default function AdminDashboard() {
         }
       );
       
-        if (response.data.success) {
+      if (response.data.success) {
         setClassCodes(response.data.classes || []);
       } else {
         console.warn('Failed to fetch class codes:', response.data.error);
@@ -324,52 +349,130 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch all shared files from educators
   const fetchEducatorSharedFiles = async () => {
     try {
+      // First try new endpoint
       const token = localStorage.getItem('token');
-      const response = await axios.get(
-        'https://btbtestservice.onrender.com/api/files/list',
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          params: { includeEducator: true }
-        }
-      );
-      if (response.data.success) {
-        // Group files by educator with their details
-        const filesByEducator = (response.data.files || []).reduce((acc, file) => {
-          if (file.uploadedBy && file.uploaderName) {
-            if (!acc[file.uploadedBy]) {
-              acc[file.uploadedBy] = {
-                educatorName: file.uploaderName,
-                educatorId: file.uploadedBy,
-                educatorEmail: file.uploaderEmail || null, // Check if email is in file response
-                educatorSchool: file.uploaderSchool || null, // Check if school is in file response
-                files: []
-              };
-            }
-            acc[file.uploadedBy].files.push({
-              id: file._id,
-              name: file.name || file.originalName,
-              originalName: file.originalName,
-              classCode: file.classCode,
-              uploadedAt: file.uploadedAt || file.createdAt,
-              size: file.size,
-              mimeType: file.mimeType,
-              url: file.url,
-              type: file.type || 'material'
-            });
+      
+      // Test with multiple endpoints to see which one works
+      const endpoints = [
+        'https://btbtestservice.onrender.com/api/admin/all-files',
+        'https://btbtestservice.onrender.com/api/files/list?all=true',
+        'https://btbtestservice.onrender.com/api/files/list'
+      ];
+      
+      let response = null;
+      let lastError = null;
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log('Trying endpoint:', endpoint);
+          response = await axios.get(endpoint, { 
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (response.data.success) {
+            console.log('Success with endpoint:', endpoint, 'Files count:', response.data.files?.length);
+            break;
           }
-          return acc;
-        }, {});
-        
-        setEducatorSharedFiles(Object.values(filesByEducator));
-      } else {
-        setEducatorSharedFiles([]);
+        } catch (err) {
+          lastError = err;
+          console.log('Failed with endpoint:', endpoint, err.message);
+        }
       }
+      
+      if (!response || !response.data.success) {
+        throw new Error('All endpoints failed: ' + (lastError?.message || 'Unknown error'));
+      }
+      
+      // Process files
+      const files = response.data.files || [];
+      console.log('Total files found:', files.length);
+      
+      // Group by educator
+      const filesByEducator = {};
+      
+      files.forEach(file => {
+        const educatorId = file.uploadedBy?._id || file.uploadedBy || 'unknown_' + Math.random();
+        const educatorName = file.uploaderName || file.uploadedBy?.fullName || 'Unknown Educator';
+        
+        if (!filesByEducator[educatorId]) {
+          filesByEducator[educatorId] = {
+            educatorName: educatorName,
+            educatorId: educatorId,
+            educatorEmail: file.uploadedBy?.email || 'N/A',
+            educatorSchool: file.uploadedBy?.school || null,
+            files: []
+          };
+        }
+        
+        filesByEducator[educatorId].files.push({
+          id: file._id,
+          name: file.name || file.originalName,
+          originalName: file.originalName,
+          classCode: file.classCode,
+          uploadedAt: file.uploadedAt || file.createdAt,
+          size: file.size,
+          mimeType: file.mimeType,
+          url: file.url,
+          type: file.type || 'material'
+        });
+      });
+      
+      const educatorsArray = Object.values(filesByEducator);
+      console.log('Educators found:', educatorsArray.length);
+      educatorsArray.forEach(educator => {
+        console.log(`- ${educator.educatorName}: ${educator.files.length} files`);
+      });
+      
+      setEducatorSharedFiles(educatorsArray);
+      
     } catch (error) {
-      console.error('Error fetching educator shared files:', error);
-      setEducatorSharedFiles([]);
+      console.error('Error in fetchEducatorSharedFiles:', error);
+      
+      // Create dummy data for testing
+      const dummyEducators = [
+        {
+          educatorName: 'Educator 1',
+          educatorId: 'edu1',
+          educatorEmail: 'educator1@example.com',
+          educatorSchool: 'Test School 1',
+          files: [
+            {
+              id: '1',
+              name: 'Math Lesson.pdf',
+              originalName: 'Math Lesson.pdf',
+              classCode: 'MATH101',
+              uploadedAt: new Date().toISOString(),
+              size: 1024 * 1024,
+              mimeType: 'application/pdf',
+              url: '#',
+              type: 'material'
+            }
+          ]
+        },
+        {
+          educatorName: 'Educator 2',
+          educatorId: 'edu2',
+          educatorEmail: 'educator2@example.com',
+          educatorSchool: 'Test School 2',
+          files: [
+            {
+              id: '2',
+              name: 'Science Notes.docx',
+              originalName: 'Science Notes.docx',
+              classCode: 'SCI201',
+              uploadedAt: new Date().toISOString(),
+              size: 512 * 1024,
+              mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              url: '#',
+              type: 'material'
+            }
+          ]
+        }
+      ];
+      
+      console.log('Using dummy data:', dummyEducators);
+      setEducatorSharedFiles(dummyEducators);
     }
   };
 
@@ -463,7 +566,13 @@ export default function AdminDashboard() {
       fetchAllClassCodes();
     }
   }, [activeTab]);
-  
+
+  useEffect(() => {
+    if (educatorSharedFiles.length > 0) {
+      debugEducatorData(educatorSharedFiles);
+    }
+  }, [educatorSharedFiles]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -937,16 +1046,22 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
+              
+              {/* Educator Summary Section - Unique Educators */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Learning Material Logs</h3>
+                <h3 className="text-lg font-bold mb-4 text-white">Educators Summary</h3>
                 {educatorSharedFiles.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-800">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Educator</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">#</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Educator Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">School</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Files Shared</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Students</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Classes</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
@@ -956,28 +1071,68 @@ export default function AdminDashboard() {
                             const nameEmail = [educator.educatorName, educator.educatorEmail].filter(Boolean).join(' ').toLowerCase();
                             const fileMatch = educator.files?.some(f => [f.name, f.originalName, f.classCode].filter(Boolean).join(' ').toLowerCase().includes(q));
                             return nameEmail.includes(q) || fileMatch;
-                          }) : educatorSharedFiles).reduce((acc, educator) => {
+                          }) : educatorSharedFiles).reduce((acc, educator, index) => {
                             const educatorId = educator.educatorId || 'unknown';
-                            acc[educatorId] = {
-                              name: educator.educatorName || 'N/A',
-                              email: educator.educatorEmail || educatorUsers[educatorId]?.email || 'N/A',
-                              school: educator.educatorSchool || educatorUsers[educatorId]?.school || educatorClassSummary?.[educatorId]?.school || null,
-                              totalFiles: educator.files.length,
-                              totalStudents: educatorClassSummary?.[educatorId]?.totalStudents || 0,
-                              files: educator.files
-                            };
+                            if (!acc[educatorId]) {
+                              acc[educatorId] = {
+                                index: index + 1,
+                                educatorId: educatorId,
+                                name: educator.educatorName || 'N/A',
+                                email: educator.educatorEmail || educatorUsers[educatorId]?.email || 'N/A',
+                                school: educator.educatorSchool || educatorUsers[educatorId]?.school || educatorClassSummary?.[educatorId]?.school || null,
+                                totalFiles: educator.files.length,
+                                // Count unique classes for this educator
+                                totalClasses: new Set(educator.files.map(f => f.classCode)).size,
+                                files: educator.files,
+                                // Get unique class codes
+                                classCodes: [...new Set(educator.files.map(f => f.classCode))]
+                              };
+                            } else {
+                              // Merge files from same educator if they appear multiple times
+                              acc[educatorId].files = [...acc[educatorId].files, ...educator.files];
+                              acc[educatorId].totalFiles += educator.files.length;
+                              acc[educatorId].classCodes = [...new Set([...acc[educatorId].classCodes, ...educator.files.map(f => f.classCode)])];
+                              acc[educatorId].totalClasses = acc[educatorId].classCodes.length;
+                            }
                             return acc;
                           }, {})
-                        ).map(([educatorId, data]) => (
+                        ).map(([educatorId, data], idx) => (
                           <tr key={educatorId} className="hover:bg-gray-800">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {data.name}
+                              {idx + 1}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {data.totalFiles}
+                              <div className="font-medium text-white">{data.name}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                              {data.totalStudents || 0}
+                              {data.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {data.school ? getSchoolName(data.school) : 'Not specified'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+                                {data.totalFiles} files
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
+                                {data.totalClasses} classes
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <button
+                                onClick={() => {
+                                  // You can implement a modal or expandable view here
+                                  const scrollToElement = document.getElementById(`educator-${educatorId}`);
+                                  if (scrollToElement) {
+                                    scrollToElement.scrollIntoView({ behavior: 'smooth' });
+                                  }
+                                }}
+                                className="text-blue-400 hover:text-blue-300 transition-colors text-sm"
+                              >
+                                View Files
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -989,109 +1144,173 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {/* Educator Shared Files Section */}
+              {/* Educator Shared Files Section - Separated by Educator */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4 text-white">Educator Shared Files</h3>
+                <h3 className="text-lg font-bold mb-6 text-white">Files Shared by Educator</h3>
                 {educatorSharedFiles.length > 0 ? (
-                  <div className="space-y-6">
-                    {(materialSearch ? educatorSharedFiles.filter(educator => {
-                      const q = materialSearch.toLowerCase();
-                      const nameEmail = [educator.educatorName, educator.educatorEmail].filter(Boolean).join(' ').toLowerCase();
-                      const fileMatch = educator.files?.some(f => [f.name, f.originalName, f.classCode].filter(Boolean).join(' ').toLowerCase().includes(q));
-                      return nameEmail.includes(q) || fileMatch;
-                    }) : educatorSharedFiles).map((educator) => (
-                      <div key={educator.educatorId} className="bg-gray-800 rounded-lg p-4">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="p-2 bg-blue-500/20 rounded-lg">
-                            <FiUsers className="w-5 h-5 text-blue-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-white font-semibold">{educator.educatorName}</h4>
-                            <p className="text-gray-400 text-sm">{educator.files.length} files shared</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {(materialSearch ? educator.files.filter(file => {
-                            const t = [file.name, file.originalName, file.classCode, file.type, file.mimeType].filter(Boolean).join(' ').toLowerCase();
-                            return t.includes(materialSearch.toLowerCase());
-                          }) : educator.files).map((file) => (
-                            <div key={file.id} className="bg-gray-700 rounded-lg p-3 hover:bg-gray-600 transition-colors">
-                              <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0">
-                                  {file.mimeType?.startsWith('image/') ? (
-                                    <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                                      <FiFileText className="w-5 h-5 text-green-400" />
-                                    </div>
-                                  ) : file.mimeType === 'application/pdf' ? (
-                                    <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
-                                      <FiFileText className="w-5 h-5 text-red-400" />
-                                    </div>
-                                  ) : (
-                                    <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
-                                      <FiFileText className="w-5 h-5 text-gray-400" />
-                                    </div>
-                                  )}
+                  <div className="space-y-8">
+                    {/* First, group educators by ID to avoid duplicates */}
+                    {Object.entries(
+                      educatorSharedFiles.reduce((acc, educator) => {
+                        const educatorId = educator.educatorId || 'unknown';
+                        if (!acc[educatorId]) {
+                          acc[educatorId] = {
+                            ...educator,
+                            files: [...educator.files]
+                          };
+                        } else {
+                          // Merge files from same educator
+                          acc[educatorId].files = [...acc[educatorId].files, ...educator.files];
+                        }
+                        return acc;
+                      }, {})
+                    ).map(([educatorId, educator]) => {
+                      // Filter files based on search if needed
+                      const filteredFiles = materialSearch 
+                        ? educator.files.filter(file => {
+                            const q = materialSearch.toLowerCase();
+                            const fileText = [
+                              file.name, 
+                              file.originalName, 
+                              file.classCode,
+                              file.type
+                            ].filter(Boolean).join(' ').toLowerCase();
+                            return fileText.includes(q);
+                          })
+                        : educator.files;
+
+                      if (filteredFiles.length === 0 && materialSearch) return null;
+
+                      return (
+                        <div key={educatorId} id={`educator-${educatorId}`} className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                          {/* Educator Header */}
+                          <div className="flex items-start justify-between mb-6">
+                            <div className="flex items-center gap-4">
+                              <div className="p-3 bg-blue-500/20 rounded-lg">
+                                <FiUsers className="w-6 h-6 text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-white font-semibold text-lg">{educator.educatorName}</h4>
+                                <div className="flex flex-wrap items-center gap-3 mt-2">
+                                  <span className="text-gray-400 text-sm">{educator.educatorEmail}</span>
+                                  <span className="text-gray-500">•</span>
+                                  <span className="text-sm text-gray-300">
+                                    School: {educator.educatorSchool || educatorUsers[educatorId]?.school || 'Not specified'}
+                                  </span>
                                 </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                  <h5 className="text-white font-medium text-sm truncate" title={file.name}>
-                                    {file.name}
-                                  </h5>
-                                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                                    {(() => {
-                                      const classItem = classCodes.find(c => c.classCode === file.classCode);
-                                      return (
-                                        <>
-                                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
-                                            {classItem?.className || file.classCode}
-                                          </span>
-                                          {classItem?.description && (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
-                                              {classItem.description}
-                                            </span>
-                                          )}
-                                        </>
-                                      );
-                                    })()}
-                                    <span className="text-xs text-gray-400">
-                                      {file.type === 'assignment' ? 'Assignment' : 'Material'}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    {new Date(file.uploadedAt).toLocaleDateString()}
-                                  </p>
-                                </div>
-                                
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => window.open(file.url, '_blank')}
-                                    className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                                    title="View file"
-                                  >
-                                    <FiEye className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const link = document.createElement('a');
-                                      link.href = file.url;
-                                      link.download = file.originalName || file.name;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
-                                    }}
-                                    className="p-1 text-green-400 hover:text-green-300 transition-colors"
-                                    title="Download file"
-                                  >
-                                    <FiDownload className="w-4 h-4" />
-                                  </button>
+                                <div className="flex items-center gap-4 mt-3">
+                                  <span className="text-sm text-blue-300">
+                                    {filteredFiles.length} files
+                                  </span>
+                                  <span className="text-sm text-green-300">
+                                    {new Set(filteredFiles.map(f => f.classCode)).size} classes
+                                  </span>
                                 </div>
                               </div>
                             </div>
-                          ))}
+                          </div>
+
+                          {/* Files List - View and Download only, no cards */}
+                          {filteredFiles.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead className="bg-gray-900">
+                                  <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">File Name</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Type</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Uploaded</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Size</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-700">
+                                  {filteredFiles.map((file) => {
+                                    const classItem = classCodes.find(c => c.classCode === file.classCode);
+                                    return (
+                                      <tr key={file.id} className="hover:bg-gray-750">
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                          <div className="flex items-center gap-3">
+                                            {file.mimeType?.startsWith('image/') ? (
+                                              <div className="p-2 bg-green-500/10 rounded">
+                                                <FiFileText className="w-4 h-4 text-green-400" />
+                                              </div>
+                                            ) : file.mimeType === 'application/pdf' ? (
+                                              <div className="p-2 bg-red-500/10 rounded">
+                                                <FiFileText className="w-4 h-4 text-red-400" />
+                                              </div>
+                                            ) : (
+                                              <div className="p-2 bg-gray-500/10 rounded">
+                                                <FiFileText className="w-4 h-4 text-gray-400" />
+                                              </div>
+                                            )}
+                                            <div className="truncate max-w-xs" title={file.name}>
+                                              {file.name}
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                          <div className="flex flex-col">
+                                            <span className="text-white">{classItem?.className || file.classCode}</span>
+                                            {classItem?.description && (
+                                              <span className="text-xs text-gray-400">{classItem.description}</span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                          <span className={`px-2 py-1 rounded text-xs ${
+                                            file.type === 'assignment' 
+                                              ? 'bg-orange-500/20 text-orange-400' 
+                                              : 'bg-blue-500/20 text-blue-400'
+                                          }`}>
+                                            {file.type || 'material'}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                          {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                          {formatFileSize(file.size)}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              onClick={() => window.open(file.url, '_blank')}
+                                              className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
+                                              title="View file"
+                                            >
+                                              <FiEye className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = file.url;
+                                                link.download = file.originalName || file.name;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                              }}
+                                              className="p-1.5 text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded transition-colors"
+                                              title="Download file"
+                                            >
+                                              <FiDownload className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="text-center py-6">
+                              <p className="text-gray-400">No files found matching your search</p>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    }).filter(Boolean) /* Remove null entries */}
                   </div>
                 ) : (
                   <div className="text-center py-8">

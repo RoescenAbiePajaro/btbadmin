@@ -2259,6 +2259,38 @@ app.get('/api/files/all-classes', verifyToken, async (req, res) => {
   }
 });
 
+// Get all files for admin (no filtering by educator)
+app.get('/api/admin/all-files', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const files = await File.find({})
+      .sort({ createdAt: -1 })
+      .populate('uploadedBy', 'fullName email username school')
+      .lean();
+    
+    // Format the response to include educator info
+    const formattedFiles = files.map(file => ({
+      ...file,
+      educatorName: file.uploadedBy?.fullName || 'Unknown',
+      educatorEmail: file.uploadedBy?.email || 'N/A',
+      educatorId: file.uploadedBy?._id,
+      educatorSchool: file.uploadedBy?.school
+    }));
+    
+    res.json({
+      success: true,
+      count: formattedFiles.length,
+      files: formattedFiles
+    });
+  } catch (error) {
+    console.error('Error fetching all files for admin:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching files',
+      details: error.message
+    });
+  }
+});
+
 // =====================
 // 🧹 ADMIN CLEANUP
 // =====================

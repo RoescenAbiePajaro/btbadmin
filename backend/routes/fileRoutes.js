@@ -7,6 +7,7 @@ const fs = require('fs');
 const supabase = require('../services/supabaseService');
 const File = require('../models/File');
 const User = require('../models/User');
+const Class = require('../models/Class');
 const { verifyToken } = require('../middleware/auth');
 
 // Ensure temp-uploads directory exists
@@ -165,14 +166,19 @@ router.get('/list', verifyToken, async (req, res) => {
     
     let query = {};
     
-    // If classCode is provided in query, use it
-    if (classCode) {
-      query.classCode = classCode.toUpperCase();
-    }
+    console.log('Files list request from:', { userId, userRole, classCode });
     
-    // If user is student, they should only see files from their enrolled class
-    if (userRole === 'student') {
-      const user = await User.findById(userId).populate('enrolledClass');
+    // If user is admin, show all files
+    if (userRole === 'admin') {
+      // Admin can see all files
+      if (classCode) {
+        query.classCode = classCode.toUpperCase();
+      }
+      // No other filters for admin
+    }
+    // If user is student, they should only see files from their CURRENT enrolled class
+    else if (userRole === 'student') {
+      const user = await User.findById(userId);
       
       if (!user.enrolledClass) {
         return res.json({
@@ -182,8 +188,19 @@ router.get('/list', verifyToken, async (req, res) => {
         });
       }
       
-      // Always filter by student's enrolled class
-      query.classCode = user.enrolledClass.classCode;
+      // Get the current class
+      const currentClass = await Class.findById(user.enrolledClass);
+      if (!currentClass) {
+        return res.json({
+          success: true,
+          files: [],
+          message: 'Your current class was not found'
+        });
+      }
+      
+      // Always filter by student's CURRENT enrolled class
+      query.classCode = currentClass.classCode;
+      console.log('Student query:', query);
     }
     // If user is educator, show only their uploaded files
     else if (userRole === 'educator') {
@@ -196,8 +213,10 @@ router.get('/list', verifyToken, async (req, res) => {
     }
     
     const files = await File.find(query)
-      .sort({ uploadedAt: -1 })
-      .populate('uploadedBy', 'username fullName');
+      .sort({ createdAt: -1 })
+      .populate('uploadedBy', 'username fullName email school');
+    
+    console.log(`Found ${files.length} files for query:`, query);
     
     res.status(200).json({
       success: true,
