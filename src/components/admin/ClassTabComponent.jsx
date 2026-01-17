@@ -59,6 +59,30 @@ export default function ClassTabComponent({
     }
   }, [filteredData]);
 
+  // Filter educator data based on search
+  const getFilteredEducatorData = () => {
+    if (!classSearch) return educatorClassData;
+    
+    const searchTerm = classSearch.toLowerCase();
+    const filtered = {};
+    
+    Object.entries(educatorClassData).forEach(([educatorId, data]) => {
+      const searchText = [
+        data.name,
+        data.email,
+        data.school,
+        data.classes?.map(cls => cls.className).join(' '),
+        data.classes?.map(cls => cls.classCode).join(' ')
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      if (searchText.includes(searchTerm)) {
+        filtered[educatorId] = data;
+      }
+    });
+    
+    return filtered;
+  };
+
   const filteredClasses = filteredData?.data ? 
     classSearch ? 
       filteredData.data.filter(cls => {
@@ -198,8 +222,8 @@ export default function ClassTabComponent({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {Object.keys(educatorClassData).length > 0 ? (
-                  Object.entries(educatorClassData).map(([educatorId, data]) => (
+                {Object.keys(getFilteredEducatorData()).length > 0 ? (
+                  Object.entries(getFilteredEducatorData()).map(([educatorId, data]) => (
                     <tr key={educatorId} className="hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {data.name}
@@ -226,7 +250,7 @@ export default function ClassTabComponent({
                 ) : (
                   <tr>
                     <td colSpan="6" className="px-6 py-4 text-center text-gray-400">
-                      No educator class data available
+                      {classSearch ? 'No educators match your search' : 'No educator class data available'}
                     </td>
                   </tr>
                 )}
