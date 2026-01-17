@@ -381,7 +381,7 @@ export default function LearningMaterialsComponent({
                                 </span>
                               )}
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class Code</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                               Uploaded {(sortBy === 'newest' || sortBy === 'oldest') && (
                                 <span className="text-xs text-violet-400 ml-1">
