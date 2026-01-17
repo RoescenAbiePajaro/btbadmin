@@ -55,20 +55,6 @@ export default function LearningMaterialsComponent({
   const getFilteredAndSortedEducators = () => {
     let educators = [...educatorSharedFiles];
     
-    // Apply search filtering
-    if (materialSearch) {
-      const q = materialSearch.toLowerCase();
-      educators = educators.filter(educator => {
-        const nameEmail = [educator.educatorName, educator.educatorSchool]
-          .filter(Boolean).join(' ').toLowerCase();
-        const fileMatch = educator.files?.some(f => 
-          [f.name, f.originalName, f.classCode]
-            .filter(Boolean).join(' ').toLowerCase().includes(q)
-        );
-        return nameEmail.includes(q) || fileMatch;
-      });
-    }
-    
     // Group educators by ID to avoid duplicates
     const groupedEducators = educators.reduce((acc, educator) => {
       const educatorId = educator.educatorId || 'unknown';
@@ -83,6 +69,30 @@ export default function LearningMaterialsComponent({
       }
       return acc;
     }, {});
+    
+    // Filter educators based on search (only keep educators with matching files or educator info)
+    if (materialSearch) {
+      const q = materialSearch.toLowerCase();
+      Object.keys(groupedEducators).forEach(educatorId => {
+        const educator = groupedEducators[educatorId];
+        const nameEmail = [educator.educatorName, educator.educatorSchool]
+          .filter(Boolean).join(' ').toLowerCase();
+        
+        // Check if educator name/school matches
+        const educatorMatches = nameEmail.includes(q);
+        
+        // Check if any files match
+        const fileMatch = educator.files?.some(f => 
+          [f.name, f.originalName, f.classCode]
+            .filter(Boolean).join(' ').toLowerCase().includes(q)
+        );
+        
+        // Remove educator if neither educator info nor files match
+        if (!educatorMatches && !fileMatch) {
+          delete groupedEducators[educatorId];
+        }
+      });
+    }
     
     // Sort educator groups
     const sortedEntries = Object.entries(groupedEducators).sort(([idA, educatorA], [idB, educatorB]) => {
@@ -246,7 +256,7 @@ export default function LearningMaterialsComponent({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         <span className="px-2 py-1 rounded text-xs bg-pink-500/20 text-pink-400">
-                          {filteredFiles.length} files
+                          {educator.files.length} files
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
