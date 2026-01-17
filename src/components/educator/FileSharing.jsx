@@ -166,10 +166,19 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     }
   };
 
-  const handleViewFile = (fileUrl) => {
+  const handleViewFile = (file) => {
     try {
-      // Open in new tab for viewing
-      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      const fileExtension = file.name?.split('.').pop()?.toLowerCase() || '';
+      const fileUrl = file.url;
+      
+      // Use Google Docs Viewer for office documents that can't be viewed directly
+      if (['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx'].includes(fileExtension)) {
+        const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`;
+        window.open(viewerUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        // Open in new tab for other file types
+        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
       console.error('Error opening file:', error);
       showToast('Failed to open file', 'error');
@@ -687,7 +696,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleViewFile(file.url);
+                              handleViewFile(file);
                             }}
                             className="text-green-600 hover:text-green-800 mr-3"
                             title="View"
