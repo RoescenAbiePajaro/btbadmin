@@ -259,11 +259,6 @@ const ImageConverter = ({ educatorId }) => {
         fileName = 'sample-converted.pdf';
         mimeType = 'application/pdf';
         break;
-      case 'docx':
-        sampleContent = 'Sample DOCX Content\n\nThis is a sample DOCX file created from images.';
-        fileName = 'sample-converted.docx';
-        mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        break;
       case 'pptx':
         sampleContent = 'Sample PPTX Content\n\nThis is a sample PPTX file created from images.';
         fileName = 'sample-converted.pptx';
@@ -309,7 +304,7 @@ const ImageConverter = ({ educatorId }) => {
             </div>
             <div>
               <h3 className="text-xl font-semibold text-white">Image Converter</h3>
-              <p className="text-gray-400 text-sm">Convert multiple images to PDF, DOCX, or PPTX</p>
+              <p className="text-gray-400 text-sm">Convert multiple images to PDF or PPTX</p>
             </div>
           </div>
         </div>
@@ -321,7 +316,7 @@ const ImageConverter = ({ educatorId }) => {
               Convert to:
               <span className="text-red-400 ml-1">*</span>
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 onClick={() => setConversionType('pdf')}
                 className={`p-4 rounded-lg border-2 transition-all duration-200 flex flex-col items-center justify-center ${
@@ -337,23 +332,6 @@ const ImageConverter = ({ educatorId }) => {
                 </div>
                 <span className="text-white font-medium">PDF</span>
                 <span className="text-xs text-gray-400 mt-1">Portable Document Format</span>
-              </button>
-              
-              <button
-                onClick={() => setConversionType('docx')}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 flex flex-col items-center justify-center ${
-                  conversionType === 'docx'
-                    ? 'border-pink-500 bg-pink-500/10'
-                    : 'border-gray-600 hover:border-pink-500/50 hover:bg-gray-750'
-                }`}
-              >
-                <div className="mb-2 p-2 bg-blue-500/10 rounded-full">
-                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <span className="text-white font-medium">DOCX</span>
-                <span className="text-xs text-gray-400 mt-1">Microsoft Word Document</span>
               </button>
               
               <button
