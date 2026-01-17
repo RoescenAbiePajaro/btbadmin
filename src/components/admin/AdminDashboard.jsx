@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ExportClassesSummary, ExportClassDetails } from './ExportComponents.jsx';
-import TabsComponent from './TabsComponent.jsx';
-import OverviewTab from './tabs/OverviewTab.jsx';
-import UsersTab from './tabs/UsersTab.jsx';
-import ClassesTab from './tabs/ClassesTab.jsx';
-import LearningMaterialsTab from './tabs/LearningMaterialsTab.jsx';
-import FeedbackTab from './tabs/FeedbackTab.jsx';
-import ChartsTab from './tabs/ChartsTab.jsx';
+import { ExportClassesSummary, ExportClassDetails, ExportUsers } from './ExportComponents.jsx';
+import FeedbackComponent from './FeedbackComponent.jsx';
+import ChartComponent from './ChartComponent.jsx';
+import ClassTabComponent from './ClassTabComponent.jsx';
+import LearningMaterialsComponent from './LearningMaterialsComponent.jsx';
 import {
   FiUsers, FiBook, FiFileText, FiDownload, 
   FiTrendingUp, FiCalendar, FiFilter,
   FiLogOut, FiHome, FiBarChart2, FiActivity, FiEye, FiUpload,
   FiClock, FiGlobe, FiMonitor, FiUserCheck, FiDatabase,
-  FiAlertCircle, FiCheckCircle, FiRefreshCw, FiMessageSquare
+  FiAlertCircle, FiCheckCircle, FiRefreshCw, FiSearch,
+  FiChevronUp, FiChevronDown, FiMoreVertical, FiMessageSquare, FiStar, FiSend, FiX
 } from 'react-icons/fi';
 
 export default function AdminDashboard() {
@@ -46,10 +44,6 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState('');
   const [classTrends, setClassTrends] = useState(null);
   const [classTrendPeriod, setClassTrendPeriod] = useState('month');
-
-  // User filter states
-  const [userRoleFilter, setUserRoleFilter] = useState('all');
-  const [userSortFilter, setUserSortFilter] = useState('name-asc');
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -777,17 +771,95 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <TabsComponent activeTab={activeTab} setActiveTab={setActiveTab} />
+        <div className="mb-6 border-b border-gray-800">
+          <div className="flex space-x-4 overflow-x-auto">
+            {[
+              { id: 'overview', label: 'Overview', icon: <FiHome /> },
+              { id: 'users', label: 'Users', icon: <FiUsers /> },
+              { id: 'classes', label: 'Classes', icon: <FiBook /> },
+              { id: 'activities', label: 'Learning Materials', icon: <FiActivity /> },
+              { id: 'feedback', label: 'Feedback', icon: <FiMessageSquare /> },
+              { id: 'charts', label: 'Charts', icon: <FiBarChart2 /> }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`pb-2 px-4 flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === tab.id 
+                    ? 'border-b-2 border-violet-500 text-violet-500' 
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Tab Content */}
         <div className="mb-8">
           {activeTab === 'overview' && (
-            <OverviewTab statistics={statistics} />
+            <div className="space-y-8">
+              {/* Platform Metrics */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4 text-white">Platform Overview</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="p-4 bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-500/20 rounded-lg">
+                        <FiUsers className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">User Growth</p>
+                        <p className="text-xl font-bold text-white">
+                          {statistics?.users?.total || 0} Users
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-500/20 rounded-lg">
+                        <FiBook className="w-5 h-5 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">Class Engagement</p>
+                        <p className="text-xl font-bold text-white">
+                          {statistics?.classes?.active || 0} Active Classes
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/20 rounded-lg">
+                        <FiHome className="w-5 h-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">Schools Created</p>
+                        <p className="text-xl font-bold text-white">
+                          {statistics?.schools?.total || 0} Schools
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+             
+               
+             
+            </div>
           )}
 
           {activeTab === 'feedback' && (
-            <FeedbackTab
+            <FeedbackComponent
               feedbackStats={feedbackStats}
+              feedbackData={[]} // Pass empty array, component will fetch its own
+              feedbackLoading={false}
+              fetchFeedbackData={() => {}} // Pass empty function, component will use its own
               fetchFeedbackStats={fetchFeedbackStats}
               fetchEducatorClassSummary={fetchEducatorClassSummary}
               fetchAllClassCodes={fetchAllClassCodes}
@@ -801,7 +873,7 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'charts' && (
-            <ChartsTab
+            <ChartComponent
               statistics={statistics}
               analyticsData={analyticsData}
               schoolTrends={schoolTrends}
@@ -816,22 +888,144 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'users' && (
-            <UsersTab
-              filteredData={filteredData}
-              userSearch={userSearch}
-              setUserSearch={setUserSearch}
-              userRoleFilter={userRoleFilter}
-              setUserRoleFilter={setUserRoleFilter}
-              userSortFilter={userSortFilter}
-              setUserSortFilter={setUserSortFilter}
-              getSchoolName={getSchoolName}
-              educatorClassSummary={educatorClassSummary}
-              classCodes={classCodes}
-            />
+            <div className="space-y-8">
+              {/* Search Bar */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative w-full sm:w-96">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search users by name, email, role, school..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">User Management</h3>
+                  <ExportUsers filteredData={filteredData} filters={filters} deriveUserSchool={deriveUserSchool} />
+                </div>
+                {filteredData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-800">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Role
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            School
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Joined
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {filteredData.data && filteredData.data.length > 0 ? (
+                          (filters.role ? filteredData.data.filter(u => u.role === filters.role) : filteredData.data).filter(user => {
+                            if (!userSearch) return true;
+                            const searchText = userSearch.toLowerCase();
+                            const searchableText = [
+                              user.fullName || '',
+                              user.email || '',
+                              user.role || '',
+                              deriveUserSchool(user),
+                              user.isActive ? 'active' : 'inactive',
+                              user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''
+                            ].join(' ').toLowerCase();
+                            return searchableText.includes(searchText);
+                          }).map((user, index) => {
+                            // Get school for educator from their classes
+                            let userSchool = user.school;
+                            
+                            if (user.role === 'educator') {
+                              // Try to get school from educatorClassSummary first
+                              if (educatorClassSummary?.[user._id]?.school) {
+                                userSchool = educatorClassSummary[user._id].school;
+                              } 
+                              // If not found, fetch from class codes
+                              else if (classCodes.length > 0) {
+                                // Find classes created by this educator
+                                const educatorClasses = classCodes.filter(cls => 
+                                  cls.educator?._id === user._id || 
+                                  cls.educatorId === user._id
+                                );
+                                
+                                if (educatorClasses.length > 0) {
+                                  // Get the first class's school (assuming all classes belong to same school)
+                                  userSchool = educatorClasses[0]?.school;
+                                }
+                              }
+                            }
+                            
+                            return (
+                              <tr key={user._id || index} className="hover:bg-gray-800">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.fullName || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                                    user.role === 'educator' ? 'bg-pink-500/20 text-pink-400' :
+                                    'bg-blue-500/20 text-blue-400'
+                                  }`}>
+                                    {user.role}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {userSchool ? getSchoolName(userSchool) : 'Not specified'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                  }`}>
+                                    {user.isActive ? 'Active' : 'Inactive'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="px-6 py-4 text-center text-gray-400">
+                              No user data available
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500 mx-auto mb-4"></div>
+                    <p className="text-gray-400">Loading user data...</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {activeTab === 'classes' && (
-            <ClassesTab
+            <ClassTabComponent
               filteredData={filteredData}
               classSearch={classSearch}
               setClassSearch={setClassSearch}
@@ -846,7 +1040,7 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'activities' && (
-            <LearningMaterialsTab
+            <LearningMaterialsComponent
               materialSearch={materialSearch}
               setMaterialSearch={setMaterialSearch}
               educatorSharedFiles={educatorSharedFiles}
