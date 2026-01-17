@@ -58,7 +58,7 @@ export const ExportClassesSummary = ({ filteredData, getSchoolName }) => {
       onClick={exportClassesSummaryCSV}
       className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2"
     >
-      <FiDownload className="w-5 h-5" /> Export Summary
+      <FiDownload className="w-5 h-5" /> Export
     </button>
   );
 };
@@ -100,7 +100,7 @@ export const ExportClassDetails = ({ filteredData, getSchoolName }) => {
       onClick={exportClassDetailsCSV}
       className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg flex items-center gap-2"
     >
-      <FiDownload className="w-5 h-5" /> Export Details
+      <FiDownload className="w-5 h-5" /> Export
     </button>
   );
 };

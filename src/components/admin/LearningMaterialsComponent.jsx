@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FiUsers, FiFileText, FiDownload, FiEye, FiSearch
 } from 'react-icons/fi';
@@ -12,9 +12,11 @@ export default function LearningMaterialsComponent({
   educatorUsers,
   classCodes,
   getSchoolName,
-  
   formatFileSize
 }) {
+  // Filter states
+  const [materialSortFilter, setMaterialSortFilter] = useState('name-asc');
+  const [materialTypeFilter, setMaterialTypeFilter] = useState('all');
   
   // Helper function to get educator school with proper formatting
   const getEducatorSchool = (educatorId, educatorData) => {
@@ -24,6 +26,68 @@ export default function LearningMaterialsComponent({
       educatorClassSummary?.[educatorId]?.school;
     
     return school ? getSchoolName(school) : 'Not specified';
+  };
+
+  // Filter and sort materials
+  const getFilteredAndSortedMaterials = () => {
+    if (!educatorSharedFiles.length) return [];
+    
+    let materials = [...educatorSharedFiles];
+    
+    // Apply type filter
+    if (materialTypeFilter !== 'all') {
+      materials = materials.map(educator => ({
+        ...educator,
+        files: educator.files.filter(file => {
+          if (materialTypeFilter === 'image') {
+            return file.mimeType?.startsWith('image/');
+          } else if (materialTypeFilter === 'pdf') {
+            return file.mimeType === 'application/pdf';
+          } else if (materialTypeFilter === 'document') {
+            return file.mimeType?.includes('document') || file.mimeType?.includes('text') || file.mimeType?.includes('spreadsheet');
+          }
+          return true;
+        })
+      })).filter(educator => educator.files.length > 0);
+    }
+    
+    // Apply search filter
+    if (materialSearch) {
+      const searchText = materialSearch.toLowerCase();
+      materials = materials.map(educator => ({
+        ...educator,
+        files: educator.files.filter(file => {
+          const fileText = [
+            file.name, 
+            file.originalName, 
+            file.classCode,
+            file.type
+          ].filter(Boolean).join(' ').toLowerCase();
+          return fileText.includes(searchText);
+        })
+      })).filter(educator => {
+        const educatorText = [educator.educatorName, educator.educatorSchool].filter(Boolean).join(' ').toLowerCase();
+        return educatorText.includes(searchText) || educator.files.length > 0;
+      });
+    }
+    
+    // Apply sorting
+    materials.sort((a, b) => {
+      switch (materialSortFilter) {
+        case 'name-asc':
+          return (a.educatorName || '').localeCompare(b.educatorName || '');
+        case 'name-desc':
+          return (b.educatorName || '').localeCompare(a.educatorName || '');
+        case 'files-asc':
+          return a.files.length - b.files.length;
+        case 'files-desc':
+          return b.files.length - a.files.length;
+        default:
+          return 0;
+      }
+    });
+    
+    return materials;
   };
 
   return (
@@ -43,18 +107,44 @@ export default function LearningMaterialsComponent({
       
       {/* Educator Summary Section - Unique Educators */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
           <h3 className="text-lg font-bold text-white">Educators Summary</h3>
-          <ExportLearningMaterials 
-            educatorSharedFiles={educatorSharedFiles} 
-            getSchoolName={getSchoolName} 
-            classCodes={classCodes}
-
-            educatorUsers={educatorUsers}
-            educatorClassSummary={educatorClassSummary}
-          />
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            {/* Type Filter */}
+            <select
+              value={materialTypeFilter}
+              onChange={(e) => setMaterialTypeFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="all">All Types</option>
+              <option value="image">Images</option>
+              <option value="pdf">PDFs</option>
+              <option value="document">Documents</option>
+            </select>
+            
+            {/* Sort Filter */}
+            <select
+              value={materialSortFilter}
+              onChange={(e) => setMaterialSortFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="name-asc">A to Z</option>
+              <option value="name-desc">Z to A</option>
+              <option value="files-desc">Most Files</option>
+              <option value="files-asc">Least Files</option>
+            </select>
+            
+            <ExportLearningMaterials 
+              educatorSharedFiles={getFilteredAndSortedMaterials()} 
+              getSchoolName={getSchoolName} 
+              classCodes={classCodes}
+              educatorUsers={educatorUsers}
+              educatorClassSummary={educatorClassSummary}
+            />
+          </div>
         </div>
-        {educatorSharedFiles.length > 0 ? (
+        {getFilteredAndSortedMaterials().length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-800">
@@ -70,12 +160,7 @@ export default function LearningMaterialsComponent({
               </thead>
               <tbody className="divide-y divide-gray-800">
                 {Object.entries(
-                  (materialSearch ? educatorSharedFiles.filter(educator => {
-                    const q = materialSearch.toLowerCase();
-                    const nameEmail = [educator.educatorName, educator.educatorSchool].filter(Boolean).join(' ').toLowerCase();
-                    const fileMatch = educator.files?.some(f => [f.name, f.originalName, f.classCode].filter(Boolean).join(' ').toLowerCase().includes(q));
-                    return nameEmail.includes(q) || fileMatch;
-                  }) : educatorSharedFiles).reduce((acc, educator, index) => {
+                  getFilteredAndSortedMaterials().reduce((acc, educator, index) => {
                     const educatorId = educator.educatorId || 'unknown';
                     if (!acc[educatorId]) {
                       acc[educatorId] = {
@@ -151,21 +236,48 @@ export default function LearningMaterialsComponent({
 
       {/* Educator Shared Files Section - Separated by Educator */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <h3 className="text-lg font-bold text-white">Files Shared by Educator</h3>
-          <ExportLearningMaterials 
-            educatorSharedFiles={educatorSharedFiles} 
-            getSchoolName={getSchoolName} 
-            classCodes={classCodes}
-            educatorUsers={educatorUsers}
-            educatorClassSummary={educatorClassSummary}
-          />
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            {/* Type Filter */}
+            <select
+              value={materialTypeFilter}
+              onChange={(e) => setMaterialTypeFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="all">All Types</option>
+              <option value="image">Images</option>
+              <option value="pdf">PDFs</option>
+              <option value="document">Documents</option>
+            </select>
+            
+            {/* Sort Filter */}
+            <select
+              value={materialSortFilter}
+              onChange={(e) => setMaterialSortFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="name-asc">A to Z</option>
+              <option value="name-desc">Name: Z to A</option>
+              <option value="files-desc">Most Files</option>
+              <option value="files-asc">Least Files</option>
+            </select>
+            
+            <ExportLearningMaterials 
+              educatorSharedFiles={getFilteredAndSortedMaterials()} 
+              getSchoolName={getSchoolName} 
+              classCodes={classCodes}
+              educatorUsers={educatorUsers}
+              educatorClassSummary={educatorClassSummary}
+            />
+          </div>
         </div>
-        {educatorSharedFiles.length > 0 ? (
+        {getFilteredAndSortedMaterials().length > 0 ? (
           <div className="space-y-8">
             {/* First, group educators by ID to avoid duplicates */}
             {Object.entries(
-              educatorSharedFiles.reduce((acc, educator) => {
+              getFilteredAndSortedMaterials().reduce((acc, educator) => {
                 const educatorId = educator.educatorId || 'unknown';
                 if (!acc[educatorId]) {
                   acc[educatorId] = {
@@ -179,21 +291,8 @@ export default function LearningMaterialsComponent({
                 return acc;
               }, {})
             ).map(([educatorId, educator]) => {
-              // Filter files based on search if needed
-              const filteredFiles = materialSearch 
-                ? educator.files.filter(file => {
-                    const q = materialSearch.toLowerCase();
-                    const fileText = [
-                      file.name, 
-                      file.originalName, 
-                      file.classCode,
-                      file.type
-                    ].filter(Boolean).join(' ').toLowerCase();
-                    return fileText.includes(q);
-                  })
-                : educator.files;
-
-              if (filteredFiles.length === 0 && materialSearch) return null;
+              // Filter files based on search if needed (already applied in getFilteredAndSortedMaterials)
+              const filteredFiles = educator.files;
 
               return (
                 <div key={educatorId} id={`educator-${educatorId}`} className="bg-gray-800 rounded-lg p-6 border border-gray-700">
