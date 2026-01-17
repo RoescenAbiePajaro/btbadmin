@@ -28,7 +28,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [educatorFileSummary, setEducatorFileSummary] = useState(null);
-  const [educatorClassSummary, setEducatorClassSummary] = useState(null);
+  const [educatorClassSummary, setEducatorClassSummary] = useState({});
   const [educatorUsers, setEducatorUsers] = useState({});
   const [educatorSharedFiles, setEducatorSharedFiles] = useState([]);
   const [classCodes, setClassCodes] = useState([]);
@@ -53,7 +53,8 @@ export default function AdminDashboard() {
     classCode: '',
     activityType: '',
     deviceType: '',
-    browser: ''
+    browser: '',
+    sortOrder: 'newest' // Added sortOrder to filters
   });
 
   // Helper function to format file size
@@ -65,29 +66,11 @@ export default function AdminDashboard() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Add this function near the top of your component
-  const debugEducatorData = (educatorSharedFiles) => {
-    console.log('=== DEBUG: Educator Shared Files ===');
-    console.log('Total educators:', educatorSharedFiles.length);
-    educatorSharedFiles.forEach((educator, index) => {
-      console.log(`Educator ${index + 1}:`, {
-        name: educator.educatorName,
-        id: educator.educatorId,
-        email: educator.educatorEmail,
-        school: educator.educatorSchool,
-        filesCount: educator.files?.length || 0,
-        files: educator.files?.map(f => ({ name: f.name, classCode: f.classCode }))
-      });
-    });
-    console.log('===================================');
-  };
-
   // Fetch academic settings for educators
   const fetchAcademicSettings = async () => {
     try {
       const token = localStorage.getItem('token');
       
-      // Fetch all academic settings in parallel
       const [schoolsRes] = await Promise.all([
         axios.get('https://btbtestservice.onrender.com/api/academic-settings/school', {
           headers: { Authorization: `Bearer ${token}` }
@@ -141,7 +124,6 @@ export default function AdminDashboard() {
         setStatistics(statsRes.data.statistics);
       }
       
-      // Process analytics response - THIS IS THE KEY FIX
       if (analyticsRes.data.success) {
         setAnalyticsData(analyticsRes.data.charts);
       }
@@ -150,7 +132,6 @@ export default function AdminDashboard() {
       console.error('Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please check your connection.');
       
-      // Set fallback data for both states
       setStatistics({
         users: { total: 0, byRole: [], active: 0 },
         classes: { total: 0, active: 0, inactive: 0, mostActive: [] },
@@ -160,10 +141,9 @@ export default function AdminDashboard() {
           views: 0, 
           total: 0
         },
-        schools: { total: 0 } // Make sure this exists
+        schools: { total: 0 }
       });
       
-      // Also set fallback for analyticsData
       setAnalyticsData({
         rawData: {
           platformMetrics: {
@@ -200,7 +180,6 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      // Analytics might not be implemented yet, that's OK
     }
   };
 
@@ -303,7 +282,7 @@ export default function AdminDashboard() {
             role: 'educator', 
             page: 1, 
             limit: 1000,
-            includeSchool: true // Request school data
+            includeSchool: true
           },
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -352,10 +331,8 @@ export default function AdminDashboard() {
 
   const fetchEducatorSharedFiles = async () => {
     try {
-      // First try new endpoint
       const token = localStorage.getItem('token');
       
-      // Test with multiple endpoints to see which one works
       const endpoints = [
         'https://btbtestservice.onrender.com/api/admin/all-files',
         'https://btbtestservice.onrender.com/api/files/list?all=true',
@@ -367,17 +344,14 @@ export default function AdminDashboard() {
       
       for (const endpoint of endpoints) {
         try {
-          console.log('Trying endpoint:', endpoint);
           response = await axios.get(endpoint, { 
             headers: { Authorization: `Bearer ${token}` }
           });
           if (response.data.success) {
-            console.log('Success with endpoint:', endpoint, 'Files count:', response.data.files?.length);
             break;
           }
         } catch (err) {
           lastError = err;
-          console.log('Failed with endpoint:', endpoint, err.message);
         }
       }
       
@@ -385,9 +359,7 @@ export default function AdminDashboard() {
         throw new Error('All endpoints failed: ' + (lastError?.message || 'Unknown error'));
       }
       
-      // Process files
       const files = response.data.files || [];
-      console.log('Total files found:', files.length);
       
       // Group by educator
       const filesByEducator = {};
@@ -420,17 +392,11 @@ export default function AdminDashboard() {
       });
       
       const educatorsArray = Object.values(filesByEducator);
-      console.log('Educators found:', educatorsArray.length);
-      educatorsArray.forEach(educator => {
-        console.log(`- ${educator.educatorName}: ${educator.files.length} files`);
-      });
-      
       setEducatorSharedFiles(educatorsArray);
       
     } catch (error) {
       console.error('Error in fetchEducatorSharedFiles:', error);
       
-      // Create dummy data for testing
       const dummyEducators = [
         {
           educatorName: 'Educator 1',
@@ -450,29 +416,9 @@ export default function AdminDashboard() {
               type: 'material'
             }
           ]
-        },
-        {
-          educatorName: 'Educator 2',
-          educatorId: 'edu2',
-          educatorEmail: 'educator2@example.com',
-          educatorSchool: 'Test School 2',
-          files: [
-            {
-              id: '2',
-              name: 'Science Notes.docx',
-              originalName: 'Science Notes.docx',
-              classCode: 'SCI201',
-              uploadedAt: new Date().toISOString(),
-              size: 512 * 1024,
-              mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              url: '#',
-              type: 'material'
-            }
-          ]
         }
       ];
       
-      console.log('Using dummy data:', dummyEducators);
       setEducatorSharedFiles(dummyEducators);
     }
   };
@@ -597,7 +543,8 @@ export default function AdminDashboard() {
       classCode: '',
       activityType: '',
       deviceType: '',
-      browser: ''
+      browser: '',
+      sortOrder: 'newest'
     });
   };
 
@@ -664,8 +611,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        
-
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -687,7 +632,6 @@ export default function AdminDashboard() {
               </div>
               <FiUsers className="w-8 h-8 text-blue-500" />
             </div>
-            
           </div>
 
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -847,19 +791,15 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-
-             
-               
-             
             </div>
           )}
 
           {activeTab === 'feedback' && (
             <FeedbackComponent
               feedbackStats={feedbackStats}
-              feedbackData={[]} // Pass empty array, component will fetch its own
+              feedbackData={[]}
               feedbackLoading={false}
-              fetchFeedbackData={() => {}} // Pass empty function, component will use its own
+              fetchFeedbackData={() => {}}
               fetchFeedbackStats={fetchFeedbackStats}
               fetchEducatorClassSummary={fetchEducatorClassSummary}
               fetchAllClassCodes={fetchAllClassCodes}
@@ -889,8 +829,8 @@ export default function AdminDashboard() {
 
           {activeTab === 'users' && (
             <div className="space-y-8">
-              {/* Search Bar */}
-              <div className="flex items-center justify-between mb-4">
+              {/* Search and Filter Section */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                 <div className="relative w-full sm:w-96">
                   <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
@@ -901,13 +841,89 @@ export default function AdminDashboard() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
-              </div>
-              
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-white">User Management</h3>
+                
+                <div className="flex items-center gap-3">
+                  {/* Simple Filters */}
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      value={filters.role || ''}
+                      onChange={(e) => handleFilterChange('role', e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      <option value="">All Roles</option>
+                      <option value="student">Student</option>
+                      <option value="educator">Educator</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    
+                    <select
+                      value={filters.sortOrder || 'newest'}
+                      onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="a-z">A to Z</option>
+                      <option value="z-a">Z to A</option>
+                    </select>
+                    
+                    <input
+                      type="date"
+                      value={filters.startDate || ''}
+                      onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                      placeholder="Start Date"
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    />
+                    
+                    <input
+                      type="date"
+                      value={filters.endDate || ''}
+                      onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                      placeholder="End Date"
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    />
+                    
+                    <button
+                      onClick={resetFilters}
+                      className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-white"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  {/* Export Button */}
                   <ExportUsers filteredData={filteredData} filters={filters} deriveUserSchool={deriveUserSchool} />
                 </div>
+              </div>
+              
+              {/* User Table */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold text-white mb-6">User Management</h3>
+                
+                {/* Active Filters Display */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {filters.role && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-violet-500/20 text-violet-300 rounded-full text-sm">
+                      Role: {filters.role}
+                    </span>
+                  )}
+                  {filters.sortOrder && filters.sortOrder !== 'newest' && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">
+                      Sort: {
+                        filters.sortOrder === 'oldest' ? 'Oldest First' : 
+                        filters.sortOrder === 'a-z' ? 'A to Z' : 
+                        'Z to A'
+                      }
+                    </span>
+                  )}
+                  {(filters.startDate || filters.endDate) && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm">
+                      Date: {filters.startDate || 'Any'} to {filters.endDate || 'Any'}
+                    </span>
+                  )}
+                </div>
+                
+                {/* User Table Content */}
                 {filteredData ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -919,7 +935,7 @@ export default function AdminDashboard() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             Email
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          <th className="px6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             Role
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -934,89 +950,140 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
-                        {filteredData.data && filteredData.data.length > 0 ? (
-                          (filters.role ? filteredData.data.filter(u => u.role === filters.role) : filteredData.data).filter(user => {
-                            if (!userSearch) return true;
-                            const searchText = userSearch.toLowerCase();
-                            const searchableText = [
-                              user.fullName || '',
-                              user.email || '',
-                              user.role || '',
-                              deriveUserSchool(user),
-                              user.isActive ? 'active' : 'inactive',
-                              user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''
-                            ].join(' ').toLowerCase();
-                            return searchableText.includes(searchText);
-                          }).map((user, index) => {
-                            // Get school for educator from their classes
-                            let userSchool = user.school;
-                            
-                            if (user.role === 'educator') {
-                              // Try to get school from educatorClassSummary first
-                              if (educatorClassSummary?.[user._id]?.school) {
-                                userSchool = educatorClassSummary[user._id].school;
-                              } 
-                              // If not found, fetch from class codes
-                              else if (classCodes.length > 0) {
-                                // Find classes created by this educator
-                                const educatorClasses = classCodes.filter(cls => 
-                                  cls.educator?._id === user._id || 
-                                  cls.educatorId === user._id
-                                );
-                                
-                                if (educatorClasses.length > 0) {
-                                  // Get the first class's school (assuming all classes belong to same school)
-                                  userSchool = educatorClasses[0]?.school;
+                        {(() => {
+                          // Get users from filteredData
+                          let users = filteredData.data || [];
+                          
+                          // Apply text search filtering
+                          if (userSearch) {
+                            users = users.filter(user => {
+                              const searchText = [
+                                user.fullName || '',
+                                user.email || '',
+                                user.role || '',
+                                deriveUserSchool(user),
+                                user.isActive ? 'active' : 'inactive',
+                                user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''
+                              ].join(' ').toLowerCase();
+                              return searchText.includes(userSearch.toLowerCase());
+                            });
+                          }
+                          
+                          // Apply role filter
+                          if (filters.role) {
+                            users = users.filter(user => user.role === filters.role);
+                          }
+                          
+                          // Apply sorting
+                          users.sort((a, b) => {
+                            const sortOrder = filters.sortOrder || 'newest';
+                            switch (sortOrder) {
+                              case 'newest':
+                                return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                              case 'oldest':
+                                return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+                              case 'a-z':
+                                return (a.fullName || '').localeCompare(b.fullName || '');
+                              case 'z-a':
+                                return (b.fullName || '').localeCompare(a.fullName || '');
+                              default:
+                                return 0;
+                            }
+                          });
+                          
+                          // Apply date filtering
+                          if (filters.startDate || filters.endDate) {
+                            users = users.filter(user => {
+                              if (!user.createdAt) return false;
+                              const userDate = new Date(user.createdAt);
+                              const startDate = filters.startDate ? new Date(filters.startDate) : null;
+                              const endDate = filters.endDate ? new Date(filters.endDate) : null;
+                              
+                              if (startDate && userDate < startDate) return false;
+                              if (endDate && userDate > endDate) return false;
+                              return true;
+                            });
+                          }
+                          
+                          return users.length > 0 ? (
+                            users.map((user, index) => {
+                              let userSchool = user.school;
+                              
+                              if (user.role === 'educator') {
+                                if (educatorClassSummary?.[user._id]?.school) {
+                                  userSchool = educatorClassSummary[user._id].school;
+                                } else if (classCodes.length > 0) {
+                                  const educatorClasses = classCodes.filter(cls => 
+                                    cls.educator?._id === user._id || 
+                                    cls.educatorId === user._id
+                                  );
+                                  if (educatorClasses.length > 0) {
+                                    userSchool = educatorClasses[0]?.school;
+                                  }
                                 }
                               }
-                            }
-                            
-                            return (
-                              <tr key={user._id || index} className="hover:bg-gray-800">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                  {user.fullName || 'N/A'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                  {user.email}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                  <span className={`px-2 py-1 rounded text-xs ${
-                                    user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
-                                    user.role === 'educator' ? 'bg-pink-500/20 text-pink-400' :
-                                    'bg-blue-500/20 text-blue-400'
-                                  }`}>
-                                    {user.role}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                  {userSchool ? getSchoolName(userSchool) : 'Not specified'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                  <span className={`px-2 py-1 rounded text-xs ${
-                                    user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                                  }`}>
-                                    {user.isActive ? 'Active' : 'Inactive'}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan="8" className="px-6 py-4 text-center text-gray-400">
-                              No user data available
-                            </td>
-                          </tr>
-                        )}
+                              
+                              return (
+                                <tr key={user._id || index} className="hover:bg-gray-800">
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    {user.fullName || 'N/A'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    {user.email}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    <span className={`px-2 py-1 rounded text-xs ${
+                                      user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                                      user.role === 'educator' ? 'bg-pink-500/20 text-pink-400' :
+                                      'bg-blue-500/20 text-blue-400'
+                                    }`}>
+                                      {user.role}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    {userSchool ? getSchoolName(userSchool) : 'Not specified'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    <span className={`px-2 py-1 rounded text-xs ${
+                                      user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                    }`}>
+                                      {user.isActive ? 'Active' : 'Inactive'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan="6" className="px-6 py-8 text-center text-gray-400">
+                                <div className="flex flex-col items-center justify-center">
+                                  <FiUsers className="w-12 h-12 text-gray-600 mb-3" />
+                                  <p>No users found matching your filters</p>
+                                  {(userSearch || filters.role || filters.startDate || filters.endDate) && (
+                                    <button
+                                      onClick={() => {
+                                        setUserSearch('');
+                                        resetFilters();
+                                      }}
+                                      className="mt-2 text-violet-400 hover:text-violet-300 text-sm"
+                                    >
+                                      Clear all filters
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })()}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500 mx-auto mb-4"></div>
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-violet-500 mx-auto mb-4"></div>
                     <p className="text-gray-400">Loading user data...</p>
                   </div>
                 )}
