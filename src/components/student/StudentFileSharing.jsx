@@ -655,6 +655,23 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                                 {material.description && (
                                   <p className="text-gray-400 text-sm mt-2">{material.description}</p>
                                 )}
+                                
+                                {/* Add class name tags */}
+                                <div className="flex items-center gap-2 flex-wrap mt-2">
+                                  {classInfo?.className && (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200">
+                                      {classInfo.className}
+                                    </span>
+                                  )}
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
+                                    {currentClassCode || 'Unknown Class'}
+                                  </span>
+                                  {classInfo?.description && (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+                                      {classInfo.description}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             

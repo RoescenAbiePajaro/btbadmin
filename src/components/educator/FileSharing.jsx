@@ -643,8 +643,13 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                           <h4 className="text-white font-medium truncate">{file.name}</h4>
                           <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 mt-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
-                                {classItem?.className || file.classCode}
+                              {classItem?.className && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
+                                  {classItem.className}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
+                                {file.classCode}
                               </span>
                               {classItem?.description && (
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
