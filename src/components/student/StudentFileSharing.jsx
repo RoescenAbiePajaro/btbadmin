@@ -89,7 +89,6 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
         if (response.data.success) {
           const allFiles = response.data.files || [];
           const learningMaterials = allFiles.filter(file => 
-            file.type !== 'assignment' && 
             file.type !== 'submission'
           );
           
@@ -336,7 +335,6 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   };
 
   const learningMaterials = files.filter(file => 
-    file.type !== 'assignment' && 
     file.type !== 'submission'
   );
 
@@ -344,9 +342,9 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
     if (!searchTerm) return true;
     const q = searchTerm.toLowerCase();
     return (
-      (material.assignmentTitle && material.assignmentTitle.toLowerCase().includes(q)) ||
+      (material.title && material.title.toLowerCase().includes(q)) ||
       (material.originalName && material.originalName.toLowerCase().includes(q)) ||
-      (material.assignmentDescription && material.assignmentDescription.toLowerCase().includes(q)) ||
+      (material.description && material.description.toLowerCase().includes(q)) ||
       (material.uploaderName && material.uploaderName.toLowerCase().includes(q))
     );
   });
@@ -651,11 +649,11 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                               </div>
                               <div className="flex-1">
                                 <h4 className="text-white font-medium text-lg">
-                                  {material.assignmentTitle || material.originalName || 'Learning Material'}
+                                  {material.title || material.originalName || 'Learning Material'}
                                 </h4>
                                 <p className="text-gray-300 text-sm mt-1">{material.originalName}</p>
-                                {material.assignmentDescription && (
-                                  <p className="text-gray-400 text-sm mt-2">{material.assignmentDescription}</p>
+                                {material.description && (
+                                  <p className="text-gray-400 text-sm mt-2">{material.description}</p>
                                 )}
                               </div>
                             </div>

@@ -233,7 +233,6 @@ export default function LearningMaterialsComponent({
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">File Name</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class Code</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Type</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Uploaded</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Size</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
@@ -271,15 +270,6 @@ export default function LearningMaterialsComponent({
                                       <span className="text-xs text-gray-400">{classItem.description}</span>
                                     )}
                                   </div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
-                                  <span className={`px-2 py-1 rounded text-xs ${
-                                    file.type === 'assignment' 
-                                      ? 'bg-orange-500/20 text-orange-400' 
-                                      : 'bg-blue-500/20 text-blue-400'
-                                  }`}>
-                                    {file.type || 'material'}
-                                  </span>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
                                   {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}

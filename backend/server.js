@@ -1428,11 +1428,7 @@ app.delete('/api/classes/:classId/students/:studentId', verifyToken, requireEduc
       return createToastResponse(res, 404, 'Student not found in this class', 'error');
     }
 
-    // Delete student's submitted assignments/files for this class
-    const studentFiles = await File.find({
-      uploadedBy: studentId,
-      classCode: classObj.classCode
-    });
+   
     
     // Delete files from Supabase storage
     for (const file of studentFiles) {

@@ -226,7 +226,6 @@ router.get('/statistics', requireAdmin, async (req, res) => {
         materials: {
           total: fileStats.reduce((sum, type) => sum + type.count, 0),
           byType: fileStats,
-          assignments: fileStats.find(f => f._id === 'assignment')?.count || 0,
           learningMaterials: fileStats.find(f => f._id === 'material')?.count || 0
         },
         activities: {

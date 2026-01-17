@@ -32,7 +32,7 @@ const fileSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['material', 'assignment', 'converted'],
+    enum: ['material', 'converted'],
     default: 'material'
   },
   uploadedBy: {
