@@ -223,11 +223,67 @@ export default function FeedbackComponent({
 
   return (
     <div className="space-y-8">
+      {/* Search Bar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative w-full sm:w-96">
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={feedbackSearch}
+            onChange={(e) => setFeedbackSearch(e.target.value)}
+            placeholder="Search feedback by user, email, message..."
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+          />
+        </div>
+      </div>
+
       {/* Feedback Statistics */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">Feedback Overview</h3>
-          <ExportFeedback feedbackData={feedbackData} />
+          <div className="flex items-center gap-4">
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={feedbackFilters.status}
+                onChange={(e) => setFeedbackFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="resolved">Resolved</option>
+              </select>
+              <select
+                value={feedbackFilters.role}
+                onChange={(e) => setFeedbackFilters(prev => ({ ...prev, role: e.target.value }))}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="all">All Roles</option>
+                <option value="student">Student</option>
+                <option value="educator">Educator</option>
+              </select>
+              <select
+                value={feedbackFilters.category}
+                onChange={(e) => setFeedbackFilters(prev => ({ ...prev, category: e.target.value }))}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="all">All Categories</option>
+                <option value="general">General Feedback</option>
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+                <option value="improvement">Improvement Suggestion</option>
+                <option value="compliment">Compliment</option>
+                <option value="other">Other</option>
+              </select>
+              <button
+                onClick={fetchFeedbackDataInternal}
+                className="bg-violet-600 hover:bg-violet-700 px-3 py-2 rounded-lg text-sm"
+              >
+                Apply
+              </button>
+            </div>
+            <ExportFeedback feedbackData={feedbackData} />
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-gray-800 p-4 rounded-lg">
@@ -253,62 +309,6 @@ export default function FeedbackComponent({
             <p className="text-lg font-bold text-white">
               {feedbackStats?.byRole?.find(r => r.role === 'student')?.count || 0} : {feedbackStats?.byRole?.find(r => r.role === 'educator')?.count || 0}
             </p>
-          </div>
-        </div>
-
-        {/* Feedback Filters */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="relative w-full sm:w-96">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={feedbackSearch}
-                onChange={(e) => setFeedbackSearch(e.target.value)}
-                placeholder="Search feedback by user, email, message..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-4 mb-4">
-            <select
-              value={feedbackFilters.status}
-              onChange={(e) => setFeedbackFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="reviewed">Reviewed</option>
-              <option value="resolved">Resolved</option>
-            </select>
-            <select
-              value={feedbackFilters.role}
-              onChange={(e) => setFeedbackFilters(prev => ({ ...prev, role: e.target.value }))}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              <option value="all">All Roles</option>
-              <option value="student">Student</option>
-              <option value="educator">Educator</option>
-            </select>
-            <select
-              value={feedbackFilters.category}
-              onChange={(e) => setFeedbackFilters(prev => ({ ...prev, category: e.target.value }))}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              <option value="all">All Categories</option>
-              <option value="general">General Feedback</option>
-              <option value="bug">Bug Report</option>
-              <option value="feature">Feature Request</option>
-              <option value="improvement">Improvement Suggestion</option>
-              <option value="compliment">Compliment</option>
-              <option value="other">Other</option>
-            </select>
-            <button
-              onClick={fetchFeedbackDataInternal}
-              className="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg"
-            >
-              Apply Filters
-            </button>
           </div>
         </div>
 

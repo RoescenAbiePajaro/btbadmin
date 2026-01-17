@@ -218,42 +218,40 @@ export default function ClassTabComponent({
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">Educator Classes Summary</h3>
-          <ExportClassesSummary filteredData={filteredData} getSchoolName={getSchoolName} />
-        </div>
-
-        {/* Summary Filters */}
-        <div className="mb-6">
-          <div className="flex flex-wrap gap-4 mb-4">
-            <select
-              value={classFilters.sortBy}
-              onChange={(e) => setClassFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              <option value="className-asc">A to Z</option>
-              <option value="className-desc">Z to A</option>
-              <option value="oldest">Oldest</option>
-              <option value="newest">Newest</option>
-            </select>
-            <input
-              type="date"
-              value={classFilters.startDate}
-              onChange={(e) => setClassFilters(prev => ({ ...prev, startDate: e.target.value }))}
-              placeholder="Start Date"
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            />
-            <input
-              type="date"
-              value={classFilters.endDate}
-              onChange={(e) => setClassFilters(prev => ({ ...prev, endDate: e.target.value }))}
-              placeholder="End Date"
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            />
-            <button
-              onClick={() => setClassFilters({ sortBy: 'className-asc', startDate: '', endDate: '' })}
-              className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg"
-            >
-              Clear Filters
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={classFilters.sortBy}
+                onChange={(e) => setClassFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="className-asc">A to Z</option>
+                <option value="className-desc">Z to A</option>
+                <option value="oldest">Oldest</option>
+                <option value="newest">Newest</option>
+              </select>
+              <input
+                type="date"
+                value={classFilters.startDate}
+                onChange={(e) => setClassFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                placeholder="Start Date"
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+              <input
+                type="date"
+                value={classFilters.endDate}
+                onChange={(e) => setClassFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                placeholder="End Date"
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+              <button
+                onClick={() => setClassFilters({ sortBy: 'className-asc', startDate: '', endDate: '' })}
+                className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg text-sm"
+              >
+                Clear
+              </button>
+            </div>
+            <ExportClassesSummary filteredData={filteredData} getSchoolName={getSchoolName} />
           </div>
         </div>
 
