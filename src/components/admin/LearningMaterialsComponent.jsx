@@ -232,6 +232,9 @@ export default function LearningMaterialsComponent({
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">#</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Educator Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">School</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Batch</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class Code</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Files Shared</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Classes</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total Students</th>
@@ -243,6 +246,17 @@ export default function LearningMaterialsComponent({
                   const totalClasses = new Set(educator.files.map(f => f.classCode)).size;
                   const filteredFiles = getFilteredAndSortedFiles(educator.files);
                   
+                  // Get unique class information for this educator
+                  const uniqueClasses = [...new Set(educator.files.map(f => f.classCode))];
+                  const classInfo = uniqueClasses.map(classCode => {
+                    const classItem = classCodes.find(c => c.classCode === classCode);
+                    return {
+                      classCode,
+                      className: classItem?.className || 'N/A',
+                      description: classItem?.description || 'N/A'
+                    };
+                  });
+                  
                   return (
                     <tr key={educatorId} className="hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -253,6 +267,36 @@ export default function LearningMaterialsComponent({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {getEducatorSchool(educatorId, educator)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        <div className="max-w-xs">
+                          {classInfo.map((cls, index) => (
+                            <div key={cls.classCode} className="text-xs text-gray-300">
+                              {cls.className}
+                              {index < classInfo.length - 1 && ', '}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        <div className="max-w-xs">
+                          {classInfo.map((cls, index) => (
+                            <div key={cls.classCode} className="text-xs text-gray-400">
+                              {cls.description}
+                              {index < classInfo.length - 1 && ', '}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        <div className="max-w-xs">
+                          {classInfo.map((cls, index) => (
+                            <div key={cls.classCode} className="text-xs text-gray-500">
+                              {cls.classCode}
+                              {index < classInfo.length - 1 && ', '}
+                            </div>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         <span className="px-2 py-1 rounded text-xs bg-pink-500/20 text-pink-400">
@@ -424,6 +468,7 @@ export default function LearningMaterialsComponent({
                                     {classItem?.description && (
                                       <span className="text-xs text-gray-400">{classItem.description}</span>
                                     )}
+                                    <span className="text-xs text-gray-500 mt-1">Code: {file.classCode}</span>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">

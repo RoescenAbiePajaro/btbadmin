@@ -190,7 +190,7 @@ export const ExportLearningMaterials = ({ educatorSharedFiles, getSchoolName, cl
   const exportLearningMaterialsCSV = () => {
     if (!educatorSharedFiles || educatorSharedFiles.length === 0) return;
     
-    const headers = ['Educator Name', 'Email', 'School', 'File Name', 'Class Code', 'Class Name', 'Type', 'Size', 'Uploaded Date'];
+    const headers = ['Educator Name', 'Email', 'School', 'File Name', 'Class Name', 'Class Description', 'Class Code', 'Type', 'Size', 'Uploaded Date'];
     
     const rows = [];
     educatorSharedFiles.forEach(educator => {
@@ -206,8 +206,9 @@ export const ExportLearningMaterials = ({ educatorSharedFiles, getSchoolName, cl
           educator.educatorEmail || 'N/A',
           schoolId ? getSchoolName(schoolId) : 'Not specified',
           file.name || file.originalName || 'N/A',
+          classItem?.className || file.classCode || 'N/A',
+          classItem?.description || 'N/A',
           file.classCode || 'N/A',
-          classItem?.className || 'N/A',
           file.type || 'material',
           file.size ? `${(file.size / 1024).toFixed(2)} KB` : 'N/A',
           file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'
