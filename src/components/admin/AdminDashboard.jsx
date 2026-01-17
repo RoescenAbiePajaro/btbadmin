@@ -829,7 +829,7 @@ export default function AdminDashboard() {
 
           {activeTab === 'users' && (
             <div className="space-y-8">
-              {/* Search and Filter Section */}
+              {/* Search Section */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                 <div className="relative w-full sm:w-96">
                   <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -841,64 +841,66 @@ export default function AdminDashboard() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
-                
-                <div className="flex items-center gap-3">
-                  {/* Simple Filters */}
-                  <div className="flex flex-wrap gap-2">
-                    <select
-                      value={filters.role || ''}
-                      onChange={(e) => handleFilterChange('role', e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    >
-                      <option value="">All Roles</option>
-                      <option value="student">Student</option>
-                      <option value="educator">Educator</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    
-                    <select
-                      value={filters.sortOrder || 'newest'}
-                      onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    >
-                      <option value="newest">Newest</option>
-                      <option value="oldest">Oldest</option>
-                      <option value="a-z">A to Z</option>
-                      <option value="z-a">Z to A</option>
-                    </select>
-                    
-                    <input
-                      type="date"
-                      value={filters.startDate || ''}
-                      onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                      placeholder="Start Date"
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    />
-                    
-                    <input
-                      type="date"
-                      value={filters.endDate || ''}
-                      onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                      placeholder="End Date"
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    />
-                    
-                    <button
-                      onClick={resetFilters}
-                      className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-white"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  
-                  {/* Export Button */}
-                  <ExportUsers filteredData={filteredData} filters={filters} deriveUserSchool={deriveUserSchool} />
-                </div>
               </div>
               
               {/* User Table */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-6">User Management</h3>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                  <h3 className="text-lg font-bold text-white">User Management</h3>
+                  
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    {/* Simple Filters */}
+                    <div className="flex flex-wrap gap-2">
+                      <select
+                        value={filters.role || ''}
+                        onChange={(e) => handleFilterChange('role', e.target.value)}
+                        className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      >
+                        <option value="">All Roles</option>
+                        <option value="student">Student</option>
+                        <option value="educator">Educator</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      
+                      <select
+                        value={filters.sortOrder || 'newest'}
+                        onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
+                        className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      >
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="a-z">A to Z</option>
+                        <option value="z-a">Z to A</option>
+                      </select>
+                      
+                      <input
+                        type="date"
+                        value={filters.startDate || ''}
+                        onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                        placeholder="Start Date"
+                        className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                      
+                      <input
+                        type="date"
+                        value={filters.endDate || ''}
+                        onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                        placeholder="End Date"
+                        className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                      
+                      <button
+                        onClick={resetFilters}
+                        className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-white"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    
+                    {/* Export Button */}
+                    <ExportUsers filteredData={filteredData} filters={filters} deriveUserSchool={deriveUserSchool} />
+                  </div>
+                </div>
                 
                 {/* Active Filters Display */}
                 <div className="flex flex-wrap gap-2 mb-4">
