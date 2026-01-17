@@ -659,7 +659,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                                 {/* Add class name tags */}
                                 <div className="flex items-center gap-2 flex-wrap mt-2">
                                   {classInfo?.className && (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
                                       {classInfo.className}
                                     </span>
                                   )}

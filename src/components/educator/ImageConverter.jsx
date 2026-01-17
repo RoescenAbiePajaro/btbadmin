@@ -554,58 +554,18 @@ const ImageConverter = ({ educatorId }) => {
                 </>
               )}
             </button>
-            
-            <button
-              onClick={downloadSampleFile}
-              className="px-6 py-3 border border-gray-600 text-gray-300 hover:text-white hover:border-pink-500 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Sample {conversionType.toUpperCase()}
-            </button>
           </div>
+
+          {toast.show && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(prev => ({ ...prev, show: false }))}
+            />
+          )}
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-        <h4 className="text-white font-medium mb-4">How to use Image Converter</h4>
-        <ul className="space-y-3 text-gray-400">
-          <li className="flex items-start gap-3">
-            <div className="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-pink-500/20 flex items-center justify-center">
-              <span className="text-pink-400 text-xs">1</span>
-            </div>
-            <span>Select conversion type: PDF, DOCX, or PPTX</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-pink-500/20 flex items-center justify-center">
-              <span className="text-pink-400 text-xs">2</span>
-            </div>
-            <span>Choose a class to share the converted file with</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-pink-500/20 flex items-center justify-center">
-              <span className="text-pink-400 text-xs">3</span>
-            </div>
-            <span>Upload up to {MAX_IMAGES} images (drag to reorder)</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-pink-500/20 flex items-center justify-center">
-              <span className="text-pink-400 text-xs">4</span>
-            </div>
-            <span>Click "Convert" - file will automatically be shared to selected class</span>
-          </li>
-        </ul>
-      </div>
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(prev => ({ ...prev, show: false }))}
-        />
-      )}
     </div>
   );
 };
