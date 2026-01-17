@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  FiUsers, FiFileText, FiDownload, FiEye, FiSearch, FiArrowUp
+  FiUsers, FiFileText, FiDownload, FiEye, FiSearch, FiArrowUp, FiFilter
 } from 'react-icons/fi';
 import { ExportLearningMaterials } from './ExportComponents.jsx';
 
@@ -153,7 +153,8 @@ export default function LearningMaterialsComponent({
 
   return (
     <div className="space-y-8" ref={componentRef}>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+      {/* Search Bar */}
+      <div className="flex items-center justify-between mb-4">
         <div className="relative w-full sm:w-96">
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -163,27 +164,6 @@ export default function LearningMaterialsComponent({
             placeholder="Search materials, educators, files..."
             className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
-        </div>
-        
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 w-full sm:w-auto"
-          >
-            <optgroup label="Sort by Educator">
-              <option value="educator-asc">Educator A to Z</option>
-              <option value="educator-desc">Educator Z to A</option>
-            </optgroup>
-            <optgroup label="Sort by File Name">
-              <option value="fileName-asc">File Name A to Z</option>
-              <option value="fileName-desc">File Name Z to A</option>
-            </optgroup>
-            <optgroup label="Sort by Date">
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </optgroup>
-          </select>
         </div>
       </div>
       
@@ -200,15 +180,38 @@ export default function LearningMaterialsComponent({
       
       {/* Educator Summary Section */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <h3 className="text-lg font-bold text-white">Educators Summary</h3>
-          <ExportLearningMaterials 
-            educatorSharedFiles={educatorSharedFiles} 
-            getSchoolName={getSchoolName} 
-            classCodes={classCodes}
-            educatorUsers={educatorUsers}
-            educatorClassSummary={educatorClassSummary}
-          />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <FiFilter className="text-gray-400" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 min-w-[180px]"
+              >
+                <optgroup label="Sort by Educator">
+                  <option value="educator-asc">Educator A to Z</option>
+                  <option value="educator-desc">Educator Z to A</option>
+                </optgroup>
+                <optgroup label="Sort by File Name">
+                  <option value="fileName-asc">File Name A to Z</option>
+                  <option value="fileName-desc">File Name Z to A</option>
+                </optgroup>
+                <optgroup label="Sort by Date">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                </optgroup>
+              </select>
+            </div>
+            <ExportLearningMaterials 
+              educatorSharedFiles={educatorSharedFiles} 
+              getSchoolName={getSchoolName} 
+              classCodes={classCodes}
+              educatorUsers={educatorUsers}
+              educatorClassSummary={educatorClassSummary}
+            />
+          </div>
         </div>
         
         {Object.keys(sortedEducators).length > 0 ? (
@@ -284,15 +287,38 @@ export default function LearningMaterialsComponent({
 
       {/* Educator Shared Files Section */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-lg font-bold text-white">Files Shared by Educator</h3>
-          <ExportLearningMaterials 
-            educatorSharedFiles={educatorSharedFiles} 
-            getSchoolName={getSchoolName} 
-            classCodes={classCodes}
-            educatorUsers={educatorUsers}
-            educatorClassSummary={educatorClassSummary}
-          />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <FiFilter className="text-gray-400" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 min-w-[180px]"
+              >
+                <optgroup label="Sort by Educator">
+                  <option value="educator-asc">Educator A to Z</option>
+                  <option value="educator-desc">Educator Z to A</option>
+                </optgroup>
+                <optgroup label="Sort by File Name">
+                  <option value="fileName-asc">File Name A to Z</option>
+                  <option value="fileName-desc">File Name Z to A</option>
+                </optgroup>
+                <optgroup label="Sort by Date">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                </optgroup>
+              </select>
+            </div>
+            <ExportLearningMaterials 
+              educatorSharedFiles={educatorSharedFiles} 
+              getSchoolName={getSchoolName} 
+              classCodes={classCodes}
+              educatorUsers={educatorUsers}
+              educatorClassSummary={educatorClassSummary}
+            />
+          </div>
         </div>
         
         {Object.keys(sortedEducators).length > 0 ? (
