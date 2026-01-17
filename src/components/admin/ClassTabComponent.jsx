@@ -59,33 +59,99 @@ export default function ClassTabComponent({
     }
   }, [filteredData]);
 
-  // Filter educator data based on search
+  // Filter educator data based on search, date filters, and sorting
   const getFilteredEducatorData = () => {
-    if (!classSearch) return educatorClassData;
+    let filteredEducators = { ...educatorClassData };
     
-    const searchTerm = classSearch.toLowerCase();
-    const filtered = {};
-    
-    Object.entries(educatorClassData).forEach(([educatorId, data]) => {
-      const searchText = [
-        data.name,
-        data.email,
-        data.school,
-        data.classes?.map(cls => cls.className).join(' '),
-        data.classes?.map(cls => cls.classCode).join(' ')
-      ].filter(Boolean).join(' ').toLowerCase();
+    // Apply text search filtering
+    if (classSearch) {
+      const searchTerm = classSearch.toLowerCase();
+      const searchFiltered = {};
       
-      if (searchText.includes(searchTerm)) {
-        filtered[educatorId] = data;
+      Object.entries(educatorClassData).forEach(([educatorId, data]) => {
+        const searchText = [
+          data.name,
+          data.email,
+          data.school,
+          data.classes?.map(cls => cls.className).join(' '),
+          data.classes?.map(cls => cls.classCode).join(' ')
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        if (searchText.includes(searchTerm)) {
+          searchFiltered[educatorId] = data;
+        }
+      });
+      
+      filteredEducators = searchFiltered;
+    }
+    
+    // Apply date filtering to educator classes
+    if (classFilters.startDate || classFilters.endDate) {
+      const dateFiltered = {};
+      
+      Object.entries(filteredEducators).forEach(([educatorId, data]) => {
+        const filteredClasses = data.classes?.filter(cls => {
+          const classDate = new Date(cls.createdAt);
+          const startDate = classFilters.startDate ? new Date(classFilters.startDate) : null;
+          const endDate = classFilters.endDate ? new Date(classFilters.endDate) : null;
+          
+          if (startDate && classDate < startDate) return false;
+          if (endDate && classDate > endDate) return false;
+          return true;
+        }) || [];
+        
+        // Only include educator if they have classes after date filtering
+        if (filteredClasses.length > 0) {
+          dateFiltered[educatorId] = {
+            ...data,
+            classes: filteredClasses,
+            // Recalculate counts based on filtered classes
+            totalClasses: filteredClasses.length,
+            activeClasses: filteredClasses.filter(cls => cls.isActive).length,
+            totalStudents: filteredClasses.reduce((sum, cls) => sum + (cls.students?.length || 0), 0)
+          };
+        }
+      });
+      
+      filteredEducators = dateFiltered;
+    }
+    
+    // Apply sorting to educators
+    const sortedEntries = Object.entries(filteredEducators).sort(([idA, dataA], [idB, dataB]) => {
+      switch (classFilters.sortBy) {
+        case 'className-asc':
+          return dataA.name.localeCompare(dataB.name);
+        case 'className-desc':
+          return dataB.name.localeCompare(dataA.name);
+        case 'newest':
+          // Sort by newest class creation date
+          const newestA = Math.max(...dataA.classes.map(cls => new Date(cls.createdAt || 0)));
+          const newestB = Math.max(...dataB.classes.map(cls => new Date(cls.createdAt || 0)));
+          return newestB - newestA;
+        case 'oldest':
+          // Sort by oldest class creation date
+          const oldestA = Math.min(...dataA.classes.map(cls => new Date(cls.createdAt || 0)));
+          const oldestB = Math.min(...dataB.classes.map(cls => new Date(cls.createdAt || 0)));
+          return oldestA - oldestB;
+        default:
+          return 0;
       }
     });
     
-    return filtered;
+    // Convert back to object
+    return sortedEntries.reduce((acc, [educatorId, data]) => {
+      acc[educatorId] = data;
+      return acc;
+    }, {});
   };
 
-  const filteredClasses = filteredData?.data ? 
-    classSearch ? 
-      filteredData.data.filter(cls => {
+  // Apply all filtering: text search, date filtering, and sorting
+  const getFilteredAndSortedClasses = () => {
+    let classes = filteredData?.data ? [...filteredData.data] : [];
+    
+    // Apply text search filtering
+    if (classSearch) {
+      classes = classes.filter(cls => {
         const searchText = [
           cls.className,
           cls.classCode,
@@ -97,13 +163,8 @@ export default function ClassTabComponent({
           getSchoolName(cls.school)
         ].filter(Boolean).join(' ').toLowerCase();
         return searchText.includes(classSearch.toLowerCase());
-      }) : 
-      filteredData.data
-    : [];
-
-  // Apply sorting and date filtering
-  const getFilteredAndSortedClasses = () => {
-    let classes = [...filteredClasses];
+      });
+    }
     
     // Apply date filtering
     if (classFilters.startDate || classFilters.endDate) {
