@@ -1,5 +1,4 @@
 // backend/routes/imageConverterRoutes.js
-const { Packer, Document, Paragraph, TextRun, ImageRun, AlignmentType, PageBreak } = require('docx');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -186,7 +185,13 @@ async function processConversion(conversionId, files, conversionType, classCode,
           }
           break;
         case 'docx':
-          result = await convertImagesToDOCX(files, outputFilePath);
+          // Try the full version first, then fallback
+          try {
+            result = await convertImagesToDOCX(files, outputFilePath);
+          } catch (docxError) {
+            console.warn('Full DOCX conversion failed, using simple version:', docxError.message);
+            result = await convertImagesToSimpleDOCX(files, outputFilePath);
+          }
           break;
         case 'pptx':
           // Try the full version first, then fallback
@@ -484,178 +489,130 @@ async function convertImagesToPDFWithPDFLib(files, outputPath) {
     throw new Error(`PDF creation failed with pdf-lib: ${error.message}`);
   }
 }
+
+// ===========================
 // DOCX CONVERSION FUNCTIONS
 // ===========================
 
-// ────────────────────────────────────────────────
-// MAIN DOCX CONVERSION FUNCTION (reliable version)
-// ────────────────────────────────────────────────
+// Convert images to DOCX using officegen
 async function convertImagesToDOCX(files, outputPath) {
-  const children = [];
-
-  // Document header / title
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "Converted Images Document",
-          size: 48,           // 24 pt
-          bold: true,
-          color: "2b579a",    // nice Word-like blue
-        })
-      ],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
-    }),
-
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: `Total: ${files.length} image${files.length === 1 ? '' : 's'} • Generated on ${new Date().toLocaleDateString()}`,
-          size: 24,
-          color: "666666",
-        })
-      ],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 600 },
-    })
-  );
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const originalName = path.basename(file.originalname);
-
+  return new Promise((resolve, reject) => {
     try {
-      // Optional: resize large images to prevent memory issues & huge files
-      let imageBuffer = fs.readFileSync(file.path);
-
-      // Resize if wider than ~1200px (you can adjust)
-      const metadata = await sharp(file.path).metadata();
-      if (metadata.width > 1200) {
-        imageBuffer = await sharp(file.path)
-          .resize({ width: 1200, withoutEnlargement: true })
-          .jpeg({ quality: 85 })
-          .toBuffer();
-      }
-
-      // Calculate display size (in points — 72 points = 1 inch)
-      const MAX_WIDTH_PT = 500;   // ~17.6 cm
-      const MAX_HEIGHT_PT = 650;  // leave space for caption
-
-      const aspectRatio = metadata.width / metadata.height;
-      let displayWidth = MAX_WIDTH_PT;
-      let displayHeight = MAX_WIDTH_PT / aspectRatio;
-
-      if (displayHeight > MAX_HEIGHT_PT) {
-        displayHeight = MAX_HEIGHT_PT;
-        displayWidth = MAX_HEIGHT_PT * aspectRatio;
-      }
-
-      children.push(
-        // Image title
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `Image ${i + 1}  —  ${originalName}`,
-              size: 32,
-              bold: true,
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 },
-        }),
-
-        // The image itself
-        new Paragraph({
-          children: [
-            new ImageRun({
-              data: imageBuffer,
-              transformation: {
-                width: Math.round(displayWidth),
-                height: Math.round(displayHeight),
-              },
-              altText: originalName,
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 400 },
-        }),
-
-        // Caption with file info
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `Size: ${formatFileSize(file.size)} • Dimensions: ${metadata.width}×${metadata.height}`,
-              size: 20,
-              color: "555555",
-              italics: true,
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 600 },
-        })
-      );
-
-      // Page break between images (except after the last one)
-      if (i < files.length - 1) {
-        children.push(new Paragraph({ children: [new PageBreak()] }));
-      }
-
-    } catch (err) {
-      console.warn(`Could not process image ${originalName}:`, err.message);
-
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `[Image ${i + 1}: ${originalName} — Failed to load or process]`,
-              color: "c00000",
-              size: 28,
-              italics: true,
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 800 },
-        })
-      );
-
-      if (i < files.length - 1) {
-        children.push(new Paragraph({ children: [new PageBreak()] }));
-      }
-    }
-  }
-
-  // Create document
-  const doc = new Document({
-    creator: "EduPulse Image Converter",
-    title: "Converted Images",
-    description: `Generated from ${files.length} images`,
-    sections: [{
-      properties: {
-        page: {
-          margin: {
-            top: 720,    // 0.5 inch = 720 twips (1 inch = 1440 twips)
-            bottom: 720,
-            left: 720,
-            right: 720,
+      // Create a new DOCX document
+      const docx = officegen('docx');
+      
+      // Set document properties
+      docx.on('finalize', function(written) {
+        console.log(`DOCX created successfully: ${outputPath}, size: ${written} bytes`);
+        resolve();
+      });
+      
+      docx.on('error', function(err) {
+        console.error('DOCX generation error:', err);
+        reject(err);
+      });
+      
+      // Create a write stream
+      const output = fs.createWriteStream(outputPath);
+      
+      // Handle stream errors
+      output.on('error', function(err) {
+        console.error('Output stream error:', err);
+        reject(err);
+      });
+      
+      // Start generating the document
+      docx.generate(output);
+      
+      // Add title
+      const pObj = docx.createP();
+      pObj.addText('Converted Images Document', { 
+        font_size: 24, 
+        bold: true, 
+        align: 'center' 
+      });
+      
+      // Add metadata
+      const pMeta = docx.createP();
+      pMeta.addText(`Total images: ${files.length}`, { font_size: 12 });
+      pMeta.addLineBreak();
+      pMeta.addText(`Generated on: ${new Date().toLocaleDateString()}`, { font_size: 10, color: '666666' });
+      
+      // Add page break
+      docx.createPageBreak();
+      
+      // Process each image asynchronously
+      let processedImages = 0;
+      const totalImages = files.length;
+      
+      files.forEach((file, index) => {
+        // Add image title
+        const pTitle = docx.createP();
+        pTitle.addText(`Image ${index + 1}: ${path.basename(file.originalname)}`, { 
+          font_size: 16, 
+          bold: true 
+        });
+        
+        try {
+          // Check if file exists before trying to add it
+          if (fs.existsSync(file.path)) {
+            // Add image to document with proper error handling
+            const imageObj = {
+              path: file.path,
+              cx: 400, // Image width in EMUs (approximately 400 pixels)
+              cy: 300, // Image height in EMUs (approximately 300 pixels)
+              alt: `Image ${index + 1}: ${path.basename(file.originalname)}`
+            };
+            
+            docx.createImage(imageObj);
+            console.log(`Added image ${index + 1} to DOCX`);
+            
+            // Add image info
+            const pInfo = docx.createP();
+            pInfo.addText(`Size: ${formatFileSize(file.size)} | Position: ${index + 1}/${files.length}`, {
+              font_size: 10,
+              color: '666666'
+            });
+          } else {
+            console.warn(`Image file not found: ${file.path}`);
+            throw new Error(`Image file not found: ${file.path}`);
           }
+          
+        } catch (imageError) {
+          console.warn(`Error adding image to DOCX: ${imageError.message}`);
+          
+          // Add placeholder text if image can't be added
+          const pError = docx.createP();
+          pError.addText(`[Image ${index + 1}: ${path.basename(file.originalname)} - Failed to load: ${imageError.message}]`, {
+            font_size: 12,
+            color: 'ff0000',
+            italics: true
+          });
         }
-      },
-      children,
-    }],
+        
+        // Add page break except for last image
+        if (index < files.length - 1) {
+          docx.createPageBreak();
+        }
+        
+        processedImages++;
+        
+        // If all images are processed, the finalize event will handle the rest
+        if (processedImages === totalImages) {
+          console.log('All images processed for DOCX generation');
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error in convertImagesToDOCX:', error);
+      reject(error);
+    }
   });
-
-  // Generate and save
-  const buffer = await Packer.toBuffer(doc);
-  fs.writeFileSync(outputPath, buffer);
-
-  console.log(`DOCX successfully created → ${outputPath} (${formatFileSize(buffer.length)})`);
 }
 
 // Simple DOCX converter as fallback
 async function convertImagesToSimpleDOCX(files, outputPath) {
   return new Promise((resolve, reject) => {
-    // ... (rest of the code remains the same)
     try {
       const docx = officegen('docx');
       
