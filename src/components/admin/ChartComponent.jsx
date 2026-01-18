@@ -321,13 +321,13 @@ export default function ChartComponent({
         </div>
       )}
 
-      {/* Line Chart Examples */}
+      {/* Login Trends - Clustered Bar Chart */}
       {analyticsData?.lineCharts?.loginTrends && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h3 className="text-lg font-bold mb-4 text-white">Login Trends</h3>
+          <h3 className="text-lg font-bold mb-4 text-white">Login Trends by User Role</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filterDataByDateRange(analyticsData.lineCharts.loginTrends.data)}>
+              <BarChart data={filterDataByDateRange(analyticsData.lineCharts.loginTrends.data)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="date" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
@@ -336,25 +336,43 @@ export default function ChartComponent({
                   labelStyle={{ color: '#9CA3AF' }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
+                <Bar 
                   dataKey="total" 
                   name="Total Logins" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  fill="#3B82F6" 
+                  radius={[4, 4, 0, 0]}
                 />
-                <Line 
-                  type="monotone" 
+                <Bar 
                   dataKey="unique" 
                   name="Unique Users" 
-                  stroke="#10B981" 
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  fill="#10B981" 
+                  radius={[4, 4, 0, 0]}
                 />
-              </LineChart>
+                {analyticsData.lineCharts.loginTrends.data[0]?.students && (
+                  <Bar 
+                    dataKey="students" 
+                    name="Student Logins" 
+                    fill="#F59E0B" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                )}
+                {analyticsData.lineCharts.loginTrends.data[0]?.educators && (
+                  <Bar 
+                    dataKey="educators" 
+                    name="Educator Logins" 
+                    fill="#EF4444" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                )}
+                {analyticsData.lineCharts.loginTrends.data[0]?.admins && (
+                  <Bar 
+                    dataKey="admins" 
+                    name="Admin Logins" 
+                    fill="#8B5CF6" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                )}
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
