@@ -18,7 +18,9 @@ export default function ChartComponent({
   classTrendPeriod,
   setClassTrendPeriod,
   timeRange,
-  handleTimeRangeChange
+  handleTimeRangeChange,
+  classStatusData,
+  feedbackData
 }) {
   const [dateFilters, setDateFilters] = useState({
     startDate: '',
@@ -228,6 +230,97 @@ export default function ChartComponent({
         </div>
       </div>
 
+      {/* Active/Inactive Classes Status Distribution */}
+      {classStatusData?.data?.statusDistribution && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Class Status Distribution</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={classStatusData.data.statusDistribution.data}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {classStatusData.data.statusDistribution.data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={classStatusData.data.statusDistribution.colors[index]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Class Status Trends */}
+      {classStatusData?.data?.statusTrends && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Class Status Trends Over Time</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={filterDataByDateRange(classStatusData.data.statusTrends.data)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                  labelStyle={{ color: '#9CA3AF' }}
+                />
+                <Legend />
+                {classStatusData.data.statusTrends.lines.map((line, index) => (
+                  <Line 
+                    key={line.key}
+                    type="monotone" 
+                    dataKey={line.key} 
+                    name={line.name}
+                    stroke={line.color} 
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Class Status by School */}
+      {classStatusData?.data?.statusBySchool && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Class Status by School</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={classStatusData.data.statusBySchool.data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                />
+                <Legend />
+                {classStatusData.data.statusBySchool.groups.map((group, index) => (
+                  <Bar 
+                    key={group.key}
+                    dataKey={group.key} 
+                    name={group.name}
+                    fill={['#10B981', '#EF4444'][index]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {/* Line Chart Examples */}
       {analyticsData?.lineCharts?.loginTrends && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -302,6 +395,173 @@ export default function ChartComponent({
           </div>
         </div>
       )}
+
+      {/* Feedback Summary */}
+      {feedbackData?.data?.summary && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Feedback Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gray-800 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Total Feedback</p>
+              <p className="text-2xl font-bold text-white">{feedbackData.data.summary.total}</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Average Rating</p>
+              <p className="text-2xl font-bold text-white">{feedbackData.data.summary.avgRating.toFixed(1)}</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Pending</p>
+              <p className="text-2xl font-bold text-yellow-400">{feedbackData.data.summary.pending}</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Responded</p>
+              <p className="text-2xl font-bold text-green-400">{feedbackData.data.summary.responded}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Trends */}
+      {feedbackData?.data?.feedbackTrends && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Feedback Trends Over Time</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={filterDataByDateRange(feedbackData.data.feedbackTrends.data)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                  labelStyle={{ color: '#9CA3AF' }}
+                />
+                <Legend />
+                {feedbackData.data.feedbackTrends.lines.map((line, index) => (
+                  <Line 
+                    key={line.key}
+                    type="monotone" 
+                    dataKey={line.key} 
+                    name={line.name}
+                    stroke={line.color} 
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback by Category */}
+      {feedbackData?.data?.feedbackByCategory && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Feedback by Category</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={feedbackData.data.feedbackByCategory.data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="category" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                />
+                <Bar dataKey="count" fill="#3B82F6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Rating Distribution */}
+      {feedbackData?.data?.ratingDistribution && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Rating Distribution</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={feedbackData.data.ratingDistribution.data}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {feedbackData.data.ratingDistribution.data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={feedbackData.data.ratingDistribution.colors[index]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Status Distribution */}
+      {feedbackData?.data?.statusDistribution && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Feedback Status Distribution</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={feedbackData.data.statusDistribution.data}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {feedbackData.data.statusDistribution.data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={feedbackData.data.statusDistribution.colors[index]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback by User Role */}
+      {feedbackData?.data?.feedbackByRole && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white">Feedback by User Role</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={feedbackData.data.feedbackByRole.data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                />
+                <Legend />
+                {feedbackData.data.feedbackByRole.groups.map((group, index) => (
+                  <Bar 
+                    key={group.key}
+                    dataKey={group.key} 
+                    name={group.name}
+                    fill={['#3B82F6', '#EF4444', '#10B981'][index]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

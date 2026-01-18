@@ -464,3 +464,125 @@ export const MetricCard = ({ title, value, change, icon, color = 'blue' }) => {
     </div>
   );
 };
+
+// 13. STATUS DISTRIBUTION CHART (for Active/Inactive classes)
+export const StatusDistributionChart = ({ data, title }) => {
+  const chartData = Array.isArray(data) ? data : [];
+  
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 md:p-6">
+      {title && <h3 className="text-lg font-bold mb-4 text-white">{title}</h3>}
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="value"
+            nameKey="name"
+          >
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={['#10B981', '#EF4444'][index]} />
+            ))}
+          </Pie>
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#1F2937', 
+              borderColor: '#374151',
+              color: '#fff'
+            }}
+            formatter={(value, name) => [value, name]}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+// 14. MULTI-LINE CHART (for trends)
+export const MultiLineChart = ({ data, lines, title, xKey = 'date' }) => {
+  const chartData = Array.isArray(data) ? data : [];
+  const defaultColors = ['#10B981', '#EF4444', '#3B82F6', '#F59E0B', '#10B981', '#22C55E'];
+  
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 md:p-6">
+      {title && <h3 className="text-lg font-bold mb-4 text-white">{title}</h3>}
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <XAxis dataKey={xKey} stroke="#9CA3AF" />
+          <YAxis stroke="#9CA3AF" />
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#1F2937', 
+              borderColor: '#374151',
+              color: '#fff'
+            }}
+            labelStyle={{ color: '#9CA3AF' }}
+          />
+          <Legend />
+          {lines.map((line, index) => (
+            <Line 
+              key={line.key}
+              type="monotone" 
+              dataKey={line.key} 
+              name={line.name}
+              stroke={line.color || defaultColors[index % defaultColors.length]} 
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+// 15. SUMMARY CARDS GRID
+export const SummaryCardsGrid = ({ data }) => {
+  const cards = [
+    {
+      title: 'Total Classes',
+      value: data.totalClasses || 0,
+      color: 'blue',
+      icon: <FiTrendingUp />
+    },
+    {
+      title: 'Active Classes',
+      value: data.activeClasses || 0,
+      color: 'green',
+      icon: <FiTrendingUp />
+    },
+    {
+      title: 'Inactive Classes',
+      value: data.inactiveClasses || 0,
+      color: 'red',
+      icon: <FiTrendingUp />
+    },
+    {
+      title: 'Active Students',
+      value: data.activeStudents || 0,
+      color: 'purple',
+      icon: <FiTrendingUp />
+    }
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map((card, index) => (
+        <MetricCard 
+          key={index}
+          title={card.title}
+          value={card.value}
+          color={card.color}
+          icon={card.icon}
+        />
+      ))}
+    </div>
+  );
+};

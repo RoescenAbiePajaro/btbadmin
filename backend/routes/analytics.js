@@ -6,6 +6,7 @@ const Class = require('../models/Class');
 const File = require('../models/File');
 const Click = require('../models/Click');
 const FileActivity = require('../models/FileActivity');
+const Feedback = require('../models/Feedback');
 const mongoose = require('mongoose');
 
 // Helper function to get date range
@@ -995,7 +996,309 @@ router.get('/filter', requireAdmin, async (req, res) => {
     console.error('Filter error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to filter data',
+      error: 'Failed to fetch class status analytics',
+      details: error.message
+    });
+  }
+});
+
+// ==================== FEEDBACK ANALYTICS ====================
+router.get('/feedback', requireAdmin, async (req, res) => {
+  try {
+    const { period = '30d', startDate, endDate } = req.query;
+    
+    let dateRange;
+    if (startDate && endDate) {
+      dateRange = {
+        start: new Date(startDate),
+        end: new Date(endDate)
+      };
+    } else {
+      dateRange = getDateRange(period);
+    }
+    
+    const groupFormat = getGroupFormat(period);
+    
+    // Get feedback analytics
+    const [
+      feedbackStats,
+      feedbackTrends,
+      feedbackByCategory,
+      feedbackByRating,
+      feedbackByRole,
+      feedbackByStatus,
+      feedbackBySchool
+    ] = await Promise.all([
+      // 1. Overall feedback statistics
+      Feedback.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            avgRating: { $avg: '$rating' },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            responded: {
+              $sum: { $cond: [{ $eq: ['$status', 'responded'] }, 1, 0] }
+            }
+          }
+        }
+      ]),
+      
+      // 2. Feedback trends over time
+      Feedback.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              period: { $dateToString: { format: groupFormat, date: "$createdAt" } }
+            },
+            count: { $sum: 1 },
+            avgRating: { $avg: '$rating' },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            responded: {
+              $sum: { $cond: [{ $eq: ['$status', 'responded'] }, 1, 0] }
+            }
+          }
+        },
+        { $sort: { "_id.period": 1 } }
+      ]),
+      
+      // 3. Feedback by category
+      Feedback.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+          }
+        },
+        {
+          $group: {
+            _id: '$category',
+            count: { $sum: 1 },
+            avgRating: { $avg: '$rating' },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            responded: {
+              $sum: { $cond: [{ $eq: ['$status', 'responded'] }, 1, 0] }
+            }
+          }
+        },
+        { $sort: { count: -1 } }
+      ]),
+      
+      // 4. Feedback by rating
+      Feedback.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+          }
+        },
+        {
+          $group: {
+            _id: '$rating',
+            count: { $sum: 1 },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            responded: {
+              $sum: { $cond: [{ $eq: ['$status', 'responded'] }, 1, 0] }
+            }
+          }
+        },
+        { $sort: { "_id": 1 } }
+      ]),
+      
+      // 5. Feedback by user role
+      Feedback.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+          }
+        },
+        {
+          $group: {
+            _id: '$userRole',
+            count: { $sum: 1 },
+            avgRating: { $avg: '$rating' },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            responded: {
+              $sum: { $cond: [{ $eq: ['$status', 'responded'] }, 1, 0] }
+            }
+          }
+        },
+        { $sort: { count: -1 } }
+      ]),
+      
+      // 6. Feedback by status
+      Feedback.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+          }
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            avgRating: { $avg: '$rating' }
+          }
+        },
+        { $sort: { count: -1 } }
+      ]),
+      
+      // 7. Feedback by school
+      Feedback.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+          }
+        },
+        {
+          $group: {
+            _id: '$school',
+            count: { $sum: 1 },
+            avgRating: { $avg: '$rating' },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            responded: {
+              $sum: { $cond: [{ $eq: ['$status', 'responded'] }, 1, 0] }
+            }
+          }
+        },
+        { $sort: { count: -1 } }
+      ])
+    ]);
+    
+    // Format data for charts
+    const formattedData = {
+      // Summary stats
+      summary: feedbackStats[0] || {
+        total: 0,
+        avgRating: 0,
+        pending: 0,
+        responded: 0
+      },
+      
+      // Line chart for feedback trends
+      feedbackTrends: {
+        title: 'Feedback Trends Over Time',
+        type: 'line',
+        data: feedbackTrends.map(trend => ({
+          date: trend._id,
+          count: trend.count,
+          avgRating: parseFloat(trend.avgRating || 0).toFixed(1),
+          pending: trend.pending,
+          responded: trend.responded
+        })),
+        lines: [
+          { key: 'count', name: 'Total Feedback', color: '#3B82F6' },
+          { key: 'avgRating', name: 'Average Rating', color: '#F59E0B' },
+          { key: 'pending', name: 'Pending', color: '#EF4444' },
+          { key: 'responded', name: 'Responded', color: '#10B981' }
+        ]
+      },
+      
+      // Bar chart for categories
+      feedbackByCategory: {
+        title: 'Feedback by Category',
+        type: 'vertical-bar',
+        data: feedbackByCategory.map(cat => ({
+          category: cat._id,
+          count: cat.count,
+          avgRating: parseFloat(cat.avgRating || 0).toFixed(1),
+          pending: cat.pending,
+          responded: cat.responded
+        })),
+        xKey: 'category',
+        yKeys: ['count'],
+        colors: ['#3B82F6']
+      },
+      
+      // Pie chart for ratings distribution
+      ratingDistribution: {
+        title: 'Rating Distribution',
+        type: 'pie',
+        data: feedbackByRating.map(rating => ({
+          name: `${rating._id} Star${rating._id > 1 ? 's' : ''}`,
+          value: rating.count,
+          pending: rating.pending,
+          responded: rating.responded
+        })),
+        colors: ['#EF4444', '#F59E0B', '#FCD34D', '#10B981', '#059669']
+      },
+      
+      // Grouped bar chart by role
+      feedbackByRole: {
+        title: 'Feedback by User Role',
+        type: 'grouped-bar',
+        data: feedbackByRole.map(role => ({
+          name: role._id,
+          count: role.count,
+          avgRating: parseFloat(role.avgRating || 0).toFixed(1),
+          pending: role.pending,
+          responded: role.responded
+        })),
+        groups: [
+          { key: 'count', name: 'Total Feedback' },
+          { key: 'pending', name: 'Pending' },
+          { key: 'responded', name: 'Responded' }
+        ]
+      },
+      
+      // Pie chart for status
+      statusDistribution: {
+        title: 'Feedback Status Distribution',
+        type: 'pie',
+        data: feedbackByStatus.map(status => ({
+          name: status._id.charAt(0).toUpperCase() + status._id.slice(1),
+          value: status.count,
+          avgRating: parseFloat(status.avgRating || 0).toFixed(1)
+        })),
+        colors: ['#F59E0B', '#10B981']
+      },
+      
+      // Raw data for tables
+      rawData: {
+        byCategory: feedbackByCategory,
+        byRating: feedbackByRating,
+        byRole: feedbackByRole,
+        byStatus: feedbackByStatus,
+        bySchool: feedbackBySchool
+      }
+    };
+    
+    res.json({
+      success: true,
+      period,
+      dateRange: {
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString()
+      },
+      data: formattedData,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Feedback analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch feedback analytics',
       details: error.message
     });
   }
