@@ -343,36 +343,6 @@ export default function LearningMaterialsComponent({
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-lg font-bold text-white">Files Shared by Educator</h3>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <FiFilter className="text-gray-400" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 min-w-[180px]"
-              >
-                <optgroup label="Sort by Educator">
-                  <option value="educator-asc">Educator A to Z</option>
-                  <option value="educator-desc">Educator Z to A</option>
-                </optgroup>
-                <optgroup label="Sort by File Name">
-                  <option value="fileName-asc">File Name A to Z</option>
-                  <option value="fileName-desc">File Name Z to A</option>
-                </optgroup>
-                <optgroup label="Sort by Date">
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                </optgroup>
-              </select>
-            </div>
-            <ExportLearningMaterials 
-              educatorSharedFiles={educatorSharedFiles} 
-              getSchoolName={getSchoolName} 
-              classCodes={classCodes}
-              educatorUsers={educatorUsers}
-              educatorClassSummary={educatorClassSummary}
-            />
-          </div>
         </div>
         
         {Object.keys(sortedEducators).length > 0 ? (
