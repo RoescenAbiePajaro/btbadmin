@@ -70,10 +70,11 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
       filesCount: req.files ? req.files.length : 0,
       conversionType: req.body.conversionType,
       classCode: req.body.classCode,
+      folderId: req.body.folderId,
       user: req.user.id
     });
 
-    const { conversionType, classCode } = req.body;
+    const { conversionType, classCode, folderId } = req.body;
     
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ 
@@ -101,6 +102,27 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
       throw new Error('User not found');
     }
 
+    // Validate folderId if provided
+    let validatedFolderId = null;
+    if (folderId) {
+      const Folder = require('../models/Folder');
+      const folder = await Folder.findOne({
+        _id: folderId,
+        educatorId: req.user.id,
+        classCode: classCode.toUpperCase(),
+        isDeleted: false
+      });
+      
+      if (!folder) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid folder selected'
+        });
+      }
+      
+      validatedFolderId = folderId;
+    }
+
     // Create conversion record
     const conversion = new ImageConversion({
       educator: req.user.id,
@@ -112,6 +134,7 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
       })),
       conversionType,
       classCode: classCode.toUpperCase(),
+      folderId: validatedFolderId,
       status: 'processing',
       metadata: {
         imageCount: req.files.length,
@@ -135,7 +158,7 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
     // Process conversion in background with error handling
     setTimeout(async () => {
       try {
-        await processConversion(conversion._id, req.files, conversionType, classCode, user);
+        await processConversion(conversion._id, req.files, conversionType, classCode, user, validatedFolderId);
         console.log(`Conversion ${conversion._id} completed successfully`);
       } catch (bgError) {
         console.error(`Background conversion ${conversion._id} failed:`, bgError);
@@ -158,7 +181,7 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
 });
 
 // Process conversion function
-async function processConversion(conversionId, files, conversionType, classCode, user) {
+async function processConversion(conversionId, files, conversionType, classCode, user, folderId = null) {
   const startTime = Date.now();
   let outputFilePath = '';
   
@@ -227,6 +250,7 @@ async function processConversion(conversionId, files, conversionType, classCode,
       size: stats.size,
       mimeType: getMimeType(conversionType),
       classCode: classCode.toUpperCase(),
+      folderId: folderId,
       type: 'material',
       uploadedBy: user._id,
       uploaderName: user.fullName || user.username,

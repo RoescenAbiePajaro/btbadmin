@@ -10,6 +10,8 @@ const ImageConverter = ({ educatorId }) => {
   const [converting, setConverting] = useState(false);
   const [classCodes, setClassCodes] = useState([]);
   const [selectedClassCode, setSelectedClassCode] = useState('');
+  const [folders, setFolders] = useState([]);
+  const [selectedFolder, setSelectedFolder] = useState(null);
   const [conversionProgress, setConversionProgress] = useState(0);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const fileInputRef = useRef(null);
@@ -19,6 +21,12 @@ const ImageConverter = ({ educatorId }) => {
   useEffect(() => {
     fetchClassCodes();
   }, [educatorId]);
+
+  useEffect(() => {
+    if (selectedClassCode) {
+      fetchFolders(selectedClassCode);
+    }
+  }, [selectedClassCode]);
 
   useEffect(() => {
     if (converting) {
@@ -80,6 +88,30 @@ const ImageConverter = ({ educatorId }) => {
     }
   };
 
+  const fetchFolders = async (classCode) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token || !classCode) return;
+      
+      const response = await axios.get(
+        `https://btbtestservice.onrender.com/api/folders?classCode=${classCode}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setFolders(response.data.folders || []);
+        // Reset selected folder if it's not in the new class
+        if (selectedFolder && !response.data.folders.find(f => f._id === selectedFolder._id)) {
+          setSelectedFolder(null);
+        }
+      } else {
+        console.error('Failed to fetch folders:', response.data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching folders:', error.response?.data || error.message);
+    }
+  };
+
   const handleImageUpload = (event) => {
     const files = Array.from(event.target.files);
     const remainingSlots = MAX_IMAGES - images.length;
@@ -133,6 +165,9 @@ const ImageConverter = ({ educatorId }) => {
     });
     formData.append('conversionType', conversionType);
     formData.append('classCode', selectedClassCode);
+    if (selectedFolder) {
+      formData.append('folderId', selectedFolder._id);
+    }
 
     try {
       setConverting(true);
@@ -375,6 +410,42 @@ const ImageConverter = ({ educatorId }) => {
                   {classCodes.map((classItem) => (
                     <option key={classItem._id} value={classItem.classCode}>
                       {classItem.className} ({classItem.classCode}) - {classItem.description || 'No batch'}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Folder Selection */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Save to Folder (Optional)
+            </label>
+            {folders.length === 0 ? (
+              <div className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-center">
+                <p className="text-gray-300">No folders available.</p>
+                <p className="text-sm text-gray-400 mt-1">Files will be saved to class root.</p>
+              </div>
+            ) : (
+              <div className="relative">
+                <select
+                  value={selectedFolder?._id || ''}
+                  onChange={(e) => {
+                    const folder = folders.find(f => f._id === e.target.value);
+                    setSelectedFolder(folder || null);
+                  }}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none"
+                >
+                  <option value="">Save to class root (no folder)</option>
+                  {folders.map((folder) => (
+                    <option key={folder._id} value={folder._id}>
+                      {folder.path}
                     </option>
                   ))}
                 </select>
