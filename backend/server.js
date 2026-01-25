@@ -14,6 +14,7 @@ const FileActivity = require('./models/FileActivity');
 const File = require('./models/File');
 const { supabase, supabasePublic } = require('./config/supabase');
 const fileRoutes = require('./routes/fileRoutes');
+const folderRoutes = require('./routes/folderRoutes');
 const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
 const feedbackRoutes = require('./routes/feedback');
@@ -2413,6 +2414,7 @@ app.get('/api/admin/cleanup', verifyToken, requireAdmin, async (req, res) => {
 // =====================
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/folders', folderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/image-converter', imageConverterRoutes);

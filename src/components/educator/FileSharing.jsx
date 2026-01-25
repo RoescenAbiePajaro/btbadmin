@@ -6,6 +6,8 @@ import DeleteConfirmationModal from '../DeleteConfirmationModal';
 
 const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [files, setFiles] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [selectedFolder, setSelectedFolder] = useState(null);
   const [deletingFiles, setDeletingFiles] = useState({});
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -18,6 +20,10 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTargetFileId, setDeleteTargetFileId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [folderModalMode, setFolderModalMode] = useState('create'); // 'create' or 'edit'
+  const [editingFolder, setEditingFolder] = useState(null);
+  const [newFolderName, setNewFolderName] = useState('');
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -30,10 +36,18 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       setShareToClassCode(selectedClassCode);
       setFilterClassCode(selectedClassCode);
       fetchSharedFiles(selectedClassCode);
+      fetchFolders(selectedClassCode);
     } else {
       fetchSharedFiles();
     }
   }, [selectedClassCode]);
+
+  useEffect(() => {
+    // Fetch folders when class code changes
+    if (shareToClassCode) {
+      fetchFolders(shareToClassCode);
+    }
+  }, [shareToClassCode]);
 
   useEffect(() => {
     // Reset to page 1 when files change or filter is applied
@@ -69,6 +83,124 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     } catch (error) {
       console.error('Error fetching class codes:', error.response?.data || error.message);
     }
+  };
+
+  const fetchFolders = async (classCode) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token || !classCode) return;
+      
+      const response = await axios.get(
+        `https://btbtestservice.onrender.com/api/folders?classCode=${classCode}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setFolders(response.data.folders || []);
+      } else {
+        console.error('Failed to fetch folders:', response.data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching folders:', error.response?.data || error.message);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim() || !shareToClassCode) {
+      showToast('Please enter a folder name and select a class', 'error');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        'https://btbtestservice.onrender.com/api/folders',
+        {
+          name: newFolderName.trim(),
+          classCode: shareToClassCode,
+          parentId: selectedFolder?._id || null
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        showToast('Folder created successfully', 'success');
+        setNewFolderName('');
+        setShowFolderModal(false);
+        fetchFolders(shareToClassCode);
+      } else {
+        throw new Error(response.data.error || 'Failed to create folder');
+      }
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      showToast(error.response?.data?.error || error.message || 'Failed to create folder', 'error');
+    }
+  };
+
+  const handleEditFolder = async () => {
+    if (!newFolderName.trim() || !editingFolder) {
+      showToast('Please enter a folder name', 'error');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `https://btbtestservice.onrender.com/api/folders/${editingFolder._id}`,
+        { name: newFolderName.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        showToast('Folder updated successfully', 'success');
+        setNewFolderName('');
+        setShowFolderModal(false);
+        setEditingFolder(null);
+        fetchFolders(shareToClassCode);
+      } else {
+        throw new Error(response.data.error || 'Failed to update folder');
+      }
+    } catch (error) {
+      console.error('Error updating folder:', error);
+      showToast(error.response?.data?.error || error.message || 'Failed to update folder', 'error');
+    }
+  };
+
+  const handleDeleteFolder = async (folderId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(
+        `https://btbtestservice.onrender.com/api/folders/${folderId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        showToast('Folder deleted successfully', 'success');
+        fetchFolders(shareToClassCode);
+        if (selectedFolder?._id === folderId) {
+          setSelectedFolder(null);
+        }
+      } else {
+        throw new Error(response.data.error || 'Failed to delete folder');
+      }
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      showToast(error.response?.data?.error || error.message || 'Failed to delete folder', 'error');
+    }
+  };
+
+  const openCreateFolderModal = () => {
+    setFolderModalMode('create');
+    setNewFolderName('');
+    setEditingFolder(null);
+    setShowFolderModal(true);
+  };
+
+  const openEditFolderModal = (folder) => {
+    setFolderModalMode('edit');
+    setNewFolderName(folder.name);
+    setEditingFolder(folder);
+    setShowFolderModal(true);
   };
 
   const fetchSharedFiles = async (classCode = '') => {
@@ -117,6 +249,9 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('classCode', shareToClassCode);
+    if (selectedFolder) {
+      formData.append('folderId', selectedFolder._id);
+    }
 
     try {
       setUploading(true);
@@ -524,6 +659,72 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             )}
           </div>
 
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Select Folder
+              <span className="text-red-400 ml-1">*</span>
+            </label>
+            <div className="space-y-2">
+              {/* Folder Selection */}
+              <div className="flex items-center gap-2">
+                {shareToClassCode && (
+                  <div className="flex-1">
+                    <div className="relative">
+                      <select
+                        value={selectedFolder?._id || ''}
+                        onChange={(e) => setSelectedFolder(e.target.value ? folders.find(f => f._id === e.target.value) : null)}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none"
+                      >
+                        <option value="">No folder selected</option>
+                        {folders
+                          .filter(folder => !folder.parentId) // Show only root folders
+                          .map((folder) => (
+                            <option key={folder._id} value={folder._id}>
+                              📁 {folder.name}
+                            </option>
+                          ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={openCreateFolderModal}
+                  disabled={!shareToClassCode}
+                  className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  title="Create New Folder"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New Folder
+                </button>
+              </div>
+              
+              {/* Selected Folder Display */}
+              {selectedFolder && (
+                <div className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg">
+                  <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <span className="text-sm text-gray-300">Selected: {selectedFolder.name}</span>
+                  <button
+                    onClick={() => setSelectedFolder(null)}
+                    className="ml-auto text-gray-400 hover:text-white"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           <button
             onClick={handleUpload}
             disabled={uploading || !selectedFile || !shareToClassCode || classCodes.length === 0}
@@ -780,6 +981,70 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           )}
         </div>
       </div>
+
+      {/* Folder Modal */}
+      {showFolderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                {folderModalMode === 'create' ? 'Create New Folder' : 'Edit Folder'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowFolderModal(false);
+                  setNewFolderName('');
+                  setEditingFolder(null);
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Folder Name
+                </label>
+                <input
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="Enter folder name"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  maxLength={50}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {newFolderName.length}/50 characters
+                </p>
+              </div>
+              
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowFolderModal(false);
+                    setNewFolderName('');
+                    setEditingFolder(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={folderModalMode === 'create' ? handleCreateFolder : handleEditFolder}
+                  disabled={!newFolderName.trim()}
+                  className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {folderModalMode === 'create' ? 'Create Folder' : 'Update Folder'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast.show && (
         <Toast

@@ -8,6 +8,7 @@ const supabase = require('../services/supabaseService');
 const File = require('../models/File');
 const User = require('../models/User');
 const Class = require('../models/Class');
+const Folder = require('../models/Folder');
 const { verifyToken } = require('../middleware/auth');
 
 // Ensure temp-uploads directory exists
@@ -92,13 +93,30 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
       });
     }
 
-    const { classCode, title, description } = req.body;
+    const { classCode, folderId, title, description } = req.body;
     
     if (!classCode) {
       return res.status(400).json({
         success: false,
         error: 'Class code is required'
       });
+    }
+
+    // Validate folder if provided
+    if (folderId) {
+      const folder = await Folder.findOne({
+        _id: folderId,
+        educatorId: req.user.id,
+        classCode: classCode.toUpperCase(),
+        isDeleted: false
+      });
+      
+      if (!folder) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid folder selected'
+        });
+      }
     }
 
     const filePath = req.file.path;
@@ -125,6 +143,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
         size: req.file.size,
         mimeType: req.file.mimetype,
         classCode: classCode.toUpperCase(),
+        folderId: folderId || null,
         title: title,
         description: description,
         type: 'material',
