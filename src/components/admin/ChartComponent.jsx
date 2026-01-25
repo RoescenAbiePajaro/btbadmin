@@ -11,12 +11,6 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 export default function ChartComponent({
   statistics,
   analyticsData,
-  schoolTrends,
-  schoolTrendPeriod,
-  setSchoolTrendPeriod,
-  classTrends,
-  classTrendPeriod,
-  setClassTrendPeriod,
   timeRange,
   handleTimeRangeChange,
   classStatusData,
@@ -77,54 +71,6 @@ export default function ChartComponent({
         </div>
       </div>
 
-      {/* School Trends Chart */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">School Created Trends</h3>
-          <div className="flex gap-2">
-            {['week', 'month', 'year'].map((period) => (
-              <button
-                key={period}
-                onClick={() => setSchoolTrendPeriod(period)}
-                className={`px-3 py-1 rounded-lg text-sm capitalize ${
-                  schoolTrendPeriod === period
-                    ? 'bg-violet-500 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                {period}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={filterDataByDateRange(schoolTrends) || []}>
-              <defs>
-                <linearGradient id="colorSchools" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="_id" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="count" 
-                stroke="#8884d8" 
-                fillOpacity={1} 
-                fill="url(#colorSchools)" 
-                name="Schools Created"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
       {/* User Role Distribution Chart */}
       {statistics?.users?.byRole && statistics.users.byRole.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -157,54 +103,6 @@ export default function ChartComponent({
           </div>
         </div>
       )}
-
-      {/* Total Classes Created Chart */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">Total Classes Created Over Time</h3>
-          <div className="flex gap-2">
-            {['week', 'month', 'year'].map((period) => (
-              <button
-                key={period}
-                onClick={() => setClassTrendPeriod(period)}
-                className={`px-3 py-1 rounded-lg text-sm capitalize ${
-                  classTrendPeriod === period
-                    ? 'bg-violet-500 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                {period}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={filterDataByDateRange(classTrends?.creationTrends) || []}>
-              <defs>
-                <linearGradient id="colorClasses" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="_id" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="total" 
-                stroke="#10B981" 
-                fillOpacity={1} 
-                fill="url(#colorClasses)" 
-                name="Classes Created"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
 
       {/* Activity Distribution Chart */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">

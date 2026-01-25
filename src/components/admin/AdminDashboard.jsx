@@ -23,8 +23,6 @@ export default function AdminDashboard() {
   const [filteredData, setFilteredData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [timeRange, setTimeRange] = useState('30d');
-  const [schoolTrends, setSchoolTrends] = useState(null);
-  const [schoolTrendPeriod, setSchoolTrendPeriod] = useState('month');
   const [error, setError] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [educatorFileSummary, setEducatorFileSummary] = useState(null);
@@ -42,8 +40,6 @@ export default function AdminDashboard() {
   const [classSearch, setClassSearch] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
-  const [classTrends, setClassTrends] = useState(null);
-  const [classTrendPeriod, setClassTrendPeriod] = useState('month');
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -423,44 +419,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch school trends
-  const fetchSchoolTrends = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `https://btbtestservice.onrender.com/api/dashboard/school-trends?period=${schoolTrendPeriod}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
-      if (response.data.success) {
-        setSchoolTrends(response.data.trends);
-      }
-    } catch (error) {
-      console.error('Error fetching school trends:', error);
-    }
-  };
-
-  // Fetch class trends
-  const fetchClassTrends = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `https://btbtestservice.onrender.com/api/dashboard/class-trends?period=${classTrendPeriod}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
-      if (response.data.success) {
-        setClassTrends(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching class trends:', error);
-    }
-  };
-
   // Fetch feedback statistics only for the overview card
   const fetchFeedbackStats = async () => {
     try {
@@ -489,14 +447,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAnalyticsData();
   }, [timeRange]);
-
-  useEffect(() => {
-    fetchSchoolTrends();
-  }, [schoolTrendPeriod]);
-
-  useEffect(() => {
-    fetchClassTrends();
-  }, [classTrendPeriod]);
 
   useEffect(() => {
     if (activeTab !== 'overview') {
@@ -581,8 +531,6 @@ export default function AdminDashboard() {
                 onClick={() => {
                   fetchDashboardData();
                   fetchAnalyticsData();
-                  fetchSchoolTrends();
-                  fetchClassTrends();
                 }}
                 className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition duration-200"
                 title="Refresh Data"
@@ -816,12 +764,6 @@ export default function AdminDashboard() {
             <ChartComponent
               statistics={statistics}
               analyticsData={analyticsData}
-              schoolTrends={schoolTrends}
-              schoolTrendPeriod={schoolTrendPeriod}
-              setSchoolTrendPeriod={setSchoolTrendPeriod}
-              classTrends={classTrends}
-              classTrendPeriod={classTrendPeriod}
-              setClassTrendPeriod={setClassTrendPeriod}
               timeRange={timeRange}
               handleTimeRangeChange={handleTimeRangeChange}
             />
