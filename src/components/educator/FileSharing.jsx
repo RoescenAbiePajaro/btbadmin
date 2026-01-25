@@ -1,4 +1,3 @@
-// src/components/educator/FileSharing.jsx - this is for educator
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Toast from '../Toast';
@@ -27,6 +26,11 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [folderModalMode, setFolderModalMode] = useState('create'); // 'create' or 'edit'
   const [editingFolder, setEditingFolder] = useState(null);
   const [newFolderName, setNewFolderName] = useState('');
+  const [loading, setLoading] = useState({
+    folders: false,
+    files: false,
+    structure: false
+  });
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -38,9 +42,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     if (selectedClassCode) {
       setShareToClassCode(selectedClassCode);
       setFilterClassCode(selectedClassCode);
-      fetchSharedFiles(selectedClassCode);
-      fetchFolders(selectedClassCode);
-      fetchFolderStructure(selectedClassCode);
+      handleRefreshData(selectedClassCode);
     } else {
       fetchSharedFiles();
       fetchFolderStructure();
@@ -50,8 +52,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   useEffect(() => {
     // Fetch folders when class code changes
     if (shareToClassCode) {
-      fetchFolders(shareToClassCode);
-      fetchFolderStructure(shareToClassCode);
+      handleRefreshData(shareToClassCode);
     }
   }, [shareToClassCode]);
 
@@ -59,6 +60,18 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     // Reset to page 1 when files change or filter is applied
     setCurrentPage(1);
   }, [files, filterClassCode]);
+
+  const handleRefreshData = async (classCode) => {
+    try {
+      await Promise.all([
+        fetchFolders(classCode),
+        fetchFolderStructure(classCode),
+        fetchSharedFiles(classCode)
+      ]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  };
 
   const fetchClassCodes = async () => {
     try {
@@ -96,6 +109,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       const token = localStorage.getItem('token');
       if (!token || !classCode) return;
       
+      setLoading(prev => ({ ...prev, folders: true }));
       const response = await axios.get(
         `https://btbtestservice.onrender.com/api/folders?classCode=${classCode}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -108,6 +122,78 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       }
     } catch (error) {
       console.error('Error fetching folders:', error.response?.data || error.message);
+    } finally {
+      setLoading(prev => ({ ...prev, folders: false }));
+    }
+  };
+
+  const fetchFolderStructure = async (classCode = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      setLoading(prev => ({ ...prev, structure: true }));
+      
+      // Build query parameters
+      const params = {};
+      if (classCode) {
+        params.classCode = classCode;
+      }
+      
+      // Use the new endpoint for folder structure with files
+      const response = await axios.get(
+        `https://btbtestservice.onrender.com/api/folders/structure-with-files`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          },
+          params: params
+        }
+      );
+      
+      if (response.data.success) {
+        setFolderStructure(response.data.folderStructure || []);
+        setUnassignedFiles(response.data.unassignedFiles || []);
+      } else {
+        console.error('Failed to fetch folder structure:', response.data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching folder structure:', error.response?.data || error.message);
+    } finally {
+      setLoading(prev => ({ ...prev, structure: false }));
+    }
+  };
+
+  const fetchSharedFiles = async (classCode = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      setLoading(prev => ({ ...prev, files: true }));
+      
+      // Build query parameters
+      const params = {};
+      if (classCode) {
+        params.classCode = classCode;
+      }
+      
+      const response = await axios.get(
+        `https://btbtestservice.onrender.com/api/files/list`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          },
+          params: params
+        }
+      );
+      
+      if (response.data.success) {
+        setFiles(response.data.files || []);
+      } else {
+        console.error('Failed to fetch files:', response.data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching shared files:', error.response?.data || error.message);
+    } finally {
+      setLoading(prev => ({ ...prev, files: false }));
     }
   };
 
@@ -133,8 +219,9 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         showToast('Folder created successfully', 'success');
         setNewFolderName('');
         setShowFolderModal(false);
-        fetchFolders(shareToClassCode);
-        fetchFolderStructure(shareToClassCode);
+        
+        // Refresh all data
+        await handleRefreshData(shareToClassCode);
       } else {
         throw new Error(response.data.error || 'Failed to create folder');
       }
@@ -163,8 +250,9 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         setNewFolderName('');
         setShowFolderModal(false);
         setEditingFolder(null);
-        fetchFolders(shareToClassCode);
-        fetchFolderStructure(shareToClassCode);
+        
+        // Refresh all data
+        await handleRefreshData(shareToClassCode);
       } else {
         throw new Error(response.data.error || 'Failed to update folder');
       }
@@ -184,8 +272,10 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
 
       if (response.data.success) {
         showToast('Folder deleted successfully', 'success');
-        fetchFolders(shareToClassCode);
-        fetchFolderStructure(shareToClassCode);
+        
+        // Refresh all data
+        await handleRefreshData(shareToClassCode);
+        
         if (selectedFolder?._id === folderId) {
           setSelectedFolder(null);
         }
@@ -224,67 +314,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     setShowFolderModal(true);
   };
 
-  const fetchFolderStructure = async (classCode = '') => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Build query parameters
-      const params = {};
-      if (classCode) {
-        params.classCode = classCode;
-      }
-      
-      const response = await axios.get(
-        `https://btbtestservice.onrender.com/api/files/folder-structure`,
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}` 
-          },
-          params: params
-        }
-      );
-      
-      if (response.data.success) {
-        setFolderStructure(response.data.folderStructure || []);
-        setUnassignedFiles(response.data.unassignedFiles || []);
-      } else {
-        console.error('Failed to fetch folder structure:', response.data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching folder structure:', error.response?.data || error.message);
-    }
-  };
-
-  const fetchSharedFiles = async (classCode = '') => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Build query parameters
-      const params = {};
-      if (classCode) {
-        params.classCode = classCode;
-      }
-      
-      const response = await axios.get(
-        `https://btbtestservice.onrender.com/api/files/list`,
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}` 
-          },
-          params: params
-        }
-      );
-      
-      if (response.data.success) {
-        setFiles(response.data.files || []);
-      } else {
-        console.error('Failed to fetch files:', response.data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching shared files:', error.response?.data || error.message);
-    }
-  };
-
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -321,13 +350,12 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       );
 
       if (response.data.success) {
-        // Add the new file to the files list
-        setFiles([response.data.file, ...files]);
+        // Refresh all data
+        await handleRefreshData(shareToClassCode);
+        
+        // Reset upload state
         setSelectedFile(null);
         document.getElementById('file-upload').value = '';
-        
-        // Refresh folder structure to show new file in appropriate folder
-        fetchFolderStructure(shareToClassCode);
         
         showToast('File shared successfully!', 'success');
       } else {
@@ -347,6 +375,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       const link = document.createElement('a');
       link.href = fileUrl;
       link.download = fileName || 'download';
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -394,9 +423,8 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       );
 
       if (response.data.success) {
-        setFiles(prevFiles => prevFiles.filter(file => file._id !== fileId));
-        // Refresh folder structure to remove deleted file from folder view
-        fetchFolderStructure(shareToClassCode);
+        // Refresh all data
+        await handleRefreshData(shareToClassCode);
         showToast('File deleted successfully', 'success');
       } else {
         throw new Error(response.data.error || 'Failed to delete file');
@@ -446,7 +474,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       >
         <div className="flex items-center gap-1">
           <svg 
-            className="w-4 h-4 text-yellow-400 transition-transform" 
+            className="w-4 h-4 text-yellow-400 transition-transform duration-200" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -470,7 +498,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   e.stopPropagation();
                   openEditFolderModal(folder);
                 }}
-                className="p-1 text-gray-400 hover:text-white hover:bg-gray-600 rounded"
+                className="p-1 text-gray-400 hover:text-white hover:bg-gray-600 rounded transition-colors"
                 title="Edit Folder"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -482,7 +510,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   e.stopPropagation();
                   handleDeleteFolder(folder._id);
                 }}
-                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded"
+                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
                 title="Delete Folder"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -502,86 +530,87 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     const hasSubfolders = folder.subfolders && folder.subfolders.length > 0;
 
     return (
-      <div key={folder._id}>
+      <div key={folder._id} className="mb-1">
         {renderFolderIcon(folder, isExpanded, level)}
         
         {isExpanded && (
-          <div className="ml-4">
+          <div className="ml-4 border-l border-gray-700">
             {/* Render files in this folder */}
             {hasFiles && (
               <div className="space-y-1 mb-2">
-                {folder.files.map((file) => {
-                  const classItem = classCodes.find(c => c.classCode === file.classCode);
-                  return (
-                    <div
-                      key={file._id}
-                      className="p-3 hover:bg-gray-750 transition-colors duration-200 border-l-2 border-gray-600"
-                      style={{ marginLeft: `${level * 20 + 8}px` }}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex-1 flex items-start sm:items-center gap-4">
-                          <div className="flex-shrink-0">
-                            {renderFilePreview(file)}
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="text-white font-medium truncate">{file.name}</h4>
-                            <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 mt-1">
-                              <div className="flex items-center gap-2 text-sm text-gray-400">
-                                <span>{formatFileSize(file.size || 0)}</span>
-                                <span>•</span>
-                                <div className="flex items-center gap-1">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                  </svg>
-                                  {formatDate(file.uploadedAt || file.createdAt)}
-                                </div>
+                {folder.files.map((file) => (
+                  <div
+                    key={file._id}
+                    className="p-3 hover:bg-gray-750 transition-colors duration-200 ml-2"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex-1 flex items-start sm:items-center gap-4">
+                        <div className="flex-shrink-0">
+                          {renderFilePreview(file)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-white font-medium truncate">{file.name}</h4>
+                          <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 mt-1">
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                              <span>{formatFileSize(file.size || 0)}</span>
+                              <span>•</span>
+                              <div className="flex items-center gap-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                {formatDate(file.createdAt)}
                               </div>
                             </div>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center space-x-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownload(file.url, file.name);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 mr-3"
-                              title="Download"
-                            >
-                              <i className="fas fa-download"></i>
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewFile(file);
-                              }}
-                              className="text-green-600 hover:text-green-800 mr-3"
-                              title="View"
-                            >
-                              <i className="fas fa-eye"></i>
-                            </button>
-                          </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center space-x-1">
                           <button
-                            onClick={() => openDeleteModal(file._id)}
-                            disabled={deletingFiles[file._id]}
-                            className="text-red-400 hover:text-red-300 transition duration-200 p-1 rounded hover:bg-red-500/10 disabled:opacity-50"
-                            title="Delete File"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(file.url, file.name);
+                            }}
+                            className="text-blue-400 hover:text-blue-300 mr-3 transition-colors"
+                            title="Download"
                           >
-                            {deletingFiles[file._id] ? (
-                              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-red-400"></div>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            )}
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewFile(file);
+                            }}
+                            className="text-green-400 hover:text-green-300 mr-3 transition-colors"
+                            title="View"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
                           </button>
                         </div>
+                        <button
+                          onClick={() => openDeleteModal(file._id)}
+                          disabled={deletingFiles[file._id]}
+                          className="text-red-400 hover:text-red-300 transition duration-200 p-1 rounded hover:bg-red-500/10 disabled:opacity-50"
+                          title="Delete File"
+                        >
+                          {deletingFiles[file._id] ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-red-400"></div>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
             
@@ -685,7 +714,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             <div className="flex items-center space-x-2">
               <button 
                 onClick={() => handleDownload(viewingFile.url, viewingFile.name)}
-                className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full"
+                className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
                 title="Download"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -694,7 +723,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
               </button>
               <button 
                 onClick={() => setViewingFile(null)}
-                className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full"
+                className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
                 aria-label="Close"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -712,7 +741,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                 className="max-w-full max-h-[70vh] object-contain"
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUtaW1hZ2UiPjcmIzQ3O3BhdGggZD0iTTE0LjUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjcuNUwxNC41IDJ6Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48Y2lyY2xlIGN4PSIxMCIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7bC0zLjEtMy4xYTIgMiAwIDAgMC0yLjggMEw4IDE4Ii8+PC9zdmc+';
+                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUtaW1hZ2UiPjcmIzQ3O3BhdGggZD0iTTE0LjUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMhgxMmEyIDIgMCAwIDAgMi0yVjcuNUwxNC41IDJ6Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48Y2lyY2xlIGN4PSIxMCIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7bC0zLjEtMy4xYTIgMiAwIDAgMC0yLjggMEw4IDE4Ii8+PC9zdmc+';
                 }}
               />
             ) : isPdf ? (
@@ -879,7 +908,6 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300">
               Select Folder
-              <span className="text-red-400 ml-1">*</span>
             </label>
             <div className="space-y-2">
               {/* Folder Selection */}
@@ -889,12 +917,22 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                     <div className="relative">
                       <select
                         value={selectedFolder?._id || ''}
-                        onChange={(e) => setSelectedFolder(e.target.value ? folders.find(f => f._id === e.target.value) : null)}
+                        onChange={(e) => {
+                          const folderId = e.target.value;
+                          if (!folderId) {
+                            setSelectedFolder(null);
+                          } else {
+                            // Find folder in flat folders list
+                            const folder = folders.find(f => f._id === folderId);
+                            setSelectedFolder(folder || null);
+                          }
+                        }}
                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none"
                       >
-                        <option value="">No folder selected</option>
+                        <option value="">No folder selected (upload to root)</option>
                         {folders
-                          .filter(folder => !folder.parentId) // Show only root folders
+                          .filter(folder => !folder.parentId) // Only root folders
+                          .sort((a, b) => a.name.localeCompare(b.name))
                           .map((folder) => (
                             <option key={folder._id} value={folder._id}>
                               📁 {folder.name}
@@ -931,7 +969,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   <span className="text-sm text-gray-300">Selected: {selectedFolder.name}</span>
                   <button
                     onClick={() => setSelectedFolder(null)}
-                    className="ml-auto text-gray-400 hover:text-white"
+                    className="ml-auto text-gray-400 hover:text-white transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -995,7 +1033,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   {classSearchTerm && (
                     <button 
                       onClick={() => setClassSearchTerm('')}
-                      className="p-1 mr-2 text-gray-400 hover:text-white"
+                      className="p-1 mr-2 text-gray-400 hover:text-white transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1039,7 +1077,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   )}
                   <button 
                     onClick={() => handleFilterChange('')}
-                    className="ml-2 text-gray-400 hover:text-white"
+                    className="ml-2 text-gray-400 hover:text-white transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1049,27 +1087,36 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
               )}
             </div>
           </div>
+        </div>
 
-          <div className="divide-y divide-gray-700">
-            {/* Display folders with files */}
-            {folderStructure.length > 0 || unassignedFiles.length > 0 ? (
-              <>
-                {/* Render folders */}
-                {folderStructure.map((folder) => renderFolderWithFiles(folder, 0))}
-                
-                {/* Render unassigned files */}
-                {unassignedFiles.length > 0 && (
-                  <div className="mt-4">
-                    <div className="px-4 py-2 bg-gray-700/50 border-l-4 border-gray-500">
-                      <h4 className="text-sm font-medium text-gray-300">Unassigned Files</h4>
-                    </div>
-                    <div className="space-y-1">
-                      {unassignedFiles.map((file) => {
-                        const classItem = classCodes.find(c => c.classCode === file.classCode);
-                        return (
+        <div className="p-6">
+          {/* Loading States */}
+          {loading.structure && (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+              <span className="ml-3 text-gray-300">Loading folder structure...</span>
+            </div>
+          )}
+          
+          {!loading.structure && (
+            <div className="divide-y divide-gray-700">
+              {/* Display folders with files */}
+              {folderStructure.length > 0 || unassignedFiles.length > 0 ? (
+                <>
+                  {/* Render folders */}
+                  {folderStructure.map((folder) => renderFolderWithFiles(folder, 0))}
+                  
+                  {/* Render unassigned files */}
+                  {unassignedFiles.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-700">
+                      <div className="px-4 py-2 bg-gray-700/50 rounded-lg mb-2">
+                        <h4 className="text-sm font-medium text-gray-300">Files Not in Folders</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {unassignedFiles.map((file) => (
                           <div
                             key={file._id}
-                            className="p-4 hover:bg-gray-750 transition-colors duration-200"
+                            className="p-4 hover:bg-gray-750 transition-colors duration-200 rounded-lg border border-gray-700"
                           >
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <div className="flex-1 flex items-start sm:items-center gap-4">
@@ -1079,30 +1126,14 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                                 <div className="min-w-0">
                                   <h4 className="text-white font-medium truncate">{file.name}</h4>
                                   <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 mt-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      {classItem?.className && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-900 text-pink-200">
-                                          {classItem.className}
-                                        </span>
-                                      )}
-                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-                                        {file.classCode}
-                                      </span>
-                                      {classItem?.description && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
-                                          {classItem.description}
-                                        </span>
-                                      )}
-                                    </div>
                                     <div className="flex items-center gap-2 text-sm text-gray-400">
-                                      <span>•</span>
                                       <span>{formatFileSize(file.size || 0)}</span>
                                       <span>•</span>
                                       <div className="flex items-center gap-1">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
-                                        {formatDate(file.uploadedAt || file.createdAt)}
+                                        {formatDate(file.createdAt)}
                                       </div>
                                     </div>
                                   </div>
@@ -1116,20 +1147,25 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                                       e.stopPropagation();
                                       handleDownload(file.url, file.name);
                                     }}
-                                    className="text-blue-600 hover:text-blue-800 mr-3"
+                                    className="text-blue-400 hover:text-blue-300 mr-3 transition-colors"
                                     title="Download"
                                   >
-                                    <i className="fas fa-download"></i>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
                                   </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleViewFile(file);
                                     }}
-                                    className="text-green-600 hover:text-green-800 mr-3"
+                                    className="text-green-400 hover:text-green-300 mr-3 transition-colors"
                                     title="View"
                                   >
-                                    <i className="fas fa-eye"></i>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
                                   </button>
                                 </div>
                                 <button
@@ -1149,96 +1185,117 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p className="text-gray-400 text-lg">No files shared yet</p>
-                <p className="text-gray-500 text-sm mt-1">Upload a file to get started</p>
-              </div>
-            )}
-          </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-gray-400 text-lg">No files shared yet</p>
+                  <p className="text-gray-500 text-sm mt-1">Upload a file to get started</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Folder Modal */}
-        {showFolderModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">
-                  {folderModalMode === 'create' ? 'Create New Folder' : 'Edit Folder'}
-                </h3>
+      {/* Folder Modal */}
+      {showFolderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                {folderModalMode === 'create' ? 'Create New Folder' : 'Edit Folder'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowFolderModal(false);
+                  setNewFolderName('');
+                  setEditingFolder(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Folder Name
+                </label>
+                <input
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="Enter folder name"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  maxLength={50}
+                  autoFocus
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {newFolderName.length}/50 characters
+                </p>
+              </div>
+              
+              {folderModalMode === 'create' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Parent Folder
+                  </label>
+                  <div className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg">
+                    {selectedFolder ? (
+                      <>
+                        <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                        </svg>
+                        <span className="text-sm text-gray-300">Inside: {selectedFolder.name}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400">Root folder (no parent)</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => {
                     setShowFolderModal(false);
                     setNewFolderName('');
                     setEditingFolder(null);
                   }}
-                  className="text-gray-400 hover:text-white"
+                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  Cancel
                 </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Folder Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    placeholder="Enter folder name"
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    maxLength={50}
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    {newFolderName.length}/50 characters
-                  </p>
-                </div>
-                
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => {
-                      setShowFolderModal(false);
-                      setNewFolderName('');
-                      setEditingFolder(null);
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={folderModalMode === 'create' ? handleCreateFolder : handleEditFolder}
-                    disabled={!newFolderName.trim()}
-                    className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {folderModalMode === 'create' ? 'Create Folder' : 'Update Folder'}
-                  </button>
-                </div>
+                <button
+                  onClick={folderModalMode === 'create' ? handleCreateFolder : handleEditFolder}
+                  disabled={!newFolderName.trim()}
+                  className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {folderModalMode === 'create' ? 'Create Folder' : 'Update Folder'}
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {toast.show && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(prev => ({ ...prev, show: false }))}
-          />
-        )}
-      </div>
+      {toast.show && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(prev => ({ ...prev, show: false }))}
+        />
+      )}
     </div>
   );
 };

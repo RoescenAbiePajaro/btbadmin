@@ -1,4 +1,3 @@
-// backend/routes/folderRoutes.js
 const express = require('express');
 const router = express.Router();
 const Folder = require('../models/Folder');
@@ -58,6 +57,85 @@ router.get('/tree', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching folder tree',
+      details: error.message
+    });
+  }
+});
+
+// Get full folder structure with files
+router.get('/structure-with-files', verifyToken, async (req, res) => {
+  try {
+    const { classCode } = req.query;
+    const educatorId = req.user.id;
+
+    if (!classCode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Class code is required'
+      });
+    }
+
+    // Get all folders
+    const folders = await Folder.find({
+      educatorId,
+      classCode: classCode.toUpperCase(),
+      isDeleted: false
+    }).sort({ path: 1 });
+
+    // Get all files
+    const files = await File.find({
+      classCode: classCode.toUpperCase(),
+      uploadedBy: educatorId,
+      isDeleted: { $ne: true }
+    }).populate('uploadedBy', 'username fullName email school');
+
+    // Build folder structure
+    const folderMap = {};
+    const rootFolders = [];
+
+    // Create folder map
+    folders.forEach(folder => {
+      folderMap[folder._id] = {
+        ...folder.toObject(),
+        files: [],
+        subfolders: []
+      };
+    });
+
+    // Build hierarchy
+    folders.forEach(folder => {
+      const folderId = folder._id;
+      const folderData = folderMap[folderId];
+      
+      if (folder.parentId && folderMap[folder.parentId]) {
+        folderMap[folder.parentId].subfolders.push(folderData);
+      } else {
+        rootFolders.push(folderData);
+      }
+    });
+
+    // Assign files to folders
+    files.forEach(file => {
+      if (file.folderId && folderMap[file.folderId]) {
+        folderMap[file.folderId].files.push(file);
+      }
+    });
+
+    // Get unassigned files
+    const unassignedFiles = files.filter(file => !file.folderId);
+
+    res.status(200).json({
+      success: true,
+      folderStructure: rootFolders,
+      unassignedFiles,
+      totalFolders: folders.length,
+      totalFiles: files.length
+    });
+  } catch (error) {
+    console.error('Error fetching folder structure with files:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching folder structure',
       details: error.message
     });
   }
@@ -263,15 +341,61 @@ router.get('/:folderId', verifyToken, async (req, res) => {
       });
     }
 
+    // Get files in this folder
+    const files = await File.find({
+      folderId: folderId,
+      isDeleted: { $ne: true }
+    }).populate('uploadedBy', 'username fullName email school');
+
     res.status(200).json({
       success: true,
-      folder: folder
+      folder: {
+        ...folder.toObject(),
+        files: files,
+        fileCount: files.length
+      }
     });
   } catch (error) {
     console.error('Error fetching folder details:', error);
     res.status(500).json({
       success: false,
       error: 'Error fetching folder details',
+      details: error.message
+    });
+  }
+});
+
+// Get folder tree with files
+router.get('/:folderId/tree-with-files', verifyToken, async (req, res) => {
+  try {
+    const { folderId } = req.params;
+    const educatorId = req.user.id;
+
+    const folder = await Folder.findOne({
+      _id: folderId,
+      educatorId,
+      isDeleted: false
+    });
+
+    if (!folder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Folder not found'
+      });
+    }
+
+    // Get folder tree starting from this folder
+    const tree = await Folder.getFolderTreeWithFiles(educatorId, folder.classCode, folderId);
+
+    res.status(200).json({
+      success: true,
+      tree: tree
+    });
+  } catch (error) {
+    console.error('Error fetching folder tree with files:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching folder tree',
       details: error.message
     });
   }

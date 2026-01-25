@@ -1,4 +1,3 @@
-// backend/models/Folder.js
 const mongoose = require('mongoose');
 
 const folderSchema = new mongoose.Schema({
@@ -40,10 +39,11 @@ const folderSchema = new mongoose.Schema({
 // Index for efficient queries
 folderSchema.index({ educatorId: 1, classCode: 1, isDeleted: 1 });
 folderSchema.index({ parentId: 1 });
+folderSchema.index({ path: 1 });
 
 // Pre-save middleware to update path and level
 folderSchema.pre('save', async function(next) {
-  if (!this.isModified('parentId')) {
+  if (!this.isModified('parentId') && !this.isModified('name')) {
     return next();
   }
 
@@ -90,6 +90,39 @@ folderSchema.statics.getFolderTree = async function(educatorId, classCode, paren
   return tree;
 };
 
+// Static method to get folder tree with files
+folderSchema.statics.getFolderTreeWithFiles = async function(educatorId, classCode, parentId = null) {
+  const folders = await this.find({
+    educatorId,
+    classCode,
+    parentId,
+    isDeleted: false
+  }).sort({ name: 1 });
+
+  const File = mongoose.model('File');
+  const tree = [];
+  
+  for (const folder of folders) {
+    // Get files in this folder
+    const files = await File.find({
+      folderId: folder._id,
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1 });
+    
+    // Get subfolders recursively
+    const children = await this.getFolderTreeWithFiles(educatorId, classCode, folder._id);
+    
+    tree.push({
+      ...folder.toObject(),
+      files: files || [],
+      fileCount: files.length,
+      children
+    });
+  }
+  
+  return tree;
+};
+
 // Static method to get all folders in flat structure
 folderSchema.statics.getFlatFolders = async function(educatorId, classCode) {
   return await this.find({
@@ -99,9 +132,76 @@ folderSchema.statics.getFlatFolders = async function(educatorId, classCode) {
   }).sort({ path: 1 });
 };
 
+// Static method to get all folders with file counts
+folderSchema.statics.getFoldersWithFileCounts = async function(educatorId, classCode) {
+  const folders = await this.find({
+    educatorId,
+    classCode,
+    isDeleted: false
+  }).sort({ path: 1 });
+
+  const File = mongoose.model('File');
+  const foldersWithCounts = [];
+  
+  for (const folder of folders) {
+    const fileCount = await File.countDocuments({
+      folderId: folder._id,
+      isDeleted: { $ne: true }
+    });
+    
+    foldersWithCounts.push({
+      ...folder.toObject(),
+      fileCount
+    });
+  }
+  
+  return foldersWithCounts;
+};
+
 // Instance method to get full path with folder names
 folderSchema.methods.getFullPath = function() {
   return this.path;
+};
+
+// Instance method to get breadcrumb path
+folderSchema.methods.getBreadcrumb = async function() {
+  const breadcrumb = [];
+  let currentFolder = this;
+  
+  while (currentFolder) {
+    breadcrumb.unshift({
+      _id: currentFolder._id,
+      name: currentFolder.name
+    });
+    
+    if (currentFolder.parentId) {
+      currentFolder = await this.constructor.findById(currentFolder.parentId);
+    } else {
+      break;
+    }
+  }
+  
+  return breadcrumb;
+};
+
+// Instance method to get all descendant folder IDs
+folderSchema.methods.getDescendantIds = async function() {
+  const descendantIds = [];
+  
+  const getChildrenIds = async (parentId) => {
+    const children = await this.constructor.find({
+      parentId,
+      isDeleted: false
+    });
+    
+    for (const child of children) {
+      descendantIds.push(child._id);
+      await getChildrenIds(child._id);
+    }
+  };
+  
+  await getChildrenIds(this._id);
+  return descendantIds;
 };
 
 module.exports = mongoose.model('Folder', folderSchema);
