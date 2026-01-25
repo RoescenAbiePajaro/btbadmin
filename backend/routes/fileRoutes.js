@@ -379,4 +379,124 @@ router.get('/recent', async (req, res) => {
   }
 });
 
+// Get files grouped by folders with folder structure
+router.get('/folder-structure', verifyToken, async (req, res) => {
+  try {
+    const { classCode } = req.query;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    let query = {};
+    
+    // If user is admin, show all files
+    if (userRole === 'admin') {
+      if (classCode) {
+        query.classCode = classCode.toUpperCase();
+      }
+    }
+    // If user is student, they should only see files from their CURRENT enrolled class
+    else if (userRole === 'student') {
+      const user = await User.findById(userId);
+      
+      if (!user.enrolledClass) {
+        return res.json({
+          success: true,
+          folderStructure: [],
+          files: []
+        });
+      }
+      
+      const currentClass = await Class.findById(user.enrolledClass);
+      if (!currentClass) {
+        return res.json({
+          success: true,
+          folderStructure: [],
+          files: []
+        });
+      }
+      
+      query.classCode = currentClass.classCode;
+    }
+    // If user is educator, show only their uploaded files
+    else if (userRole === 'educator') {
+      query.uploadedBy = userId;
+      if (classCode) {
+        query.classCode = classCode.toUpperCase();
+      }
+    }
+    
+    // Get all folders for the class
+    let folderQuery = { isDeleted: false };
+    if (classCode) {
+      folderQuery.classCode = classCode.toUpperCase();
+    }
+    if (userRole === 'educator') {
+      folderQuery.educatorId = userId;
+    }
+    
+    const folders = await Folder.find(folderQuery)
+      .sort({ path: 1 });
+    
+    // Get all files
+    const files = await File.find(query)
+      .sort({ createdAt: -1 })
+      .populate('uploadedBy', 'username fullName email school');
+    
+    // Build folder structure
+    const folderMap = new Map();
+    const rootFolders = [];
+    
+    // Create folder map
+    folders.forEach(folder => {
+      folderMap.set(folder._id.toString(), {
+        ...folder.toObject(),
+        files: [],
+        subfolders: []
+      });
+    });
+    
+    // Build hierarchy and assign files
+    folders.forEach(folder => {
+      const folderId = folder._id.toString();
+      const folderData = folderMap.get(folderId);
+      
+      if (folder.parentId) {
+        const parent = folderMap.get(folder.parentId.toString());
+        if (parent) {
+          parent.subfolders.push(folderData);
+        }
+      } else {
+        rootFolders.push(folderData);
+      }
+    });
+    
+    // Assign files to folders
+    files.forEach(file => {
+      if (file.folderId) {
+        const folder = folderMap.get(file.folderId.toString());
+        if (folder) {
+          folder.files.push(file);
+        }
+      }
+    });
+    
+    // Separate files that are not in any folder
+    const unassignedFiles = files.filter(file => !file.folderId);
+    
+    res.status(200).json({
+      success: true,
+      folderStructure: rootFolders,
+      unassignedFiles: unassignedFiles,
+      totalFiles: files.length
+    });
+  } catch (error) {
+    console.error('Error fetching folder structure:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching folder structure',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
