@@ -76,6 +76,8 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
 
     const { conversionType, classCode, folderId } = req.body;
     
+    console.log('Extracted folderId:', folderId);
+    
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ 
         success: false, 
@@ -187,6 +189,7 @@ async function processConversion(conversionId, files, conversionType, classCode,
   
   try {
     console.log(`Processing conversion ${conversionId} for ${files.length} images`);
+    console.log(`FolderId passed to processConversion: ${folderId}`);
     
     // Create unique output filename
     const timestamp = Date.now();
@@ -242,6 +245,7 @@ async function processConversion(conversionId, files, conversionType, classCode,
     console.log('Uploaded to Supabase:', uploadResult);
 
     // Save file record
+    console.log(`Creating file record with folderId: ${folderId}`);
     const fileRecord = new File({
       name: uploadResult.fileName,
       originalName: `images_converted_${Date.now()}.${conversionType}`,
@@ -262,6 +266,7 @@ async function processConversion(conversionId, files, conversionType, classCode,
     });
 
     await fileRecord.save();
+    console.log(`File saved to database: ${fileRecord._id} with folderId: ${fileRecord.folderId}`);
 
     // Update conversion record
     await ImageConversion.findByIdAndUpdate(conversionId, {

@@ -167,6 +167,9 @@ const ImageConverter = ({ educatorId }) => {
     formData.append('classCode', selectedClassCode);
     if (selectedFolder) {
       formData.append('folderId', selectedFolder._id);
+      console.log('Adding folderId to form data:', selectedFolder._id);
+    } else {
+      console.log('No folder selected, folderId will be null');
     }
 
     try {
