@@ -10,6 +10,9 @@ const FileActivity = require('../models/FileActivity');
 const AccessCode = require('../models/AccessCode');
 const AcademicSetting = require('../models/AcademicSetting');
 const { requireAdmin } = require('../middleware/admin');
+const PptxGenJS = require('pptxgenjs');
+const docx = require('docx');
+const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType } = docx;
 
 // Helper function to format dates for different periods
 const getDateRange = (period) => {
@@ -929,6 +932,187 @@ router.get('/export/:type', requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error exporting data'
+    });
+  }
+});
+
+// Export to PPTX
+router.post('/export/pptx', requireAdmin, async (req, res) => {
+  try {
+    const { data, headers, filename = 'export' } = req.body;
+
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No data provided for export'
+      });
+    }
+
+    const pptx = new PptxGenJS();
+    pptx.layout = 'LAYOUT_WIDE';
+
+    // Add title slide
+    pptx.addSlide();
+    pptx.addText(filename || 'Data Export', {
+      x: 0.5,
+      y: 1,
+      w: 9,
+      h: 0.8,
+      fontSize: 32,
+      bold: true,
+      color: '363636',
+      align: 'center'
+    });
+    pptx.addText(`Generated: ${new Date().toLocaleString()}`, {
+      x: 0.5,
+      y: 2,
+      w: 9,
+      h: 0.5,
+      fontSize: 14,
+      color: '666666',
+      align: 'center'
+    });
+
+    // Add data slide with table
+    const slide = pptx.addSlide();
+    
+    // Prepare table data
+    const headerLabels = headers.map(h => h.label || h);
+    const tableData = [
+      headerLabels,
+      ...data.map(row => 
+        headers.map(h => {
+          const key = h.key || h;
+          const value = row[key];
+          return value !== null && value !== undefined ? String(value) : '';
+        })
+      )
+    ];
+
+    // Add table (PPTXGenJS doesn't have built-in table, so we'll use text in a structured way)
+    let yPos = 0.5;
+    const rowHeight = 0.4;
+    const colWidth = 9 / headerLabels.length;
+
+    // Headers
+    headerLabels.forEach((header, colIndex) => {
+      slide.addText(header, {
+        x: colIndex * colWidth + 0.1,
+        y: yPos,
+        w: colWidth - 0.2,
+        h: rowHeight,
+        fontSize: 10,
+        bold: true,
+        color: 'FFFFFF',
+        fill: { color: '8B2BE2' },
+        align: 'left',
+        valign: 'middle'
+      });
+    });
+
+    // Data rows
+    data.slice(0, 20).forEach((row, rowIndex) => {
+      yPos = 0.9 + (rowIndex * rowHeight);
+      headers.forEach((h, colIndex) => {
+        const key = h.key || h;
+        const value = row[key] !== null && row[key] !== undefined ? String(row[key]) : '';
+        slide.addText(value.substring(0, 30), {
+          x: colIndex * colWidth + 0.1,
+          y: yPos,
+          w: colWidth - 0.2,
+          h: rowHeight,
+          fontSize: 8,
+          color: '363636',
+          align: 'left',
+          valign: 'middle'
+        });
+      });
+    });
+
+    // Generate PPTX buffer
+    const buffer = await pptx.write({ outputType: 'nodebuffer' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}_${new Date().toISOString().slice(0, 10)}.pptx"`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('PPTX export error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error exporting to PPTX: ' + error.message
+    });
+  }
+});
+
+// Export to DOCX
+router.post('/export/docx', requireAdmin, async (req, res) => {
+  try {
+    const { data, headers, filename = 'export' } = req.body;
+
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No data provided for export'
+      });
+    }
+
+    // Prepare table rows
+    const headerLabels = headers.map(h => h.label || h);
+    const tableRows = [
+      new TableRow({
+        children: headerLabels.map(header => 
+          new TableCell({
+            children: [new Paragraph(header)],
+            width: { size: 100 / headerLabels.length, type: WidthType.PERCENTAGE }
+          })
+        )
+      }),
+      ...data.map(row => 
+        new TableRow({
+          children: headers.map(h => {
+            const key = h.key || h;
+            const value = row[key] !== null && row[key] !== undefined ? String(row[key]) : '';
+            return new TableCell({
+              children: [new Paragraph(value)],
+              width: { size: 100 / headerLabels.length, type: WidthType.PERCENTAGE }
+            });
+          })
+        })
+      )
+    ];
+
+    // Create document
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            text: filename || 'Data Export',
+            heading: 'Heading1'
+          }),
+          new Paragraph({
+            text: `Generated: ${new Date().toLocaleString()}`,
+            spacing: { after: 400 }
+          }),
+          new Table({
+            rows: tableRows,
+            width: { size: 100, type: WidthType.PERCENTAGE }
+          })
+        ]
+      }]
+    });
+
+    // Generate DOCX buffer
+    const buffer = await Packer.toBuffer(doc);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}_${new Date().toISOString().slice(0, 10)}.docx"`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('DOCX export error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error exporting to DOCX: ' + error.message
     });
   }
 });
