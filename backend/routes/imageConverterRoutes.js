@@ -7,6 +7,7 @@ const fs = require('fs');
 const { verifyToken } = require('../middleware/auth');
 const ImageConversion = require('../models/ImageConversion');
 const File = require('../models/File');
+const Folder = require('../models/Folder');
 const User = require('../models/User');
 const supabase = require('../services/supabaseService');
 const PDFDocument = require('pdfkit');
@@ -99,31 +100,33 @@ router.post('/convert', verifyToken, upload.array('images', 20), async (req, res
       });
     }
 
+    if (!folderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Folder is required. Please select a folder for the conversion.'
+      });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) {
       throw new Error('User not found');
     }
 
-    // Validate folderId if provided
-    let validatedFolderId = null;
-    if (folderId) {
-      const Folder = require('../models/Folder');
-      const folder = await Folder.findOne({
-        _id: folderId,
-        educatorId: req.user.id,
-        classCode: classCode.toUpperCase(),
-        isDeleted: false
+    const folder = await Folder.findOne({
+      _id: folderId,
+      educatorId: req.user.id,
+      classCode: classCode.toUpperCase(),
+      isDeleted: false
+    });
+
+    if (!folder) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid folder selected'
       });
-      
-      if (!folder) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid folder selected'
-        });
-      }
-      
-      validatedFolderId = folderId;
     }
+
+    const validatedFolderId = folderId;
 
     // Create conversion record
     const conversion = new ImageConversion({

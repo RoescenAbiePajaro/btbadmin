@@ -159,29 +159,24 @@ const ImageConverter = ({ educatorId }) => {
       return;
     }
 
+    if (!selectedFolder) {
+      showToast('Please select a folder for the conversion', 'error');
+      return;
+    }
+
     const formData = new FormData();
-    images.forEach((image, index) => {
+    images.forEach((image) => {
       formData.append('images', image.file);
     });
     formData.append('conversionType', conversionType);
     formData.append('classCode', selectedClassCode);
-    if (selectedFolder) {
-      formData.append('folderId', selectedFolder._id);
-      console.log('Adding folderId to form data:', selectedFolder._id);
-    } else {
-      console.log('No folder selected, folderId will be null');
-    }
+    formData.append('folderId', selectedFolder._id);
 
     try {
       setConverting(true);
       setConversionProgress(0);
       
       const token = localStorage.getItem('token');
-      console.log('Starting conversion...', {
-        images: images.length,
-        conversionType,
-        classCode: selectedClassCode
-      });
 
       // Update progress for upload
       setConversionProgress(10);
@@ -201,8 +196,6 @@ const ImageConverter = ({ educatorId }) => {
           }
         }
       );
-
-      console.log('Conversion response:', response.data);
 
       if (response.data.success) {
         showToast(`Images conversion started! The ${conversionType.toUpperCase()} file will be shared with the class shortly.`, 'success');
@@ -428,12 +421,16 @@ const ImageConverter = ({ educatorId }) => {
           {/* Folder Selection */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300">
-              Save to Folder (Optional)
+              Select Folder
+              <span className="text-red-400 ml-1">*</span>
             </label>
-            {folders.length === 0 ? (
+            {!selectedClassCode ? (
               <div className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-center">
-                <p className="text-gray-300">No folders available.</p>
-                <p className="text-sm text-gray-400 mt-1">Files will be saved to class root.</p>
+                <p className="text-gray-300">Select a class first to choose a folder.</p>
+              </div>
+            ) : folders.filter(f => !f.parentId).length === 0 ? (
+              <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-amber-400 text-sm">
+                Create a folder first in File Sharing to convert images.
               </div>
             ) : (
               <div className="relative">
@@ -445,12 +442,15 @@ const ImageConverter = ({ educatorId }) => {
                   }}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none"
                 >
-                  <option value="">Save to class root (no folder)</option>
-                  {folders.map((folder) => (
-                    <option key={folder._id} value={folder._id}>
-                      {folder.path}
-                    </option>
-                  ))}
+                  <option value="">Select a folder (required)</option>
+                  {folders
+                    .filter(f => !f.parentId)
+                    .sort((a, b) => (a.path || a.name).localeCompare(b.path || b.name))
+                    .map((folder) => (
+                      <option key={folder._id} value={folder._id}>
+                        📁 {folder.path || folder.name}
+                      </option>
+                    ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -585,9 +585,9 @@ const ImageConverter = ({ educatorId }) => {
           <div className="flex flex-col sm:flex-row gap-4">
             <button
               onClick={convertImages}
-              disabled={converting || images.length === 0 || !selectedClassCode}
+              disabled={converting || images.length === 0 || !selectedClassCode || !selectedFolder}
               className={`flex-1 py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-                converting || images.length === 0 || !selectedClassCode
+                converting || images.length === 0 || !selectedClassCode || !selectedFolder
                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-pink-600 to-indigo-600 text-white hover:from-pink-700 hover:to-indigo-700 shadow-lg hover:shadow-pink-500/20'
               }`}
