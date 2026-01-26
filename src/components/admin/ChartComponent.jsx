@@ -9,6 +9,16 @@ import { FiTrendingUp, FiCalendar } from 'react-icons/fi';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
+// explicit role color mapping (admin violet, educator pink)
+const ROLE_COLORS = {
+  admin: '#8B5CF6',
+  administrator: '#8B5CF6',
+  educator: '#F472B6',
+  teacher: '#F472B6',
+  student: '#0088FE',
+  students: '#0088FE'
+};
+
 export default function ChartComponent({
   statistics,
   analyticsData,
@@ -72,6 +82,13 @@ export default function ChartComponent({
   }, [bucket, dateFilters.startDate, dateFilters.endDate]);
 
   const resolvedClassTrends = (classTrendsData?.data?.length ? classTrendsData : classTrendsLocal);
+
+  // Prepare role data and color resolver for the User Role Distribution pie
+  const rolesData = statistics?.users?.byRole ? statistics.users.byRole.map(role => ({ name: role._id, value: role.count })) : [];
+  const getRoleColor = (name, index) => {
+    const key = String(name || '').toLowerCase();
+    return ROLE_COLORS[key] || COLORS[index % COLORS.length];
+  };
 
   const SchoolTooltip = ({ active, payload, label }) => {
     if (!active || !payload || payload.length === 0) return null;
@@ -208,10 +225,7 @@ export default function ChartComponent({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={statistics.users.byRole.map(role => ({
-                    name: role._id,
-                    value: role.count
-                  }))}
+                  data={rolesData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -220,8 +234,8 @@ export default function ChartComponent({
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {statistics.users.byRole.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {rolesData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={getRoleColor(entry.name, index)} />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -416,7 +430,15 @@ export default function ChartComponent({
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }} />
                 <Legend />
-                <Line type="monotone" dataKey="downloads" name="Downloads" stroke="#F59E0B" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="downloads"
+                  name="Downloads"
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  dot={{ r: 4, stroke: '#F59E0B', fill: '#F59E0B' }}
+                  activeDot={{ r: 6, stroke: '#F59E0B', fill: '#F59E0B' }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
