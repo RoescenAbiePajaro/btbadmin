@@ -326,13 +326,15 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       showToast('Please select a file and class code', 'error');
       return;
     }
+    if (!selectedFolder) {
+      showToast('Please select a folder for the upload', 'error');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('classCode', shareToClassCode);
-    if (selectedFolder) {
-      formData.append('folderId', selectedFolder._id);
-    }
+    formData.append('folderId', selectedFolder._id);
 
     try {
       setUploading(true);
@@ -908,12 +910,18 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300">
               Select Folder
+              <span className="text-red-400 ml-1">*</span>
             </label>
             <div className="space-y-2">
               {/* Folder Selection */}
               <div className="flex items-center gap-2">
                 {shareToClassCode && (
                   <div className="flex-1">
+                    {folders.filter(f => !f.parentId).length === 0 ? (
+                      <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-amber-400 text-sm">
+                        Create a folder first to upload files.
+                      </div>
+                    ) : (
                     <div className="relative">
                       <select
                         value={selectedFolder?._id || ''}
@@ -922,16 +930,15 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                           if (!folderId) {
                             setSelectedFolder(null);
                           } else {
-                            // Find folder in flat folders list
                             const folder = folders.find(f => f._id === folderId);
                             setSelectedFolder(folder || null);
                           }
                         }}
                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none"
                       >
-                        <option value="">No folder selected (upload to root)</option>
+                        <option value="">Select a folder (required)</option>
                         {folders
-                          .filter(folder => !folder.parentId) // Only root folders
+                          .filter(folder => !folder.parentId)
                           .sort((a, b) => a.name.localeCompare(b.name))
                           .map((folder) => (
                             <option key={folder._id} value={folder._id}>
@@ -945,6 +952,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                         </svg>
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
                 <button
@@ -982,9 +990,9 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
 
           <button
             onClick={handleUpload}
-            disabled={uploading || !selectedFile || !shareToClassCode || classCodes.length === 0}
+            disabled={uploading || !selectedFile || !shareToClassCode || !selectedFolder || classCodes.length === 0}
             className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-              uploading || !selectedFile || !shareToClassCode || classCodes.length === 0
+              uploading || !selectedFile || !shareToClassCode || !selectedFolder || classCodes.length === 0
                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-pink-600 to-indigo-600 text-white hover:from-pink-700 hover:to-indigo-700 shadow-lg hover:shadow-pink-500/20'
             }`}

@@ -102,21 +102,25 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
       });
     }
 
-    // Validate folder if provided
-    if (folderId) {
-      const folder = await Folder.findOne({
-        _id: folderId,
-        educatorId: req.user.id,
-        classCode: classCode.toUpperCase(),
-        isDeleted: false
+    if (!folderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Folder is required. Please select a folder for the upload.'
       });
-      
-      if (!folder) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid folder selected'
-        });
-      }
+    }
+
+    const folder = await Folder.findOne({
+      _id: folderId,
+      educatorId: req.user.id,
+      classCode: classCode.toUpperCase(),
+      isDeleted: false
+    });
+
+    if (!folder) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid folder selected'
+      });
     }
 
     const filePath = req.file.path;
@@ -143,7 +147,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
         size: req.file.size,
         mimeType: req.file.mimetype,
         classCode: classCode.toUpperCase(),
-        folderId: folderId || null,
+        folderId: folderId,
         title: title,
         description: description,
         type: 'material',
