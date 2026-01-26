@@ -918,7 +918,10 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                 {shareToClassCode && (
                   <div className="flex-1">
                     {folders.filter(f => !f.parentId).length === 0 ? (
-                      <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-amber-400 text-sm">
+                      <div className="w-full bg-pink-500/10 border border-pink-500/30 rounded-lg px-4 py-3 text-pink-400 text-sm flex items-center gap-2">
+                        <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                        </svg>
                         Create a folder first to upload files.
                       </div>
                     ) : (
@@ -958,7 +961,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                 <button
                   onClick={openCreateFolderModal}
                   disabled={!shareToClassCode}
-                  className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   title="Create New Folder"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
