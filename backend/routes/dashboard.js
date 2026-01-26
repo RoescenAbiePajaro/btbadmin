@@ -1142,4 +1142,73 @@ router.get('/user-counts', async (req, res) => {
   }
 });
 
+// Get class trends for Active / Inactive Class Trends chart
+router.get('/class-trends', requireAdmin, async (req, res) => {
+  try {
+    const { period = '30d' } = req.query;
+    const { start, end } = getDateRange(period);
+
+    // Get class trends grouped by date
+    const classTrends = await Class.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start, $lte: end }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            isActive: "$isActive"
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.date",
+          active: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.isActive", true] }, "$count", 0]
+            }
+          },
+          inactive: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.isActive", false] }, "$count", 0]
+            }
+          },
+          total: { $sum: "$count" }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    // Transform data for chart
+    const chartData = classTrends.map(trend => ({
+      label: trend._id,
+      active: trend.active,
+      inactive: trend.inactive,
+      total: trend.total
+    }));
+
+    res.json({
+      success: true,
+      period,
+      dateRange: { start, end },
+      data: chartData,
+      summary: {
+        totalClasses: chartData.reduce((sum, item) => sum + item.total, 0),
+        totalActive: chartData.reduce((sum, item) => sum + item.active, 0),
+        totalInactive: chartData.reduce((sum, item) => sum + item.inactive, 0)
+      }
+    });
+  } catch (error) {
+    console.error('Class trends error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching class trends'
+    });
+  }
+});
+
 module.exports = router;
