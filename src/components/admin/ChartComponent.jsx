@@ -265,7 +265,11 @@ export default function ChartComponent({
               <Tooltip 
                 contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
               />
-              <Bar dataKey="value" fill="#FF58AE" />
+              <Bar dataKey="value" fill="#8884d8">
+                <Cell fill="#0088FE" />
+                <Cell fill="#0088FE" />
+                <Cell fill="#F472B6" />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
