@@ -592,7 +592,7 @@ const ImageConverter = ({ educatorId }) => {
               className={`flex-1 py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
                 converting || images.length === 0 || !selectedClassCode || !selectedFolder
                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-pink-600 to-indigo-600 text-white hover:from-pink-700 hover:to-indigo-700 shadow-lg hover:shadow-pink-500/20'
+                  : 'bg-gradient-to-r from-pink-600 to-pink-600 text-white hover:from-pink-700 hover:to-pink-700 shadow-lg hover:shadow-pink-500/20'
               }`}
             >
               {converting ? (
