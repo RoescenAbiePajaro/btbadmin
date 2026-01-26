@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
 import { saveAs } from 'file-saver';
 
 // Helper function to format data for export
@@ -84,8 +84,8 @@ export const exportToPDF = (data, headers, filename) => {
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
-    // Add table
-    doc.autoTable({
+    // Add table using autoTable
+    autoTable(doc, {
       head: [tableHeaders],
       body: tableRows,
       startY: 28,
