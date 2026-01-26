@@ -181,20 +181,36 @@ router.get('/schools/created-trends', requireAdmin, async (req, res) => {
 
     const format = getGroupFormatForBucket(bucket);
 
+    // Count unique educators who created a school per period
     const data = await AcademicSetting.aggregate([
       { $match: match },
       {
+        $project: {
+          period: { $dateToString: { format, date: '$createdAt' } },
+          educator: 1,
+          name: 1
+        }
+      },
+      // Group by period + educator to ensure uniqueness per educator
+      {
         $group: {
-          _id: { period: { $dateToString: { format, date: '$createdAt' } } },
+          _id: { period: '$period', educator: '$educator' },
+          name: { $first: '$name' }
+        }
+      },
+      // Now group by period to count distinct educators and collect one school name per educator
+      {
+        $group: {
+          _id: '$_id.period',
           count: { $sum: 1 },
           schools: { $push: '$name' }
         }
       },
-      { $sort: { '_id.period': 1 } },
+      { $sort: { '_id': 1 } },
       {
         $project: {
           _id: 0,
-          date: '$_id.period',
+          date: '$_id',
           count: 1,
           schools: 1
         }

@@ -74,7 +74,9 @@ router.get('/statistics', requireAdmin, async (req, res) => {
     const totalViews = await FileActivity.countDocuments({ activityType: 'view' });
 
     // Total Schools Created
-    const totalSchools = await AcademicSetting.countDocuments({ type: 'school' });
+    // Count unique educators who created a school (one school per educator)
+    const uniqueSchoolEducators = await AcademicSetting.distinct('educator', { type: 'school' });
+    const totalSchools = Array.isArray(uniqueSchoolEducators) ? uniqueSchoolEducators.length : 0;
 
     // User registration over time (last 30 days)
     const thirtyDaysAgo = new Date();
