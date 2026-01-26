@@ -481,7 +481,25 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   };
 
   const getTotalFolderPages = () => {
-    return Math.ceil(folderStructure.length / itemsPerFolderPage);
+    return Math.ceil(getFilteredFolders().length / itemsPerFolderPage);
+  };
+
+  const getFilteredFolders = () => {
+    if (!classSearchTerm.trim()) {
+      return folderStructure;
+    }
+    
+    const searchLower = classSearchTerm.toLowerCase();
+    return folderStructure.filter(folder => 
+      folder.name.toLowerCase().includes(searchLower)
+    );
+  };
+
+  const getPaginatedFilteredFolders = () => {
+    const filtered = getFilteredFolders();
+    const startIndex = (currentFolderPage - 1) * itemsPerFolderPage;
+    const endIndex = startIndex + itemsPerFolderPage;
+    return filtered.slice(startIndex, endIndex);
   };
 
   const renderFolderIcon = (folder, isExpanded = false, level = 0) => {
@@ -1037,10 +1055,45 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       {/* Files List Section */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         <div className="p-6 border-b border-gray-700">
-          <div>
+          <div className="mb-4">
             <h3 className="text-xl font-semibold text-white">Shared Files</h3>
             <p className="text-gray-400 text-sm">Manage and view all shared files</p>
           </div>
+          
+          {/* Search Folder Bar */}
+          {shareToClassCode && (
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={classSearchTerm}
+                  onChange={(e) => {
+                    setClassSearchTerm(e.target.value);
+                    setCurrentFolderPage(1);
+                  }}
+                  placeholder="Search folders..."
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+              {classSearchTerm && (
+                <button
+                  onClick={() => {
+                    setClassSearchTerm('');
+                    setCurrentFolderPage(1);
+                  }}
+                  className="px-3 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                  title="Clear search"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="p-6">
@@ -1055,10 +1108,10 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
           {!loading.structure && (
             <div className="divide-y divide-gray-700">
               {/* Display folders with files */}
-              {folderStructure.length > 0 || unassignedFiles.length > 0 ? (
+              {getFilteredFolders().length > 0 || unassignedFiles.length > 0 ? (
                 <>
                   {/* Render paginated folders */}
-                  {getPaginatedFolders().map((folder) => renderFolderWithFiles(folder, 0))}
+                  {getPaginatedFilteredFolders().map((folder) => renderFolderWithFiles(folder, 0))}
                   
                   {/* Folder Pagination Controls */}
                   {getTotalFolderPages() > 1 && (
@@ -1194,8 +1247,17 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                   <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <p className="text-gray-400 text-lg">No files shared yet</p>
-                  <p className="text-gray-500 text-sm mt-1">Upload a file to get started</p>
+                  {classSearchTerm ? (
+                    <>
+                      <p className="text-gray-400 text-lg">No folders found</p>
+                      <p className="text-gray-500 text-sm mt-1">Try adjusting your search term for "{classSearchTerm}"</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-gray-400 text-lg">No files shared yet</p>
+                      <p className="text-gray-500 text-sm mt-1">Upload a file to get started</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
