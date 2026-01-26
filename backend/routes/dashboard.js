@@ -39,6 +39,27 @@ const getDateRange = (period) => {
   return { start, end: now };
 };
 
+// Helper for class-trends period (supports 7d, 30d, 90d)
+const getClassTrendsDateRange = (period, startDate, endDate) => {
+  if (startDate && endDate) {
+    return { start: new Date(startDate), end: new Date(endDate) };
+  }
+  const end = new Date();
+  const start = new Date();
+  switch (String(period)) {
+    case '7d':
+      start.setDate(end.getDate() - 7);
+      break;
+    case '90d':
+      start.setDate(end.getDate() - 90);
+      break;
+    case '30d':
+    default:
+      start.setDate(end.getDate() - 30);
+  }
+  return { start, end };
+};
+
 // Get comprehensive dashboard statistics
 router.get('/statistics', requireAdmin, async (req, res) => {
   try {
@@ -249,6 +270,55 @@ router.get('/statistics', requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching dashboard statistics'
+    });
+  }
+});
+
+// Get active/inactive class trends by date (for stacked bar chart)
+router.get('/class-trends', requireAdmin, async (req, res) => {
+  try {
+    const { period = '30d', startDate, endDate } = req.query;
+    const { start, end } = getClassTrendsDateRange(period, startDate, endDate);
+
+    const trends = await Class.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          active: { $sum: { $cond: ['$isActive', 1, 0] } },
+          inactive: { $sum: { $cond: ['$isActive', 0, 1] } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const data = trends.map((t) => {
+      const [y, m, d] = t._id.split('-').map(Number);
+      const monthName = MONTHS[m - 1];
+      return {
+        date: t._id,
+        label: `${y}, ${monthName}, ${d}`,
+        year: y,
+        month: monthName,
+        day: d,
+        active: t.active,
+        inactive: t.inactive
+      };
+    });
+
+    res.json({
+      success: true,
+      period,
+      dateRange: { start: start.toISOString(), end: end.toISOString() },
+      data,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Class trends error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching class trends'
     });
   }
 });

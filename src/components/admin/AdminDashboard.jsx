@@ -37,6 +37,7 @@ export default function AdminDashboard() {
     blocks: []
   });
   const [feedbackStats, setFeedbackStats] = useState(null);
+  const [classTrendsData, setClassTrendsData] = useState(null);
   const [classSearch, setClassSearch] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
@@ -111,9 +112,10 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [statsRes, analyticsRes] = await Promise.all([
+      const [statsRes, analyticsRes, classTrendsRes] = await Promise.all([
         axios.get('https://btbtestservice.onrender.com/api/dashboard/statistics', { headers }),
-        axios.get('https://btbtestservice.onrender.com/api/analytics/overview?period=30d', { headers })
+        axios.get('https://btbtestservice.onrender.com/api/analytics/overview?period=30d', { headers }),
+        axios.get('https://btbtestservice.onrender.com/api/dashboard/class-trends?period=30d', { headers })
       ]);
 
       if (statsRes.data.success) {
@@ -122,6 +124,10 @@ export default function AdminDashboard() {
       
       if (analyticsRes.data.success) {
         setAnalyticsData(analyticsRes.data.charts);
+      }
+
+      if (classTrendsRes.data.success) {
+        setClassTrendsData(classTrendsRes.data);
       }
 
     } catch (error) {
@@ -152,6 +158,7 @@ export default function AdminDashboard() {
           pageVisitTrends: { data: [] }
         }
       });
+      setClassTrendsData({ success: true, data: [] });
     } finally {
       setLoading(false);
     }
@@ -161,19 +168,13 @@ export default function AdminDashboard() {
   const fetchAnalyticsData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `https://btbtestservice.onrender.com/api/analytics/overview?period=${timeRange}`,
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Cache-Control': 'no-cache'
-          }
-        }
-      );
-      
-      if (response.data.success) {
-        setAnalyticsData(response.data.charts);
-      }
+      const headers = { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' };
+      const [analyticsRes, classTrendsRes] = await Promise.all([
+        axios.get(`https://btbtestservice.onrender.com/api/analytics/overview?period=${timeRange}`, { headers }),
+        axios.get(`https://btbtestservice.onrender.com/api/dashboard/class-trends?period=${timeRange}`, { headers })
+      ]);
+      if (analyticsRes.data.success) setAnalyticsData(analyticsRes.data.charts);
+      if (classTrendsRes.data.success) setClassTrendsData(classTrendsRes.data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     }
@@ -766,6 +767,7 @@ export default function AdminDashboard() {
               analyticsData={analyticsData}
               timeRange={timeRange}
               handleTimeRangeChange={handleTimeRangeChange}
+              classTrendsData={classTrendsData}
             />
           )}
 

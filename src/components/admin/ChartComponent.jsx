@@ -14,6 +14,7 @@ export default function ChartComponent({
   timeRange,
   handleTimeRangeChange,
   classStatusData,
+  classTrendsData,
   feedbackData
 }) {
   const [dateFilters, setDateFilters] = useState({
@@ -70,6 +71,42 @@ export default function ChartComponent({
           </button>
         </div>
       </div>
+
+      {/* Active / Inactive Class Trends – stacked bar (green=active, red=inactive), x-axis: year, month, day */}
+      {classTrendsData?.data?.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white flex items-center gap-2">
+            <FiTrendingUp /> Active / Inactive Class Trends
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={filterDataByDateRange(classTrendsData.data)}
+                margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis
+                  dataKey="label"
+                  stroke="#9CA3AF"
+                  tick={{ fontSize: 11 }}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                  labelStyle={{ color: '#9CA3AF' }}
+                />
+                <Legend />
+                <Bar dataKey="active" name="Active" fill="#10B981" stackId="stack" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="inactive" name="Inactive" fill="#EF4444" stackId="stack" radius={[0, 0, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* User Role Distribution Chart */}
       {statistics?.users?.byRole && statistics.users.byRole.length > 0 && (
