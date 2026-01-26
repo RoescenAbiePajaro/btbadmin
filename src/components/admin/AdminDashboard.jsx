@@ -38,6 +38,7 @@ export default function AdminDashboard() {
   });
   const [feedbackStats, setFeedbackStats] = useState(null);
   const [classTrendsData, setClassTrendsData] = useState(null);
+  const [classStatusData, setClassStatusData] = useState(null);
   const [classSearch, setClassSearch] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
@@ -169,12 +170,14 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' };
-      const [analyticsRes, classTrendsRes] = await Promise.all([
+      const [analyticsRes, classTrendsRes, classStatusRes] = await Promise.all([
         axios.get(`https://btbtestservice.onrender.com/api/analytics/overview?period=${timeRange}`, { headers }),
-        axios.get(`https://btbtestservice.onrender.com/api/dashboard/class-trends?period=${timeRange}`, { headers })
+        axios.get(`https://btbtestservice.onrender.com/api/dashboard/class-trends?period=${timeRange}`, { headers }),
+        axios.get(`https://btbtestservice.onrender.com/api/analytics/class-status?period=${timeRange}`, { headers })
       ]);
       if (analyticsRes.data.success) setAnalyticsData(analyticsRes.data.charts);
       if (classTrendsRes.data.success) setClassTrendsData(classTrendsRes.data);
+      if (classStatusRes.data.success) setClassStatusData(classStatusRes.data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     }
@@ -767,6 +770,7 @@ export default function AdminDashboard() {
               analyticsData={analyticsData}
               timeRange={timeRange}
               handleTimeRangeChange={handleTimeRangeChange}
+              classStatusData={classStatusData}
               classTrendsData={classTrendsData}
             />
           )}
