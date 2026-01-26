@@ -22,6 +22,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTargetFileId, setDeleteTargetFileId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentFolderPage, setCurrentFolderPage] = useState(1);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [folderModalMode, setFolderModalMode] = useState('create'); // 'create' or 'edit'
   const [editingFolder, setEditingFolder] = useState(null);
@@ -32,6 +33,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     structure: false
   });
   const itemsPerPage = 10;
+  const itemsPerFolderPage = 5;
 
   useEffect(() => {
     fetchClassCodes();
@@ -60,6 +62,11 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     // Reset to page 1 when files change or filter is applied
     setCurrentPage(1);
   }, [files, filterClassCode]);
+
+  useEffect(() => {
+    // Reset to folder page 1 when folder structure changes
+    setCurrentFolderPage(1);
+  }, [folderStructure]);
 
   const handleRefreshData = async (classCode) => {
     try {
@@ -465,6 +472,16 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
 
   const getTotalPages = () => {
     return Math.ceil(files.length / itemsPerPage);
+  };
+
+  const getPaginatedFolders = () => {
+    const startIndex = (currentFolderPage - 1) * itemsPerFolderPage;
+    const endIndex = startIndex + itemsPerFolderPage;
+    return folderStructure.slice(startIndex, endIndex);
+  };
+
+  const getTotalFolderPages = () => {
+    return Math.ceil(folderStructure.length / itemsPerFolderPage);
   };
 
   const renderFolderIcon = (folder, isExpanded = false, level = 0) => {
@@ -1040,8 +1057,53 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
               {/* Display folders with files */}
               {folderStructure.length > 0 || unassignedFiles.length > 0 ? (
                 <>
-                  {/* Render folders */}
-                  {folderStructure.map((folder) => renderFolderWithFiles(folder, 0))}
+                  {/* Render paginated folders */}
+                  {getPaginatedFolders().map((folder) => renderFolderWithFiles(folder, 0))}
+                  
+                  {/* Folder Pagination Controls */}
+                  {getTotalFolderPages() > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-6 pb-6 border-t border-gray-700">
+                      <button
+                        onClick={() => setCurrentFolderPage(Math.max(1, currentFolderPage - 1))}
+                        disabled={currentFolderPage === 1}
+                        className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+
+                      <div className="flex gap-1">
+                        {Array.from({ length: getTotalFolderPages() }, (_, i) => i + 1).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentFolderPage(page)}
+                            className={`px-3 py-2 rounded-lg transition duration-200 ${
+                              currentFolderPage === page
+                                ? 'bg-pink-600 text-white'
+                                : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setCurrentFolderPage(Math.min(getTotalFolderPages(), currentFolderPage + 1))}
+                        disabled={currentFolderPage === getTotalFolderPages()}
+                        className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      <span className="text-gray-400 text-sm ml-4">
+                        Page {currentFolderPage} of {getTotalFolderPages()}
+                      </span>
+                    </div>
+                  )}
                   
                   {/* Render unassigned files */}
                   {unassignedFiles.length > 0 && (
