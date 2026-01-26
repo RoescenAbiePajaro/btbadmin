@@ -1,5 +1,6 @@
 // src/components/admin/ChartComponent.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell
@@ -22,6 +23,10 @@ export default function ChartComponent({
     endDate: ''
   });
 
+  const [bucket, setBucket] = useState('day');
+  const [classTrendsLocal, setClassTrendsLocal] = useState(null);
+  const [schoolTrendsLocal, setSchoolTrendsLocal] = useState(null);
+
   // Filter data based on date range
   const filterDataByDateRange = (data) => {
     if (!data || (!dateFilters.startDate && !dateFilters.endDate)) {
@@ -39,6 +44,53 @@ export default function ChartComponent({
     });
   };
 
+  useEffect(() => {
+    const fetchTrends = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const headers = { Authorization: `Bearer ${token}` };
+        const params = {
+          bucket,
+          ...(dateFilters.startDate ? { startDate: dateFilters.startDate } : {}),
+          ...(dateFilters.endDate ? { endDate: dateFilters.endDate } : {})
+        };
+
+        const [classRes, schoolRes] = await Promise.all([
+          axios.get('https://btbtestservice.onrender.com/api/analytics/classes/active-inactive-trends', { headers, params }),
+          axios.get('https://btbtestservice.onrender.com/api/analytics/schools/created-trends', { headers, params })
+        ]);
+
+        setClassTrendsLocal(classRes.data?.success ? classRes.data : null);
+        setSchoolTrendsLocal(schoolRes.data?.success ? schoolRes.data : null);
+      } catch (error) {
+        setClassTrendsLocal(null);
+        setSchoolTrendsLocal(null);
+      }
+    };
+
+    fetchTrends();
+  }, [bucket, dateFilters.startDate, dateFilters.endDate]);
+
+  const resolvedClassTrends = (classTrendsData?.data?.length ? classTrendsData : classTrendsLocal);
+
+  const SchoolTooltip = ({ active, payload, label }) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const row = payload[0]?.payload;
+    const schools = Array.isArray(row?.schools) ? row.schools : [];
+    return (
+      <div style={{ backgroundColor: '#1F2937', border: '1px solid #374151', padding: 12, borderRadius: 8 }}>
+        <div style={{ color: '#E5E7EB', fontWeight: 600, marginBottom: 6 }}>{label}</div>
+        <div style={{ color: '#9CA3AF', marginBottom: schools.length ? 8 : 0 }}>Count: {row?.count ?? 0}</div>
+        {schools.length > 0 && (
+          <div style={{ color: '#E5E7EB', maxWidth: 320 }}>
+            <div style={{ color: '#9CA3AF', marginBottom: 4 }}>Schools</div>
+            <div style={{ whiteSpace: 'normal' }}>{schools.join(', ')}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Date Range Filters */}
@@ -49,6 +101,15 @@ export default function ChartComponent({
           </h3>
         </div>
         <div className="flex flex-wrap gap-4">
+          <select
+            value={bucket}
+            onChange={(e) => setBucket(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+          >
+            <option value="year">Year</option>
+            <option value="month">Month</option>
+            <option value="day">Day</option>
+          </select>
           <input
             type="date"
             value={dateFilters.startDate}
@@ -73,7 +134,7 @@ export default function ChartComponent({
       </div>
 
       {/* Active / Inactive Class Trends – stacked bar (green=active, red=inactive), x-axis: year, month, day */}
-      {classTrendsData?.data?.length > 0 && (
+      {resolvedClassTrends?.data?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <h3 className="text-lg font-bold mb-4 text-white flex items-center gap-2">
             <FiTrendingUp /> Active / Inactive Class Trends
@@ -81,7 +142,7 @@ export default function ChartComponent({
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={filterDataByDateRange(classTrendsData.data)}
+                data={filterDataByDateRange(resolvedClassTrends.data)}
                 margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -104,6 +165,37 @@ export default function ChartComponent({
                 <Bar dataKey="inactive" name="Inactive" fill="#EF4444" stackId="stack" radius={[0, 0, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {schoolTrendsLocal?.data?.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-bold mb-4 text-white flex items-center gap-2">
+            <FiTrendingUp /> Schools Created Over Time
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={filterDataByDateRange(schoolTrendsLocal.data)} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip content={<SchoolTooltip />} />
+                <Area type="monotone" dataKey="count" name="Schools" stroke="#A855F7" fill="#A855F7" fillOpacity={0.25} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4 bg-gray-800 rounded-lg p-4">
+            <div className="text-sm text-gray-300 font-medium mb-2">School names (latest points)</div>
+            <div className="text-sm text-gray-400 space-y-2">
+              {schoolTrendsLocal.data.slice(-5).map((row) => (
+                <div key={row.date} className="flex flex-col">
+                  <div className="text-gray-300">{row.date} ({row.count})</div>
+                  <div className="text-gray-400">{Array.isArray(row.schools) && row.schools.length ? row.schools.join(', ') : '—'}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

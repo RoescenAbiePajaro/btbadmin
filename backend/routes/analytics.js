@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Class = require('../models/Class');
+const AcademicSetting = require('../models/AcademicSetting');
 const File = require('../models/File');
 const Click = require('../models/Click');
 const FileActivity = require('../models/FileActivity');
@@ -73,6 +74,19 @@ const getGroupFormat = (period) => {
   }
 };
 
+// Helper to format dates for class/school grouping
+const getGroupFormatForBucket = (bucket) => {
+  switch (bucket) {
+    case 'year':
+      return '%Y';
+    case 'month':
+      return '%Y-%m';
+    case 'day':
+    default:
+      return '%Y-%m-%d';
+  }
+};
+
 // Admin middleware
 const requireAdmin = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -95,6 +109,108 @@ const requireAdmin = async (req, res, next) => {
     });
   }
 };
+
+// ==================== CLASS ACTIVE/INACTIVE TRENDS ====================
+// Returns data shaped for stacked bar charts: [{ label, active, inactive, date }]
+router.get('/classes/active-inactive-trends', requireAdmin, async (req, res) => {
+  try {
+    const { bucket = 'day', startDate, endDate } = req.query;
+
+    const match = {};
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
+
+    const format = getGroupFormatForBucket(bucket);
+
+    const data = await Class.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            period: { $dateToString: { format, date: '$createdAt' } },
+            isActive: '$isActive'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.period',
+          active: { $sum: { $cond: [{ $eq: ['$_id.isActive', true] }, '$count', 0] } },
+          inactive: { $sum: { $cond: [{ $eq: ['$_id.isActive', false] }, '$count', 0] } }
+        }
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id: 0,
+          label: '$_id',
+          date: '$_id',
+          active: 1,
+          inactive: 1
+        }
+      }
+    ]);
+
+    return res.json({ success: true, bucket, data });
+  } catch (error) {
+    console.error('Class active/inactive trends error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch class trends',
+      details: error.message
+    });
+  }
+});
+
+// ==================== SCHOOLS CREATED TRENDS ====================
+// Returns data shaped for area charts: [{ date, count, schools: [name...] }]
+router.get('/schools/created-trends', requireAdmin, async (req, res) => {
+  try {
+    const { bucket = 'day', startDate, endDate } = req.query;
+
+    const match = { type: 'school' };
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
+
+    const format = getGroupFormatForBucket(bucket);
+
+    const data = await AcademicSetting.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { period: { $dateToString: { format, date: '$createdAt' } } },
+          count: { $sum: 1 },
+          schools: { $push: '$name' }
+        }
+      },
+      { $sort: { '_id.period': 1 } },
+      {
+        $project: {
+          _id: 0,
+          date: '$_id.period',
+          count: 1,
+          schools: 1
+        }
+      }
+    ]);
+
+    return res.json({ success: true, bucket, data });
+  } catch (error) {
+    console.error('School created trends error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch school trends',
+      details: error.message
+    });
+  }
+});
 
 // ==================== DASHBOARD OVERVIEW ====================
 router.get('/overview', requireAdmin, async (req, res) => {
