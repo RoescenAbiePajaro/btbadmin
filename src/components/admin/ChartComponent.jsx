@@ -265,7 +265,7 @@ export default function ChartComponent({
               <Tooltip 
                 contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
               />
-              <Bar dataKey="value" fill="#3B82F6" />
+              <Bar dataKey="value" fill="#FF58AE" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -380,7 +380,7 @@ export default function ChartComponent({
                 <Bar 
                   dataKey="total" 
                   name="Total Logins" 
-                  fill="#3B82F6" 
+                  fill="#e5de00" 
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar 

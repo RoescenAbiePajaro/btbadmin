@@ -321,7 +321,7 @@ export default function LearningMaterialsComponent({
                               scrollToElement.scrollIntoView({ behavior: 'smooth' });
                             }
                           }}
-                          className="text-blue-400 hover:text-blue-300 transition-colors text-sm"
+                          className="text-violet-400 hover:text-violet-300 transition-colors text-sm"
                         >
                           View Files
                         </button>
@@ -357,8 +357,8 @@ export default function LearningMaterialsComponent({
                   {/* Educator Header */}
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-blue-500/20 rounded-lg">
-                        <FiUsers className="w-6 h-6 text-blue-400" />
+                      <div className="p-3 bg-pink-500/20 rounded-lg">
+                        <FiUsers className="w-6 h-6 text-pink-400" />
                       </div>
                       <div>
                         <h4 className="text-white font-semibold text-lg">{educator.educatorName}</h4>
@@ -368,13 +368,13 @@ export default function LearningMaterialsComponent({
                           </span>
                         </div>
                         <div className="flex items-center gap-4 mt-3">
-                          <span className="text-sm text-blue-300">
+                          <span className="text-sm text-pink-300">
                             {filteredFiles.length} files
                           </span>
                           <span className="text-sm text-green-300">
                             {new Set(filteredFiles.map(f => f.classCode)).size} classes
                           </span>
-                          <span className="text-sm text-purple-300">
+                          <span className="text-sm text-blue-300">
                             {educatorClassSummary?.[educatorId]?.totalStudents || 0} students
                           </span>
                         </div>

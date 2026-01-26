@@ -578,7 +578,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
-              <FiUsers className="w-8 h-8 text-blue-500" />
+              <FiUsers className="w-8 h-8 text-yellow-500" />
             </div>
           </div>
 
@@ -621,7 +621,7 @@ export default function AdminDashboard() {
                   <div>Downloads: {statistics?.activities?.downloads || 0}</div>
                 </div>
               </div>
-              <FiFileText className="w-8 h-8 text-yellow-500" />
+              <FiFileText className="w-8 h-8 text-pink-500" />
             </div>
           </div>
 
@@ -633,7 +633,7 @@ export default function AdminDashboard() {
                   {statistics?.schools?.total || 0}
                 </p>
               </div>
-              <FiHome className="w-8 h-8 text-purple-500" />
+              <FiHome className="w-8 h-8 text-pink-500" />
             </div>
           </div>
 

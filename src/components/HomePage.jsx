@@ -319,7 +319,7 @@ export default function HomePage() {
                 <p className="text-gray-300 text-sm">Admins</p>
               </div>
               
-              <div className="bg-gradient-to-br from-green-900/30 to-green-700/20 border border-green-500/30 rounded-lg p-4 text-center hover:border-green-400/50 transition duration-300">
+              <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-700/20 border border-yellow-500/30 rounded-lg p-4 text-center hover:border-yellow-400/50 transition duration-300">
                 <div className="text-2xl font-bold text-white mb-1">{userCounts.total.toLocaleString()}</div>
                 <p className="text-gray-300 text-sm">Total Users</p>
               </div>
@@ -348,9 +348,9 @@ export default function HomePage() {
               <p className="text-gray-400 text-xs mt-1">Create & manage classes</p>
             </div>
             
-            <div className="bg-gradient-to-br from-red-900/20 to-red-700/10 border border-red-500/20 rounded-lg p-2 sm:p-3 md:p-4 text-center hover:border-red-400/40 transition duration-300 group">
-              <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-red-500/30 group-hover:scale-110 transition duration-300">
-                <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-violet-900/20 to-violet-700/10 border border-violet-500/20 rounded-lg p-2 sm:p-3 md:p-4 text-center hover:border-violet-400/40 transition duration-300 group">
+              <div className="w-10 h-10 bg-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-violet-500/30 group-hover:scale-110 transition duration-300">
+                <svg className="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A7.968 7.968 0 015 16c0-4.418 3.582-8 8-8s8 3.582 8 8a7.968 7.968 0 01-.121 1.804m-15.758 0A9.003 9.003 0 0012 21a9.003 9.003 0 008.877-5.196m-15.758 0A9 9 0 0112 3a9 9 0 018.877 12.804" />
                 </svg>
               </div>
