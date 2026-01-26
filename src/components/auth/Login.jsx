@@ -1,5 +1,5 @@
 // src/components/auth/Login.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -8,12 +8,19 @@ import AnimatedBackground from '../AnimatedBackground';
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
 
   const [errors, setErrors] = useState({});
+
+  // Clear session when landing on login (e.g. Back button) — treat as "session expired"
+  useEffect(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -88,7 +95,9 @@ export default function Login() {
   };
 
   const handleBackToHome = () => {
-    navigate('/');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/', { replace: true });
   };
 
   return (

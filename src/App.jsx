@@ -108,8 +108,8 @@ function App() {
         <Route path="/register/student" element={<PublicOnlyRoute><StudentRegistration /></PublicOnlyRoute>} />
         <Route path="/register/educator" element={<PublicOnlyRoute><EducatorRegistration /></PublicOnlyRoute>} />
         
-        {/* Login Routes */}
-        <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+        {/* Login Routes — no PublicOnlyRoute: landing on /login clears session (Back = expire) */}
+        <Route path="/login" element={<Login />} />
         <Route path="/verify-email" element={<EmailVerification />} />
         
         {/* Protected Routes - Student */}

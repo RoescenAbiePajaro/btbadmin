@@ -61,6 +61,12 @@ export default function HomePage() {
     navigate("/select-role");
   };
 
+  // Clear session when landing on home (e.g. Back button) — treat as "session expired"
+  useEffect(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }, []);
+
   useEffect(() => {
     fetchUserCounts();
     // Track page visit
