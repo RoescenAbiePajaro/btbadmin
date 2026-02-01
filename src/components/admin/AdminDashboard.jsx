@@ -37,6 +37,7 @@ export default function AdminDashboard() {
     blocks: []
   });
   const [feedbackStats, setFeedbackStats] = useState(null);
+  const [feedbackData, setFeedbackData] = useState(null);
   const [classSearch, setClassSearch] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
@@ -438,10 +439,30 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch feedback chart data
+  const fetchFeedbackChartData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'https://btbtestservice.onrender.com/api/analytics/feedback',
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setFeedbackData(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching feedback chart data:', error);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     fetchAcademicSettings();
     fetchFeedbackStats();
+    fetchFeedbackChartData();
   }, []);
 
   useEffect(() => {
@@ -766,6 +787,7 @@ export default function AdminDashboard() {
               analyticsData={analyticsData}
               timeRange={timeRange}
               handleTimeRangeChange={handleTimeRangeChange}
+              feedbackData={feedbackData}
             />
           )}
 

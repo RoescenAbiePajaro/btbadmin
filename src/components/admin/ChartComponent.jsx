@@ -491,40 +491,6 @@ export default function ChartComponent({
           </div>
         </div>
       )}
-
-      {/* Feedback Trends */}
-      {feedbackData?.data?.feedbackTrends && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h3 className="text-lg font-bold mb-4 text-white">Feedback Trends Over Time</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filterDataByDateRange(feedbackData.data.feedbackTrends.data)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="date" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                  labelStyle={{ color: '#9CA3AF' }}
-                />
-                <Legend />
-                {feedbackData.data.feedbackTrends.lines.map((line, index) => (
-                  <Line 
-                    key={line.key}
-                    type="monotone" 
-                    dataKey={line.key} 
-                    name={line.name}
-                    stroke={line.color} 
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
       {/* Feedback by Category */}
       {feedbackData?.data?.feedbackByCategory && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -576,34 +542,6 @@ export default function ChartComponent({
       )}
 
       {/* Feedback Status Distribution */}
-      {feedbackData?.data?.statusDistribution && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h3 className="text-lg font-bold mb-4 text-white">Feedback Status Distribution</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={feedbackData.data.statusDistribution.data}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {feedbackData.data.statusDistribution.data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={feedbackData.data.statusDistribution.colors[index]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
 
       {/* Feedback by User Role */}
       {feedbackData?.data?.feedbackByRole && (
