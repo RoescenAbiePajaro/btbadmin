@@ -12,21 +12,28 @@ export default function ExportModal({ isOpen, onClose, onExport, title = 'Export
       icon: '📊',
       color: 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
     },
-    { 
+    {
       id: 'pdf', 
       label: 'PDF', 
       description: 'Export as PDF with listed data',
       icon: '📄',
       color: 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
     },
-    { 
-      id: 'pptx', 
-      label: 'PowerPoint', 
-      description: 'Export as PowerPoint (.pptx)',
-      icon: '📊',
+    {
+      id: 'png', 
+      label: 'PNG', 
+      description: 'Export as PNG image',
+      icon: '🖼️',
+      color: 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400'
+    },
+    {
+      id: 'jpg', 
+      label: 'JPG', 
+      description: 'Export as JPG image',
+      icon: '🖼️',
       color: 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400'
     },
-    { 
+    {
       id: 'docx', 
       label: 'Word', 
       description: 'Export as Word (.docx)',

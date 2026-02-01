@@ -194,6 +194,127 @@ export const exportToDOCX = async (data, headers, filename) => {
   }
 };
 
+// Helper function to create HTML table
+const createTableHTML = (data, headers) => {
+  let html = '<table><thead><tr>';
+  headers.forEach(h => {
+    html += `<th>${h.label || h}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  data.forEach(row => {
+    html += '<tr>';
+    headers.forEach(h => {
+      const key = h.key || h;
+      html += `<td>${row[key] || ''}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+};
+
+// Export to PNG
+export const exportToPNG = (data, headers, filename) => {
+  try {
+    if (!data || data.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = 1200;
+    canvas.height = Math.max(600, data.length * 30 + 100);
+    
+    // Set background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw title
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(filename || 'Data Export', 20, 30);
+    
+    // Draw headers
+    ctx.font = 'bold 12px Arial';
+    ctx.fillStyle = '#8a2be2';
+    const colWidth = canvas.width / headers.length;
+    headers.forEach((h, i) => {
+      ctx.fillText((h.label || h).substring(0, 15), 20 + i * colWidth, 70);
+    });
+    
+    // Draw rows
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#000000';
+    data.forEach((row, rowIndex) => {
+      headers.forEach((h, colIndex) => {
+        const key = h.key || h;
+        const value = String(row[key] || '').substring(0, 20);
+        ctx.fillText(value, 20 + colIndex * colWidth, 100 + rowIndex * 25);
+      });
+    });
+    
+    canvas.toBlob((blob) => {
+      saveAs(blob, `${filename || 'export'}_${new Date().toISOString().slice(0, 10)}.png`);
+    }, 'image/png');
+  } catch (error) {
+    console.error('PNG export error:', error);
+    alert('Error exporting to PNG: ' + error.message);
+  }
+};
+
+// Export to JPG
+export const exportToJPG = (data, headers, filename) => {
+  try {
+    if (!data || data.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = 1200;
+    canvas.height = Math.max(600, data.length * 30 + 100);
+    
+    // Set background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw title
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(filename || 'Data Export', 20, 30);
+    
+    // Draw headers
+    ctx.font = 'bold 12px Arial';
+    ctx.fillStyle = '#8a2be2';
+    const colWidth = canvas.width / headers.length;
+    headers.forEach((h, i) => {
+      ctx.fillText((h.label || h).substring(0, 15), 20 + i * colWidth, 70);
+    });
+    
+    // Draw rows
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#000000';
+    data.forEach((row, rowIndex) => {
+      headers.forEach((h, colIndex) => {
+        const key = h.key || h;
+        const value = String(row[key] || '').substring(0, 20);
+        ctx.fillText(value, 20 + colIndex * colWidth, 100 + rowIndex * 25);
+      });
+    });
+    
+    canvas.toBlob((blob) => {
+      saveAs(blob, `${filename || 'export'}_${new Date().toISOString().slice(0, 10)}.jpg`);
+    }, 'image/jpeg', 0.95);
+  } catch (error) {
+    console.error('JPG export error:', error);
+    alert('Error exporting to JPG: ' + error.message);
+  }
+};
+
 // Main export function
 export const handleExport = (format, data, headers, filename) => {
   switch (format) {
@@ -203,8 +324,11 @@ export const handleExport = (format, data, headers, filename) => {
     case 'pdf':
       exportToPDF(data, headers, filename);
       break;
-    case 'pptx':
-      exportToPPTX(data, headers, filename);
+    case 'png':
+      exportToPNG(data, headers, filename);
+      break;
+    case 'jpg':
+      exportToJPG(data, headers, filename);
       break;
     case 'docx':
       exportToDOCX(data, headers, filename);
