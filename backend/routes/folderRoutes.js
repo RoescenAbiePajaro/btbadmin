@@ -1,3 +1,4 @@
+// backend/routes/folderRoutes.js
 const express = require('express');
 const router = express.Router();
 const Folder = require('../models/Folder');

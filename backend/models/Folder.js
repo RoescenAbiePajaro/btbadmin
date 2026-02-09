@@ -1,3 +1,5 @@
+
+// backend/models/Folder.js
 const mongoose = require('mongoose');
 
 const folderSchema = new mongoose.Schema({
