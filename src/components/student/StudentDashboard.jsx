@@ -19,6 +19,7 @@ export default function StudentDashboard() {
   const [joinClassInfo, setJoinClassInfo] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [isDownloadLoading, setIsDownloadLoading] = useState(false);
   const refreshIntervalRef = useRef(null);
 
   const fetchUserData = useCallback(async () => {
@@ -246,6 +247,28 @@ export default function StudentDashboard() {
     navigate('/login', { replace: true });
   };
 
+  const handleDownload = async (e) => {
+    e.preventDefault();
+    const url = "https://mega.nz/file/8Ndx0Qpb#O-1yE6KF8KdndwiOiOuQTLGvDuKKviplPToqwy-sa1w";
+    
+    setIsDownloadLoading(true);
+    
+    try {
+      // Track download from student dashboard
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      await axios.post('https://btbtestservice.onrender.com/api/clickdownload/student-dashboard', {
+        userAgent: navigator.userAgent,
+        userId: userData.id || userData._id,
+        source: 'student_dashboard'
+      });
+    } catch (error) {
+      console.error("Error tracking download:", error);
+    } finally {
+      setIsDownloadLoading(false);
+      window.location.href = url;
+    }
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -306,6 +329,29 @@ export default function StudentDashboard() {
                 className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-200"
               >
                 Logout
+              </button>
+              <button
+                onClick={handleDownload}
+                disabled={isDownloadLoading}
+                className="bg-gradient-to-r from-purple-600 to-purple-600 hover:opacity-90 text-white py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download PC App"
+              >
+                {isDownloadLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download PC
+                  </>
+                )}
               </button>
             </div>
           </div>
