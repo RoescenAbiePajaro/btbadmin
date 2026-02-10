@@ -4,7 +4,7 @@ const clickSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['login', 'download', 'view', 'page_visit', 'registration']
+    enum: ['login', 'download', 'view', 'registration']
   },
   location: {
     type: String,

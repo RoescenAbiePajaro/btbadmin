@@ -596,23 +596,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
         }
       ])
     ]);
-    const pageVisitStats = await Click.aggregate([
-      {
-        $match: {
-          type: 'page_visit',
-          createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            period: { $dateToString: { format: groupFormat, date: "$createdAt" } }
-          },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { "_id.period": 1 } }
-    ]);
     
     // Format data for different types of charts
     const formattedData = {
@@ -696,18 +679,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
             { key: 'downloads', name: 'Downloads', color: '#F59E0B' }
           ]
         },
-        pageVisitTrends: {
-          title: 'Page Visits',
-          type: 'line',
-          data: pageVisitStats.map(stat => ({
-            date: stat._id.period,
-            visits: stat.count
-          })),
-          lines: [
-            { key: 'visits', name: 'Visits', color: '#22C55E' }
-          ]
-        },
-        
         userGrowthTrend: {
           title: 'User Growth Over Time',
           type: 'line',
@@ -947,7 +918,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
           totalLogins: loginStats.reduce((sum, stat) => sum + stat.count, 0),
           uniqueLogins: loginStats.reduce((sum, stat) => sum + stat.uniqueCount, 0),
           totalDownloads: downloadStats.reduce((sum, stat) => sum + stat.count, 0),
-          pageVisits: pageVisitStats.reduce((sum, stat) => sum + stat.count, 0),
           fileActivities: fileActivityStats.reduce((sum, stat) => sum + stat.count, 0),
           avgSessionDuration: platformEngagement[0]?.avgSessionDuration 
             ? (platformEngagement[0].avgSessionDuration / (60 * 1000)).toFixed(1) + ' min'
@@ -1630,26 +1600,6 @@ router.post('/download-homepage', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to track download' });
-  }
-});
-
-router.post('/page-visit', async (req, res) => {
-  try {
-    const userAgent = req.headers['user-agent'] || req.body.userAgent || '';
-    const click = new Click({
-      type: 'page_visit',
-      location: req.body.location || 'home_page',
-      userAgent,
-      deviceType: req.body.deviceType || 'Unknown',
-      browser: req.body.browser || undefined,
-      operatingSystem: req.body.operatingSystem || undefined,
-      ipAddress: req.ip,
-      metadata: req.body.metadata || {}
-    });
-    await click.save();
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to track page visit' });
   }
 });
 

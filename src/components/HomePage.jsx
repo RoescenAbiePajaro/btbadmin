@@ -22,20 +22,6 @@ export default function HomePage() {
 
   const closeModal = () => setSelectedImage(null);
 
-  // Track click function
-  const trackClick = async (type, location) => {
-    try {
-      await axios.post('https://btbtestservice.onrender.com/api/analytics/page-visit', {
-        type,
-        location,
-        userAgent: navigator.userAgent,
-        url: window.location.href
-      });
-    } catch (error) {
-      console.error("Error tracking click:", error);
-    }
-  };
-
   const handleDownload = async (e) => {
     e.preventDefault();
     const url = "https://mega.nz/file/8Ndx0Qpb#O-1yE6KF8KdndwiOiOuQTLGvDuKKviplPToqwy-sa1w";
@@ -69,8 +55,6 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchUserCounts();
-    // Track page visit
-    trackClick('page_visit', 'home_page');
   }, []);
 
   const fetchUserCounts = async () => {
