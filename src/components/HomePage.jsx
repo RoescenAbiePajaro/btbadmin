@@ -39,7 +39,18 @@ export default function HomePage() {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    try {
+      // Track login button click
+      await axios.post('https://btbtestservice.onrender.com/api/clicks', {
+        type: 'login',
+        location: 'homepage_login_button',
+        userRole: 'guest'
+      });
+    } catch (error) {
+      console.error("Error tracking login click:", error);
+    }
+    
     navigate("/login");
   };
 
