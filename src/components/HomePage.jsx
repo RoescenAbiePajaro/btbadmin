@@ -40,6 +40,8 @@ export default function HomePage() {
   };
 
   const handleLogin = async () => {
+    console.log('Login button clicked - attempting navigation to /login');
+    
     try {
       // Track login button click
       await axios.post('https://btbtestservice.onrender.com/api/clicks', {
@@ -51,7 +53,9 @@ export default function HomePage() {
       console.error("Error tracking login click:", error);
     }
     
+    console.log('About to call navigate("/login")');
     navigate("/login");
+    console.log('Navigation call completed');
   };
 
   const handleRegister = () => {
