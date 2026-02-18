@@ -24,7 +24,7 @@ export default function HomePage() {
 
   const handleDownload = async (e) => {
     e.preventDefault();
-    const url = "https://mega.nz/file/8Ndx0Qpb#O-1yE6KF8KdndwiOiOuQTLGvDuKKviplPToqwy-sa1w";
+    const url = "https://mega.nz/file/JJV1zLzb#u0NV4ZKoA5c2UNVGa9T7CG1YWCdqaQteY3KhZjbIoFA";
     
     setIsDownloadLoading(true);
     
@@ -42,8 +42,12 @@ export default function HomePage() {
   const handleLogin = async () => {
     console.log('Login button clicked - attempting navigation to /login');
     
+    // Navigate immediately, then track the click in the background
+    navigate("/login");
+    console.log('Navigation call completed');
+    
+    // Track login button click (non-blocking)
     try {
-      // Track login button click
       await axios.post('https://btbtestservice.onrender.com/api/clicks', {
         type: 'login',
         location: 'homepage_login_button',
@@ -51,11 +55,8 @@ export default function HomePage() {
       });
     } catch (error) {
       console.error("Error tracking login click:", error);
+      // Don't block navigation if tracking fails
     }
-    
-    console.log('About to call navigate("/login")');
-    navigate("/login");
-    console.log('Navigation call completed');
   };
 
   const handleRegister = () => {
