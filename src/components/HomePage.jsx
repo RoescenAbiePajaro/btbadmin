@@ -42,21 +42,25 @@ export default function HomePage() {
   const handleLogin = async () => {
     console.log('Login button clicked - attempting navigation to /login');
     
-    // Navigate immediately, then track the click in the background
-    navigate("/login");
-    console.log('Navigation call completed');
-    
-    // Track login button click (non-blocking)
+    // Track login button click first, then navigate
     try {
       await axios.post('https://btbtestservice.onrender.com/api/clicks', {
         type: 'login',
         location: 'homepage_login_button',
-        userRole: 'guest'
+        userRole: 'guest',
+        metadata: {
+          action: 'login_button_click',
+          timestamp: new Date().toISOString()
+        }
       });
     } catch (error) {
       console.error("Error tracking login click:", error);
       // Don't block navigation if tracking fails
     }
+    
+    // Navigate after tracking attempt
+    navigate("/login");
+    console.log('Navigation call completed');
   };
 
   const handleRegister = () => {

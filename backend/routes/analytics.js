@@ -291,21 +291,36 @@ router.get('/overview', requireAdmin, async (req, res) => {
         {
           $match: {
             type: 'login',
+            location: { $in: ['login_success', 'homepage_login_button'] },
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
           }
         },
         {
           $group: {
             _id: {
-              period: { $dateToString: { format: groupFormat, date: "$createdAt" } }
+              period: { $dateToString: { format: groupFormat, date: "$createdAt" } },
+              location: "$location"
             },
             count: { $sum: 1 },
             uniqueUsers: { $addToSet: "$userId" }
           }
         },
         {
+          $group: {
+            _id: "$_id.period",
+            count: { $sum: "$count" },
+            uniqueCount: { $size: "$uniqueUsers" },
+            locations: {
+              $push: {
+                location: "$_id.location",
+                count: "$count"
+              }
+            }
+          }
+        },
+        {
           $addFields: {
-            uniqueCount: { $size: "$uniqueUsers" }
+            uniqueCount: { $size: { $ifNull: ["$uniqueUsers", []] } }
           }
         },
         { $sort: { "_id.period": 1 } }
