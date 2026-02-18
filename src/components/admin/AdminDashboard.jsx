@@ -582,7 +582,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -662,24 +662,9 @@ export default function AdminDashboard() {
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Page Visits</p>
-                <p className="text-3xl font-bold mt-2">
-                  {analyticsData?.rawData?.platformMetrics?.pageVisits || 0}
-                </p>
-              </div>
-              <FiEye className="w-8 h-8 text-teal-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Login Button Clicks</p>
+                <p className="text-gray-400 text-sm">Total Page Visit</p>
                 <p className="text-3xl font-bold mt-2">
                   {analyticsData?.rawData?.platformMetrics?.totalLogins || 0}
-                </p>
-                <p className="text-gray-400 text-sm mt-2">
-                  From Homepage
                 </p>
               </div>
               <FiActivity className="w-8 h-8 text-blue-500" />
