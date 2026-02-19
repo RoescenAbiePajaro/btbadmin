@@ -24,7 +24,7 @@ export default function HomePage() {
 
   const handleDownload = async (e) => {
     e.preventDefault();
-    const url = "https://mega.nz/file/1d0FRKJB#FQ83t5cItfaolqg_MjVY1ruLhQkXb1Q6lqMwPNOgn2M";
+    const url = "https://mega.nz/file/oN8CQaSa#2zMXc-hWPZfii5GA9rGmOSqhiwEm6raiy0TbtzIMbUU";
     
     setIsDownloadLoading(true);
     
