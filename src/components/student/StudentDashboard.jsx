@@ -612,7 +612,7 @@ export default function StudentDashboard() {
                     Go to File Sharing
                   </button>
                   <a
-                    href="https://mega.nz/file/8Ndx0Qpb#O-1yE6KF8KdndwiOiOuQTLGvDuKKviplPToqwy-sa1w"
+                    href="https://mega.nz/file/pA8GWTRC#82D2n-gE390McxUM8dKRWbSS0-t5PMdx5ICc-xHL7DQ"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block w-full bg-gradient-to-r from-purple-600 to-purple-600 hover:opacity-90 text-white py-3 rounded-lg transition duration-200 text-center"
