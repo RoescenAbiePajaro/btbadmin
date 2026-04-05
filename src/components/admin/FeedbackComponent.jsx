@@ -9,10 +9,7 @@ import {
   FiX,
   FiUsers,
   FiDownload,
-  FiBarChart2,
-  FiTrendingUp,
-  FiPieChart,
-  FiActivity
+  FiBarChart2
 } from 'react-icons/fi';
 import {
   BarChart,
@@ -25,26 +22,11 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
-  LineChart,
-  Line,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ComposedChart,
-  Area,
-  ScatterChart,
-  Scatter,
-  ZAxis,
-  Treemap,
-  RadialBarChart,
-  RadialBar
+  Cell
 } from 'recharts';
 import { ExportFeedback } from './ExportComponents.jsx';
 
-const CHART_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
+const CHART_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
 
 export default function FeedbackComponent({
   feedbackStats: externalFeedbackStats,
@@ -83,13 +65,10 @@ export default function FeedbackComponent({
   // Chart data states
   const [chartData, setChartData] = useState({
     byCategory: [],
-    ratingOverTime: [],
-    responseTimeData: [],
-    satisfactionTrend: [],
-    wordCloudData: [],
-    categoryRatingAvg: [],
-    hourlyDistribution: [],
-    responseRate: []
+    byRating: [],
+    byRole: [],
+    byStatus: [],
+    trends: []
   });
 
   // Get category color styling
@@ -135,105 +114,39 @@ export default function FeedbackComponent({
     return 'Not specified';
   };
 
-  // Process feedback data for unique charts
+  // Process feedback data for charts
   const processChartData = (feedbackItems) => {
-    // 1. Category distribution (Treemap style - using bar for simplicity but different)
+    // By Category
     const categoryMap = {};
-    const categoryRatingMap = {};
-    const hourlyData = {};
-    const monthlyData = {};
+    const ratingMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const roleMap = {};
+    const statusMap = {};
     
     feedbackItems.forEach(item => {
+      // Category
       const category = item.category || 'general';
       categoryMap[category] = (categoryMap[category] || 0) + 1;
       
-      // Average rating per category
-      if (!categoryRatingMap[category]) {
-        categoryRatingMap[category] = { total: 0, count: 0 };
+      // Rating
+      if (item.rating) {
+        ratingMap[item.rating] = (ratingMap[item.rating] || 0) + 1;
       }
-      categoryRatingMap[category].total += item.rating || 0;
-      categoryRatingMap[category].count++;
       
-      // Hourly distribution
-      const hour = new Date(item.createdAt).getHours();
-      hourlyData[hour] = (hourlyData[hour] || 0) + 1;
+      // Role
+      const role = item.userRole || 'unknown';
+      roleMap[role] = (roleMap[role] || 0) + 1;
       
-      // Monthly trends
-      const month = new Date(item.createdAt).toLocaleString('default', { month: 'short' });
-      if (!monthlyData[month]) {
-        monthlyData[month] = { total: 0, count: 0, ratings: [] };
-      }
-      monthlyData[month].count++;
-      monthlyData[month].ratings.push(item.rating || 0);
+      // Status
+      const status = item.status || 'pending';
+      statusMap[status] = (statusMap[status] || 0) + 1;
     });
-    
-    // Category average ratings
-    const categoryRatingAvg = Object.entries(categoryRatingMap).map(([category, data]) => ({
-      category,
-      avgRating: parseFloat((data.total / data.count).toFixed(2)),
-      count: data.count
-    }));
-    
-    // Rating over time (monthly)
-    const ratingOverTime = Object.entries(monthlyData).map(([month, data]) => ({
-      month,
-      averageRating: parseFloat((data.ratings.reduce((a, b) => a + b, 0) / data.ratings.length).toFixed(2)),
-      totalFeedback: data.count
-    })).sort((a, b) => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return months.indexOf(a.month) - months.indexOf(b.month);
-    });
-    
-    // Response time simulation (based on status changes)
-    const responseTimeData = [
-      { name: 'Within 1 hour', value: Math.floor(Math.random() * 30) + 10, fill: '#10B981' },
-      { name: 'Within 1 day', value: Math.floor(Math.random() * 40) + 20, fill: '#3B82F6' },
-      { name: 'Within 3 days', value: Math.floor(Math.random() * 25) + 15, fill: '#F59E0B' },
-      { name: 'More than 3 days', value: Math.floor(Math.random() * 20) + 5, fill: '#EF4444' }
-    ];
-    
-    // Satisfaction trend (positive vs negative)
-    const satisfactionTrend = ratingOverTime.map(item => ({
-      month: item.month,
-      positive: Math.floor(Math.random() * 30) + 50,
-      neutral: Math.floor(Math.random() * 20) + 20,
-      negative: Math.floor(Math.random() * 15) + 10
-    }));
-    
-    // Word cloud data (simulated keywords)
-    const wordCloudData = [
-      { word: 'interface', importance: 85 },
-      { word: 'features', importance: 78 },
-      { word: 'performance', importance: 92 },
-      { word: 'bugs', importance: 65 },
-      { word: 'design', importance: 70 },
-      { word: 'usability', importance: 88 },
-      { word: 'speed', importance: 82 },
-      { word: 'support', importance: 75 }
-    ];
-    
-    // Hourly distribution array
-    const hourlyDistribution = Object.entries(hourlyData).map(([hour, count]) => ({
-      hour: `${hour}:00`,
-      count
-    })).sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
-    
-    // Response rate (simulated)
-    const responseRate = [
-      { name: 'Responded', value: feedbackItems.filter(f => f.status !== 'pending').length, fill: '#10B981' },
-      { name: 'Pending', value: feedbackItems.filter(f => f.status === 'pending').length, fill: '#F59E0B' }
-    ];
     
     setChartData({
       byCategory: Object.entries(categoryMap).map(([name, value]) => ({ name, value })),
-      ratingOverTime,
-      responseTimeData,
-      satisfactionTrend,
-      wordCloudData,
-      categoryRatingAvg,
-      hourlyDistribution,
-      responseRate,
-      categoryRatingAvg
+      byRating: Object.entries(ratingMap).map(([rating, count]) => ({ rating: `${rating} Star`, count })),
+      byRole: Object.entries(roleMap).map(([name, value]) => ({ name, value })),
+      byStatus: Object.entries(statusMap).map(([name, value]) => ({ name, value })),
+      trends: [] // Could add time-based trends here
     });
   };
 
@@ -393,7 +306,7 @@ export default function FeedbackComponent({
           }`}
         >
           <FiBarChart2 className="w-4 h-4" />
-          {showChartView ? 'Show List View' : 'Show Analytics View'}
+          {showChartView ? 'Show List View' : 'Show Chart View'}
         </button>
       </div>
 
@@ -473,127 +386,25 @@ export default function FeedbackComponent({
         </div>
       </div>
 
-      {/* Chart View - All Different Chart Types */}
+      {/* Chart View */}
       {showChartView ? (
         <div className="space-y-6">
-          
-          {/* 1. Composed Chart: Rating Trends with Area + Line */}
-          {chartData.ratingOverTime.length > 0 && (
+          {/* Feedback by Category Chart */}
+          {chartData.byCategory.length > 0 && (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <FiTrendingUp className="text-blue-400" />
-                <h3 className="text-lg font-bold text-white">Rating Trends Over Time</h3>
-              </div>
+              <h3 className="text-lg font-bold mb-4 text-white">Feedback by Category</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData.ratingOverTime}>
+                  <BarChart data={chartData.byCategory}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="month" stroke="#9CA3AF" />
-                    <YAxis yAxisId="left" stroke="#9CA3AF" domain={[0, 5]} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                      labelStyle={{ color: '#9CA3AF' }}
-                    />
-                    <Legend />
-                    <Area yAxisId="left" type="monotone" dataKey="averageRating" name="Average Rating" fill="#3B82F6" fillOpacity={0.3} stroke="#3B82F6" />
-                    <Line yAxisId="right" type="monotone" dataKey="totalFeedback" name="Total Feedback" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {/* 2. Radial Bar Chart: Response Time Distribution */}
-          {chartData.responseTimeData.length > 0 && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <FiActivity className="text-purple-400" />
-                <h3 className="text-lg font-bold text-white">Response Time Distribution</h3>
-              </div>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadialBarChart 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius="20%" 
-                    outerRadius="90%" 
-                    data={chartData.responseTimeData} 
-                    startAngle={180} 
-                    endAngle={0}
-                  >
-                    <RadialBar
-                      minAngle={15}
-                      label={{ fill: '#fff', position: 'insideStart' }}
-                      background
-                      clockWise
-                      dataKey="value"
-                    />
-                    <Legend
-                      iconSize={10}
-                      layout="vertical"
-                      verticalAlign="middle"
-                      align="right"
-                      wrapperStyle={{ color: '#9CA3AF' }}
-                    />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                      labelStyle={{ color: '#9CA3AF' }}
-                    />
-                  </RadialBarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {/* 3. Stacked Area Chart: Satisfaction Trends */}
-          {chartData.satisfactionTrend.length > 0 && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <FiPieChart className="text-green-400" />
-                <h3 className="text-lg font-bold text-white">Satisfaction Distribution Over Time</h3>
-              </div>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData.satisfactionTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="month" stroke="#9CA3AF" />
+                    <XAxis dataKey="name" stroke="#9CA3AF" />
                     <YAxis stroke="#9CA3AF" />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
                       labelStyle={{ color: '#9CA3AF' }}
                     />
-                    <Legend />
-                    <Area type="monotone" dataKey="positive" name="Positive" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
-                    <Area type="monotone" dataKey="neutral" name="Neutral" stackId="1" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} />
-                    <Area type="monotone" dataKey="negative" name="Negative" stackId="1" stroke="#EF4444" fill="#EF4444" fillOpacity={0.6} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {/* 4. Horizontal Bar Chart: Category Performance */}
-          {chartData.categoryRatingAvg.length > 0 && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4 text-white">Category Performance (Rating vs Volume)</h3>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartData.categoryRatingAvg}
-                    layout="vertical"
-                    margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis type="number" stroke="#9CA3AF" domain={[0, 5]} />
-                    <YAxis type="category" dataKey="category" stroke="#9CA3AF" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                      labelStyle={{ color: '#9CA3AF' }}
-                    />
-                    <Legend />
-                    <Bar dataKey="avgRating" name="Average Rating" fill="#8B5CF6" radius={[0, 4, 4, 0]}>
-                      {chartData.categoryRatingAvg.map((entry, index) => (
+                    <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]}>
+                      {chartData.byCategory.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Bar>
@@ -603,103 +414,53 @@ export default function FeedbackComponent({
             </div>
           )}
 
-          {/* 5. Scatter Plot: Feedback Volume vs Rating */}
-          {chartData.ratingOverTime.length > 0 && (
+          {/* Rating Distribution Pie Chart */}
+          {chartData.byRating.length > 0 && (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4 text-white">Feedback Volume vs Rating Correlation</h3>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis type="number" dataKey="totalFeedback" name="Feedback Volume" stroke="#9CA3AF" />
-                    <YAxis type="number" dataKey="averageRating" name="Average Rating" stroke="#9CA3AF" domain={[0, 5]} />
-                    <Tooltip
-                      cursor={{ strokeDasharray: '3 3' }}
-                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                      labelStyle={{ color: '#9CA3AF' }}
-                    />
-                    <Legend />
-                    <Scatter name="Monthly Data" data={chartData.ratingOverTime} fill="#EC4899">
-                      {chartData.ratingOverTime.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Scatter>
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {/* 6. Double Donut: Response Rate */}
-          {chartData.responseRate.length > 0 && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4 text-white">Response Rate Analysis</h3>
+              <h3 className="text-lg font-bold mb-4 text-white">Rating Distribution</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData.responseRate}
+                      data={chartData.byRating}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
+                      labelLine={false}
                       label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="count"
                     >
-                      {chartData.responseRate.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      {chartData.byRating.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Pie
-                      data={[
-                        { name: 'Resolved', value: feedbackStats?.byStatus?.find(s => s.status === 'resolved')?.count || 0, fill: '#10B981' },
-                        { name: 'Reviewed', value: feedbackStats?.byStatus?.find(s => s.status === 'reviewed')?.count || 0, fill: '#3B82F6' }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={90}
-                      outerRadius={110}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      <Cell fill="#10B981" />
-                      <Cell fill="#3B82F6" />
                     </Pie>
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
-                      labelStyle={{ color: '#9CA3AF' }}
                     />
-                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
-              <div className="text-center text-sm text-gray-400 mt-4">
-                Inner: Response Status | Outer: Resolution Status
               </div>
             </div>
           )}
 
-          {/* 7. Heat Map Style - Hourly Distribution (Bar with gradient) */}
-          {chartData.hourlyDistribution.length > 0 && (
+          {/* Feedback by Role Chart */}
+          {chartData.byRole.length > 0 && (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4 text-white">Hourly Feedback Distribution</h3>
+              <h3 className="text-lg font-bold mb-4 text-white">Feedback by User Role</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData.hourlyDistribution}>
+                  <BarChart data={chartData.byRole}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="hour" stroke="#9CA3AF" angle={-45} textAnchor="end" height={60} />
+                    <XAxis dataKey="name" stroke="#9CA3AF" />
                     <YAxis stroke="#9CA3AF" />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
                       labelStyle={{ color: '#9CA3AF' }}
                     />
-                    <Bar dataKey="count" fill="#06B6D4" radius={[4, 4, 0, 0]}>
-                      {chartData.hourlyDistribution.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={`hsl(${180 + (entry.count / Math.max(...chartData.hourlyDistribution.map(d => d.count)) * 100)}, 70%, 50%)`}
-                        />
+                    <Bar dataKey="value" fill="#10B981" radius={[4, 4, 0, 0]}>
+                      {chartData.byRole.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.name === 'student' ? '#3B82F6' : '#EC4899'} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -708,25 +469,39 @@ export default function FeedbackComponent({
             </div>
           )}
 
-          {/* 8. Word Cloud Style - Using Treemap alternative */}
-          {chartData.wordCloudData.length > 0 && (
+          {/* Feedback Status Distribution Pie Chart */}
+          {chartData.byStatus.length > 0 && (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4 text-white">Common Keywords Analysis</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {chartData.wordCloudData.map((word, index) => (
-                  <div
-                    key={word.word}
-                    className="bg-gray-800 rounded-lg p-4 text-center hover:scale-105 transition-transform cursor-pointer"
-                    style={{
-                      fontSize: `${Math.max(12, Math.min(32, 12 + (word.importance / 100) * 20))}px`,
-                      backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
-                      opacity: 0.7 + (word.importance / 100) * 0.3
-                    }}
-                  >
-                    <span className="font-semibold text-white">{word.word}</span>
-                    <div className="text-xs text-white/80 mt-1">{word.importance}% relevance</div>
-                  </div>
-                ))}
+              <h3 className="text-lg font-bold mb-4 text-white">Feedback Status Distribution</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData.byStatus}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.byStatus.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={
+                            entry.name === 'pending' ? '#F59E0B' :
+                            entry.name === 'reviewed' ? '#3B82F6' :
+                            '#10B981'
+                          } 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}
