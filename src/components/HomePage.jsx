@@ -24,7 +24,7 @@ export default function HomePage() {
 
   const handleDownload = async (e) => {
     e.preventDefault();
-    const url = "https://drive.google.com/file/d/1hM4EhYyPmFrjN2dMXly9QnFvTZl8HYJT/view?usp=sharing";
+    const url = "https://mega.nz/file/Ed010a6Z#aGQOxvxpyP0Wci-wpuu_GbnrahOolZLsINJRwflvFq4";
     
     setIsDownloadLoading(true);
     
