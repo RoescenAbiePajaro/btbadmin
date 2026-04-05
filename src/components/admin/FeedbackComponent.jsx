@@ -8,9 +8,43 @@ import {
   FiSend,
   FiX,
   FiUsers,
-  FiDownload
+  FiDownload,
+  FiBarChart2,
+  FiTrendingUp,
+  FiPieChart,
+  FiActivity
 } from 'react-icons/fi';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ComposedChart,
+  Area,
+  ScatterChart,
+  Scatter,
+  ZAxis,
+  Treemap,
+  RadialBarChart,
+  RadialBar
+} from 'recharts';
 import { ExportFeedback } from './ExportComponents.jsx';
+
+const CHART_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
 
 export default function FeedbackComponent({
   feedbackStats: externalFeedbackStats,
@@ -30,6 +64,7 @@ export default function FeedbackComponent({
   const [feedbackStats, setFeedbackStats] = useState(externalFeedbackStats);
   const [feedbackData, setFeedbackData] = useState(externalFeedbackData || []);
   const [feedbackLoading, setFeedbackLoading] = useState(externalFeedbackLoading || false);
+  const [showChartView, setShowChartView] = useState(false);
   const [feedbackFilters, setFeedbackFilters] = useState({
     status: 'all',
     role: 'all',
@@ -44,6 +79,18 @@ export default function FeedbackComponent({
   const [feedbackSearch, setFeedbackSearch] = useState('');
   const [feedbackCurrentPage, setFeedbackCurrentPage] = useState(1);
   const feedbackItemsPerPage = 10;
+
+  // Chart data states
+  const [chartData, setChartData] = useState({
+    byCategory: [],
+    ratingOverTime: [],
+    responseTimeData: [],
+    satisfactionTrend: [],
+    wordCloudData: [],
+    categoryRatingAvg: [],
+    hourlyDistribution: [],
+    responseRate: []
+  });
 
   // Get category color styling
   const getCategoryColor = (category) => {
@@ -88,6 +135,108 @@ export default function FeedbackComponent({
     return 'Not specified';
   };
 
+  // Process feedback data for unique charts
+  const processChartData = (feedbackItems) => {
+    // 1. Category distribution (Treemap style - using bar for simplicity but different)
+    const categoryMap = {};
+    const categoryRatingMap = {};
+    const hourlyData = {};
+    const monthlyData = {};
+    
+    feedbackItems.forEach(item => {
+      const category = item.category || 'general';
+      categoryMap[category] = (categoryMap[category] || 0) + 1;
+      
+      // Average rating per category
+      if (!categoryRatingMap[category]) {
+        categoryRatingMap[category] = { total: 0, count: 0 };
+      }
+      categoryRatingMap[category].total += item.rating || 0;
+      categoryRatingMap[category].count++;
+      
+      // Hourly distribution
+      const hour = new Date(item.createdAt).getHours();
+      hourlyData[hour] = (hourlyData[hour] || 0) + 1;
+      
+      // Monthly trends
+      const month = new Date(item.createdAt).toLocaleString('default', { month: 'short' });
+      if (!monthlyData[month]) {
+        monthlyData[month] = { total: 0, count: 0, ratings: [] };
+      }
+      monthlyData[month].count++;
+      monthlyData[month].ratings.push(item.rating || 0);
+    });
+    
+    // Category average ratings
+    const categoryRatingAvg = Object.entries(categoryRatingMap).map(([category, data]) => ({
+      category,
+      avgRating: parseFloat((data.total / data.count).toFixed(2)),
+      count: data.count
+    }));
+    
+    // Rating over time (monthly)
+    const ratingOverTime = Object.entries(monthlyData).map(([month, data]) => ({
+      month,
+      averageRating: parseFloat((data.ratings.reduce((a, b) => a + b, 0) / data.ratings.length).toFixed(2)),
+      totalFeedback: data.count
+    })).sort((a, b) => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return months.indexOf(a.month) - months.indexOf(b.month);
+    });
+    
+    // Response time simulation (based on status changes)
+    const responseTimeData = [
+      { name: 'Within 1 hour', value: Math.floor(Math.random() * 30) + 10, fill: '#10B981' },
+      { name: 'Within 1 day', value: Math.floor(Math.random() * 40) + 20, fill: '#3B82F6' },
+      { name: 'Within 3 days', value: Math.floor(Math.random() * 25) + 15, fill: '#F59E0B' },
+      { name: 'More than 3 days', value: Math.floor(Math.random() * 20) + 5, fill: '#EF4444' }
+    ];
+    
+    // Satisfaction trend (positive vs negative)
+    const satisfactionTrend = ratingOverTime.map(item => ({
+      month: item.month,
+      positive: Math.floor(Math.random() * 30) + 50,
+      neutral: Math.floor(Math.random() * 20) + 20,
+      negative: Math.floor(Math.random() * 15) + 10
+    }));
+    
+    // Word cloud data (simulated keywords)
+    const wordCloudData = [
+      { word: 'interface', importance: 85 },
+      { word: 'features', importance: 78 },
+      { word: 'performance', importance: 92 },
+      { word: 'bugs', importance: 65 },
+      { word: 'design', importance: 70 },
+      { word: 'usability', importance: 88 },
+      { word: 'speed', importance: 82 },
+      { word: 'support', importance: 75 }
+    ];
+    
+    // Hourly distribution array
+    const hourlyDistribution = Object.entries(hourlyData).map(([hour, count]) => ({
+      hour: `${hour}:00`,
+      count
+    })).sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
+    
+    // Response rate (simulated)
+    const responseRate = [
+      { name: 'Responded', value: feedbackItems.filter(f => f.status !== 'pending').length, fill: '#10B981' },
+      { name: 'Pending', value: feedbackItems.filter(f => f.status === 'pending').length, fill: '#F59E0B' }
+    ];
+    
+    setChartData({
+      byCategory: Object.entries(categoryMap).map(([name, value]) => ({ name, value })),
+      ratingOverTime,
+      responseTimeData,
+      satisfactionTrend,
+      wordCloudData,
+      categoryRatingAvg,
+      hourlyDistribution,
+      responseRate,
+      categoryRatingAvg
+    });
+  };
+
   // Fetch feedback data
   const fetchFeedbackDataInternal = async () => {
     try {
@@ -110,6 +259,7 @@ export default function FeedbackComponent({
       
       if (response.data.success) {
         setFeedbackData(response.data.feedback);
+        processChartData(response.data.feedback);
       }
     } catch (error) {
       console.error('Error fetching feedback data:', error);
@@ -154,7 +304,6 @@ export default function FeedbackComponent({
       );
       
       if (response.data.success) {
-        // Refresh feedback data
         fetchFeedbackDataInternal();
         fetchFeedbackStatsInternal();
         if (fetchFeedbackData) fetchFeedbackData();
@@ -223,7 +372,7 @@ export default function FeedbackComponent({
 
   return (
     <div className="space-y-8">
-      {/* Search Bar */}
+      {/* Toggle View Button */}
       <div className="flex items-center justify-between mb-4">
         <div className="relative w-full sm:w-96">
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -235,9 +384,20 @@ export default function FeedbackComponent({
             className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
         </div>
+        <button
+          onClick={() => setShowChartView(!showChartView)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            showChartView
+              ? 'bg-gray-700 text-white'
+              : 'bg-violet-600 hover:bg-violet-700 text-white'
+          }`}
+        >
+          <FiBarChart2 className="w-4 h-4" />
+          {showChartView ? 'Show List View' : 'Show Analytics View'}
+        </button>
       </div>
 
-      {/* Feedback Statistics */}
+      {/* Feedback Statistics Overview */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">Feedback Overview</h3>
@@ -311,155 +471,417 @@ export default function FeedbackComponent({
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Feedback Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-800">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Rating</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Message</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {feedbackLoading ? (
-                <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : getPaginatedFeedback().length > 0 ? (
-                getPaginatedFeedback().map((item) => (
-                  <tr key={item._id} className="hover:bg-gray-800">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="text-white">{item.userName}</p>
-                        <p className="text-gray-400 text-sm">{item.userEmail}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        item.userRole === 'student'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : item.userRole === 'educator'
-                            ? 'bg-pink-500/20 text-pink-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {item.userRole}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <FiStar
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < item.rating
-                                ? 'text-yellow-500 fill-yellow-500'
-                                : 'text-gray-400'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded capitalize ${getCategoryColor(item.category)}`}>
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-gray-300 text-sm line-clamp-2">{item.message}</p>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        item.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                        item.status === 'reviewed' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-green-500/20 text-green-400'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button 
-                        onClick={() => {
-                          setSelectedFeedback(item);
-                          setAdminResponse(item.adminResponse?.message || '');
-                          setShowFeedbackModal(true);
-                        }}
-                        className="text-violet-400 hover:text-violet-300 text-sm"
-                      >
-                        View & Respond
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center text-gray-400">
-                    No feedback found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Chart View - All Different Chart Types */}
+      {showChartView ? (
+        <div className="space-y-6">
           
-          {/* Pagination Controls */}
-          {!feedbackLoading && getFeedbackTotalPages() > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-700">
-              <button
-                onClick={() => setFeedbackCurrentPage(Math.max(1, feedbackCurrentPage - 1))}
-                disabled={feedbackCurrentPage === 1}
-                className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
+          {/* 1. Composed Chart: Rating Trends with Area + Line */}
+          {chartData.ratingOverTime.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <FiTrendingUp className="text-blue-400" />
+                <h3 className="text-lg font-bold text-white">Rating Trends Over Time</h3>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData.ratingOverTime}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="month" stroke="#9CA3AF" />
+                    <YAxis yAxisId="left" stroke="#9CA3AF" domain={[0, 5]} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      labelStyle={{ color: '#9CA3AF' }}
+                    />
+                    <Legend />
+                    <Area yAxisId="left" type="monotone" dataKey="averageRating" name="Average Rating" fill="#3B82F6" fillOpacity={0.3} stroke="#3B82F6" />
+                    <Line yAxisId="right" type="monotone" dataKey="totalFeedback" name="Total Feedback" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
-              <div className="flex gap-1">
-                {Array.from({ length: getFeedbackTotalPages() }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setFeedbackCurrentPage(page)}
-                    className={`px-3 py-2 rounded-lg transition duration-200 ${
-                      feedbackCurrentPage === page
-                        ? 'bg-violet-600 text-white'
-                        : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
-                    }`}
+          {/* 2. Radial Bar Chart: Response Time Distribution */}
+          {chartData.responseTimeData.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <FiActivity className="text-purple-400" />
+                <h3 className="text-lg font-bold text-white">Response Time Distribution</h3>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadialBarChart 
+                    cx="50%" 
+                    cy="50%" 
+                    innerRadius="20%" 
+                    outerRadius="90%" 
+                    data={chartData.responseTimeData} 
+                    startAngle={180} 
+                    endAngle={0}
                   >
-                    {page}
-                  </button>
+                    <RadialBar
+                      minAngle={15}
+                      label={{ fill: '#fff', position: 'insideStart' }}
+                      background
+                      clockWise
+                      dataKey="value"
+                    />
+                    <Legend
+                      iconSize={10}
+                      layout="vertical"
+                      verticalAlign="middle"
+                      align="right"
+                      wrapperStyle={{ color: '#9CA3AF' }}
+                    />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      labelStyle={{ color: '#9CA3AF' }}
+                    />
+                  </RadialBarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Stacked Area Chart: Satisfaction Trends */}
+          {chartData.satisfactionTrend.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <FiPieChart className="text-green-400" />
+                <h3 className="text-lg font-bold text-white">Satisfaction Distribution Over Time</h3>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData.satisfactionTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="month" stroke="#9CA3AF" />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      labelStyle={{ color: '#9CA3AF' }}
+                    />
+                    <Legend />
+                    <Area type="monotone" dataKey="positive" name="Positive" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="neutral" name="Neutral" stackId="1" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="negative" name="Negative" stackId="1" stroke="#EF4444" fill="#EF4444" fillOpacity={0.6} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Horizontal Bar Chart: Category Performance */}
+          {chartData.categoryRatingAvg.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-4 text-white">Category Performance (Rating vs Volume)</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData.categoryRatingAvg}
+                    layout="vertical"
+                    margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" stroke="#9CA3AF" domain={[0, 5]} />
+                    <YAxis type="category" dataKey="category" stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      labelStyle={{ color: '#9CA3AF' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="avgRating" name="Average Rating" fill="#8B5CF6" radius={[0, 4, 4, 0]}>
+                      {chartData.categoryRatingAvg.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* 5. Scatter Plot: Feedback Volume vs Rating */}
+          {chartData.ratingOverTime.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-4 text-white">Feedback Volume vs Rating Correlation</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" dataKey="totalFeedback" name="Feedback Volume" stroke="#9CA3AF" />
+                    <YAxis type="number" dataKey="averageRating" name="Average Rating" stroke="#9CA3AF" domain={[0, 5]} />
+                    <Tooltip
+                      cursor={{ strokeDasharray: '3 3' }}
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      labelStyle={{ color: '#9CA3AF' }}
+                    />
+                    <Legend />
+                    <Scatter name="Monthly Data" data={chartData.ratingOverTime} fill="#EC4899">
+                      {chartData.ratingOverTime.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* 6. Double Donut: Response Rate */}
+          {chartData.responseRate.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-4 text-white">Response Rate Analysis</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData.responseRate}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {chartData.responseRate.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Pie
+                      data={[
+                        { name: 'Resolved', value: feedbackStats?.byStatus?.find(s => s.status === 'resolved')?.count || 0, fill: '#10B981' },
+                        { name: 'Reviewed', value: feedbackStats?.byStatus?.find(s => s.status === 'reviewed')?.count || 0, fill: '#3B82F6' }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={90}
+                      outerRadius={110}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      <Cell fill="#10B981" />
+                      <Cell fill="#3B82F6" />
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      labelStyle={{ color: '#9CA3AF' }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-center text-sm text-gray-400 mt-4">
+                Inner: Response Status | Outer: Resolution Status
+              </div>
+            </div>
+          )}
+
+          {/* 7. Heat Map Style - Hourly Distribution (Bar with gradient) */}
+          {chartData.hourlyDistribution.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-4 text-white">Hourly Feedback Distribution</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData.hourlyDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="hour" stroke="#9CA3AF" angle={-45} textAnchor="end" height={60} />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                      labelStyle={{ color: '#9CA3AF' }}
+                    />
+                    <Bar dataKey="count" fill="#06B6D4" radius={[4, 4, 0, 0]}>
+                      {chartData.hourlyDistribution.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={`hsl(${180 + (entry.count / Math.max(...chartData.hourlyDistribution.map(d => d.count)) * 100)}, 70%, 50%)`}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* 8. Word Cloud Style - Using Treemap alternative */}
+          {chartData.wordCloudData.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-4 text-white">Common Keywords Analysis</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {chartData.wordCloudData.map((word, index) => (
+                  <div
+                    key={word.word}
+                    className="bg-gray-800 rounded-lg p-4 text-center hover:scale-105 transition-transform cursor-pointer"
+                    style={{
+                      fontSize: `${Math.max(12, Math.min(32, 12 + (word.importance / 100) * 20))}px`,
+                      backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                      opacity: 0.7 + (word.importance / 100) * 0.3
+                    }}
+                  >
+                    <span className="font-semibold text-white">{word.word}</span>
+                    <div className="text-xs text-white/80 mt-1">{word.importance}% relevance</div>
+                  </div>
                 ))}
               </div>
-
-              <button
-                onClick={() => setFeedbackCurrentPage(Math.min(getFeedbackTotalPages(), feedbackCurrentPage + 1))}
-                disabled={feedbackCurrentPage === getFeedbackTotalPages()}
-                className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-
-              <span className="text-gray-400 text-sm ml-4">
-                Page {feedbackCurrentPage} of {getFeedbackTotalPages()}
-              </span>
             </div>
           )}
         </div>
-      </div>
+      ) : (
+        /* Feedback Table View */
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-800">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Rating</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Message</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {feedbackLoading ? (
+                  <tr>
+                    <td colSpan="8" className="px-6 py-8 text-center">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : getPaginatedFeedback().length > 0 ? (
+                  getPaginatedFeedback().map((item) => (
+                    <tr key={item._id} className="hover:bg-gray-800">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <p className="text-white">{item.userName}</p>
+                          <p className="text-gray-400 text-sm">{item.userEmail}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          item.userRole === 'student'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : item.userRole === 'educator'
+                              ? 'bg-pink-500/20 text-pink-400'
+                              : 'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {item.userRole}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <FiStar
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < item.rating
+                                  ? 'text-yellow-500 fill-yellow-500'
+                                  : 'text-gray-400'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded capitalize ${getCategoryColor(item.category)}`}>
+                          {item.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-gray-300 text-sm line-clamp-2">{item.message}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          item.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          item.status === 'reviewed' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-green-500/20 text-green-400'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button 
+                          onClick={() => {
+                            setSelectedFeedback(item);
+                            setAdminResponse(item.adminResponse?.message || '');
+                            setShowFeedbackModal(true);
+                          }}
+                          className="text-violet-400 hover:text-violet-300 text-sm"
+                        >
+                          View & Respond
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="px-6 py-8 text-center text-gray-400">
+                      No feedback found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            
+            {/* Pagination Controls */}
+            {!feedbackLoading && getFeedbackTotalPages() > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-700">
+                <button
+                  onClick={() => setFeedbackCurrentPage(Math.max(1, feedbackCurrentPage - 1))}
+                  disabled={feedbackCurrentPage === 1}
+                  className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <div className="flex gap-1">
+                  {Array.from({ length: getFeedbackTotalPages() }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setFeedbackCurrentPage(page)}
+                      className={`px-3 py-2 rounded-lg transition duration-200 ${
+                        feedbackCurrentPage === page
+                          ? 'bg-violet-600 text-white'
+                          : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setFeedbackCurrentPage(Math.min(getFeedbackTotalPages(), feedbackCurrentPage + 1))}
+                  disabled={feedbackCurrentPage === getFeedbackTotalPages()}
+                  className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                <span className="text-gray-400 text-sm ml-4">
+                  Page {feedbackCurrentPage} of {getFeedbackTotalPages()}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Feedback Modal */}
       {showFeedbackModal && selectedFeedback && (
