@@ -291,7 +291,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
         {
           $match: {
             type: 'login',
-            location: { $in: ['login_success', 'homepage_login_button'] },
+            location: { $in: ['homepage_login_button'] },
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
           }
         },
