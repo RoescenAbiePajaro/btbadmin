@@ -57,7 +57,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'X-Requested-With', 'Accept', 'cache-control'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Content-Disposition']
 }));
 
@@ -235,8 +235,6 @@ const getOSFromUA = (userAgent) => {
   if (ua.includes('ios') || ua.includes('iphone')) return 'iOS';
   return 'Other';
 };
-
-
 // Track login success
 app.post('/api/analytics/login', verifyToken, async (req, res) => {
   try {
@@ -262,7 +260,6 @@ app.post('/api/analytics/login', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Tracking failed' });
   }
 });
-
 // Track homepage download
 app.post('/api/analytics/download-homepage', async (req, res) => {
   try {
@@ -1605,28 +1602,6 @@ app.get('/api/academic-settings/:type/educator/:educatorId', async (req, res) =>
   }
 });
 
-// Get all academic settings of a type (public - for dropdowns)
-app.get('/api/academic-settings/:type/public', async (req, res) => {
-  try {
-    const { type } = req.params;
-    
-    if (!['school', 'course', 'year', 'block'].includes(type)) {
-      return res.status(400).json({ message: 'Invalid academic setting type' });
-    }
-    
-    // Get all active settings of this type
-    const settings = await AcademicSetting.find({ 
-      type: type,
-      isActive: true
-    }).sort({ name: 1 });
-    
-    res.json(settings);
-  } catch (error) {
-    console.error('Get public academic settings error:', error);
-    res.status(500).json({ message: 'Server error fetching settings' });
-  }
-});
-
 // Create academic setting - Assign to educator
 app.post('/api/academic-settings', verifyToken, requireEducator, async (req, res) => {
   try {
@@ -2430,15 +2405,6 @@ app.get('/api/admin/cleanup', verifyToken, requireAdmin, async (req, res) => {
     console.error('Cleanup error:', error);
     return createToastResponse(res, 500, 'Server error during cleanup', 'error');
   }
-});
-
-// Handle video-thumbnail.jpg requests
-app.get('/video-thumbnail.jpg', (req, res) => {
-  // Return a 1x1 transparent PNG as placeholder
-  const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
-  res.set('Content-Type', 'image/png');
-  res.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
-  res.send(transparentPixel);
 });
 
 // =====================

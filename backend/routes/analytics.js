@@ -1044,29 +1044,6 @@ router.get('/filter', requireAdmin, async (req, res) => {
         if (classCode) filter.classCode = classCode;
         break;
         
-      case 'feedback':
-        model = Feedback;
-        if (role) {
-          const users = await User.find({ role }).select('_id');
-          filter.userId = { $in: users.map(u => u._id) };
-        }
-        break;
-        
-      case 'charts':
-        // For charts, return aggregated data instead of raw documents
-        return res.json({
-          success: true,
-          data: {
-            message: 'Chart data should be fetched from /api/analytics/overview endpoint'
-          },
-          summary: {
-            total: 0,
-            page: parseInt(page),
-            limit: parseInt(limit),
-            pages: 0
-          }
-        });
-        
       default:
         return res.status(400).json({
           success: false,
@@ -1089,7 +1066,6 @@ router.get('/filter', requireAdmin, async (req, res) => {
         break;
         
       case 'file-activities':
-      case 'activities':
         query = query
           .populate('studentId', 'fullName email role')
           .populate('fileId', 'name originalName size')
@@ -1104,10 +1080,6 @@ router.get('/filter', requireAdmin, async (req, res) => {
         query = query
           .populate('educator', 'fullName email')
           .populate('students', 'fullName email');
-        break;
-        
-      case 'feedback':
-        query = query.populate('user', 'fullName email role');
         break;
     }
     
