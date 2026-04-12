@@ -236,32 +236,6 @@ const getOSFromUA = (userAgent) => {
   return 'Other';
 };
 
-// Track login success
-app.post('/api/analytics/login', verifyToken, async (req, res) => {
-  try {
-    const click = new Click({
-      type: 'login',
-      location: 'login_success',
-      userId: req.user.id,
-      userRole: req.user.role,
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-      deviceType: getDeviceType(req.headers['user-agent']),
-      metadata: {
-        loginMethod: 'email',
-        timestamp: new Date()
-      }
-    });
-    
-    await click.save();
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Login tracking error:', error);
-    res.status(500).json({ error: 'Tracking failed' });
-  }
-});
-
 // Track homepage download
 app.post('/api/analytics/download-homepage', async (req, res) => {
   try {
