@@ -9,7 +9,7 @@ const Click = require('../models/Click');
 const FileActivity = require('../models/FileActivity');
 const Feedback = require('../models/Feedback');
 const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken'); // ADDED - For proper token verification
+const jwt = require('jsonwebtoken');
 
 // Helper function to get date range
 const getDateRange = (period) => {
@@ -75,20 +75,7 @@ const getGroupFormat = (period) => {
   }
 };
 
-// Helper to format dates for class/school grouping
-const getGroupFormatForBucket = (bucket) => {
-  switch (bucket) {
-    case 'year':
-      return '%Y';
-    case 'month':
-      return '%Y-%m';
-    case 'day':
-    default:
-      return '%Y-%m-%d';
-  }
-};
-
-// FIXED: Admin middleware with proper JWT verification
+// Admin middleware with proper JWT verification
 const requireAdmin = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   
@@ -121,6 +108,62 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
+// ==================== DEBUG ENDPOINT ====================
+// Debug endpoint to check login clicks
+router.get('/debug-login-clicks', requireAdmin, async (req, res) => {
+  try {
+    const loginSuccessCount = await Click.countDocuments({ 
+      type: 'login', 
+      location: 'login_success' 
+    });
+    
+    const homepageButtonCount = await Click.countDocuments({ 
+      type: 'login', 
+      location: 'homepage_login_button' 
+    });
+    
+    const allLoginClicks = await Click.find({ type: 'login' })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('location createdAt userId userAgent deviceType browser');
+    
+    // Get date range for last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentLoginSuccess = await Click.countDocuments({
+      type: 'login',
+      location: 'login_success',
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+    
+    const recentHomepageButton = await Click.countDocuments({
+      type: 'login',
+      location: 'homepage_login_button',
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+    
+    res.json({
+      success: true,
+      counts: {
+        login_success: loginSuccessCount,
+        homepage_login_button: homepageButtonCount,
+        total: loginSuccessCount + homepageButtonCount,
+        last_30_days: {
+          login_success: recentLoginSuccess,
+          homepage_login_button: recentHomepageButton,
+          total: recentLoginSuccess + recentHomepageButton
+        }
+      },
+      recentClicks: allLoginClicks,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ==================== DASHBOARD OVERVIEW ====================
 router.get('/overview', requireAdmin, async (req, res) => {
   try {
@@ -137,6 +180,24 @@ router.get('/overview', requireAdmin, async (req, res) => {
     }
     
     const groupFormat = getGroupFormat(period);
+    
+    // Debug: Log the date range being queried
+    console.log('Analytics query date range:', {
+      start: dateRange.start.toISOString(),
+      end: dateRange.end.toISOString(),
+      period
+    });
+    
+    // Check total login clicks in database for debugging
+    const totalLoginClicks = await Click.countDocuments({ type: 'login' });
+    const loginSuccessTotal = await Click.countDocuments({ type: 'login', location: 'login_success' });
+    const homepageButtonTotal = await Click.countDocuments({ type: 'login', location: 'homepage_login_button' });
+    
+    console.log('Total login clicks in DB:', {
+      total: totalLoginClicks,
+      login_success: loginSuccessTotal,
+      homepage_login_button: homepageButtonTotal
+    });
     
     // Wrap each aggregation in try-catch to handle missing data gracefully
     let userStats = [];
@@ -183,6 +244,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
     }
 
     try {
+      // FIXED: Login stats aggregation with proper matching
       loginStats = await Click.aggregate([
         {
           $match: {
@@ -216,6 +278,18 @@ router.get('/overview', requireAdmin, async (req, res) => {
         },
         { $sort: { "_id": 1 } }
       ]);
+      
+      console.log('Login stats found:', loginStats.length);
+      if (loginStats.length > 0) {
+        console.log('Sample login stats:', JSON.stringify(loginStats[0], null, 2));
+      } else {
+        // Check if there are any login clicks in the date range
+        const clicksInRange = await Click.countDocuments({
+          type: 'login',
+          createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+        });
+        console.log(`No login stats aggregated. Clicks in date range: ${clicksInRange}`);
+      }
     } catch (err) {
       console.error('Login stats error:', err);
       loginStats = [];
@@ -550,6 +624,18 @@ router.get('/overview', requireAdmin, async (req, res) => {
       platformEngagement = [];
     }
     
+    // Calculate total logins for the platform metrics
+    const totalLoginsInRange = await Click.countDocuments({
+      type: 'login',
+      createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+    });
+    
+    const totalDownloadsInRange = await Click.countDocuments({
+      type: 'download',
+      location: 'homepage_pc_app',
+      createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+    });
+    
     // Format data for different types of charts
     const formattedData = {
       // 1. BAR CHARTS
@@ -868,9 +954,9 @@ router.get('/overview', requireAdmin, async (req, res) => {
         platformMetrics: {
           totalUsers: userStats.reduce((sum, stat) => sum + stat.count, 0),
           activeUsers: userStats.reduce((sum, stat) => sum + stat.activeLast7d, 0),
-          totalLogins: loginStats.reduce((sum, stat) => sum + stat.count, 0),
+          totalLogins: totalLoginsInRange,
           uniqueLogins: loginStats.reduce((sum, stat) => sum + stat.uniqueCount, 0),
-          totalDownloads: downloadStats.reduce((sum, stat) => sum + stat.count, 0),
+          totalDownloads: totalDownloadsInRange,
           fileActivities: fileActivityStats.reduce((sum, stat) => sum + stat.count, 0),
           avgSessionDuration: platformEngagement[0]?.avgSessionDuration 
             ? (platformEngagement[0].avgSessionDuration / (60 * 1000)).toFixed(1) + ' min'
@@ -1582,11 +1668,13 @@ router.get('/test', (req, res) => {
       'GET /api/analytics/filter',
       'GET /api/analytics/export',
       'GET /api/analytics/realtime',
-      'GET /api/analytics/feedback'
+      'GET /api/analytics/feedback',
+      'GET /api/analytics/debug-login-clicks'
     ]
   });
 });
 
+// Track homepage download (public endpoint)
 router.post('/download-homepage', async (req, res) => {
   try {
     const userAgent = req.headers['user-agent'] || req.body.userAgent || '';
