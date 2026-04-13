@@ -1,4 +1,3 @@
-// backend/routes/analytics.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -9,6 +8,7 @@ const Click = require('../models/Click');
 const FileActivity = require('../models/FileActivity');
 const Feedback = require('../models/Feedback');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken'); // ADDED - For proper token verification
 
 // Helper function to get date range
 const getDateRange = (period) => {
@@ -64,7 +64,7 @@ const getGroupFormat = (period) => {
     case '30d':
       return '%Y-%m-%d';
     case '90d':
-      return '%Y-%U'; // Year-Week number
+      return '%Y-%U';
     case 'this_month':
       return '%Y-%m-%d';
     case 'this_year':
@@ -87,7 +87,7 @@ const getGroupFormatForBucket = (bucket) => {
   }
 };
 
-// Admin middleware
+// FIXED: Admin middleware with proper JWT verification
 const requireAdmin = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   
@@ -99,134 +99,26 @@ const requireAdmin = async (req, res, next) => {
   }
 
   try {
-    // Skip JWT verification for now - you should implement proper JWT verification
-    // For demo, we'll just check if there's a token
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this');
+    
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+    
+    req.user = decoded;
     next();
   } catch (error) {
+    console.error('Token verification error:', error);
     return res.status(401).json({ 
       success: false, 
       error: 'Invalid token' 
     });
   }
 };
-
-// ==================== CLASS ACTIVE/INACTIVE TRENDS ====================
-// Returns data shaped for stacked bar charts: [{ label, active, inactive, date }]
-router.get('/classes/active-inactive-trends', requireAdmin, async (req, res) => {
-  try {
-    const { bucket = 'day', startDate, endDate } = req.query;
-
-    const match = {};
-    if (startDate || endDate) {
-      match.createdAt = {};
-      if (startDate) match.createdAt.$gte = new Date(startDate);
-      if (endDate) match.createdAt.$lte = new Date(endDate);
-    }
-
-    const format = getGroupFormatForBucket(bucket);
-
-    const data = await Class.aggregate([
-      { $match: match },
-      {
-        $group: {
-          _id: {
-            period: { $dateToString: { format, date: '$createdAt' } },
-            isActive: '$isActive'
-          },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $group: {
-          _id: '$_id.period',
-          active: { $sum: { $cond: [{ $eq: ['$_id.isActive', true] }, '$count', 0] } },
-          inactive: { $sum: { $cond: [{ $eq: ['$_id.isActive', false] }, '$count', 0] } }
-        }
-      },
-      { $sort: { _id: 1 } },
-      {
-        $project: {
-          _id: 0,
-          label: '$_id',
-          date: '$_id',
-          active: 1,
-          inactive: 1
-        }
-      }
-    ]);
-
-    return res.json({ success: true, bucket, data });
-  } catch (error) {
-    console.error('Class active/inactive trends error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch class trends',
-      details: error.message
-    });
-  }
-});
-
-// ==================== SCHOOLS CREATED TRENDS ====================
-// Returns data shaped for area charts: [{ date, count, schools: [name...] }]
-router.get('/schools/created-trends', requireAdmin, async (req, res) => {
-  try {
-    const { bucket = 'day', startDate, endDate } = req.query;
-
-    const match = { type: 'school' };
-    if (startDate || endDate) {
-      match.createdAt = {};
-      if (startDate) match.createdAt.$gte = new Date(startDate);
-      if (endDate) match.createdAt.$lte = new Date(endDate);
-    }
-
-    const format = getGroupFormatForBucket(bucket);
-
-    // Count unique educators who created a school per period
-    const data = await AcademicSetting.aggregate([
-      { $match: match },
-      {
-        $project: {
-          period: { $dateToString: { format, date: '$createdAt' } },
-          educator: 1,
-          name: 1
-        }
-      },
-      // Group by period + educator to ensure uniqueness per educator
-      {
-        $group: {
-          _id: { period: '$period', educator: '$educator' },
-          name: { $first: '$name' }
-        }
-      },
-      // Now group by period to count distinct educators and collect one school name per educator
-      {
-        $group: {
-          _id: '$_id.period',
-          count: { $sum: 1 },
-          schools: { $push: '$name' }
-        }
-      },
-      { $sort: { '_id': 1 } },
-      {
-        $project: {
-          _id: 0,
-          date: '$_id',
-          count: 1,
-          schools: 1
-        }
-      }
-    ]);
-
-    return res.json({ success: true, bucket, data });
-  } catch (error) {
-    console.error('School created trends error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch school trends',
-      details: error.message
-    });
-  }
-});
 
 // ==================== DASHBOARD OVERVIEW ====================
 router.get('/overview', requireAdmin, async (req, res) => {
@@ -245,24 +137,23 @@ router.get('/overview', requireAdmin, async (req, res) => {
     
     const groupFormat = getGroupFormat(period);
     
-    // Parallel data fetching
-    const [
-      userStats,
-      loginStats,
-      downloadStats,
-      fileActivityStats,
-      deviceStats,
-      browserStats,
-      osStats,
-      hourlyActivity,
-      classActivity,
-      topFiles,
-      userGrowth,
-      registrationStats,
-      platformEngagement
-    ] = await Promise.all([
-      // 1. User Statistics
-      User.aggregate([
+    // Wrap each aggregation in try-catch to handle missing data gracefully
+    let userStats = [];
+    let loginStats = [];
+    let downloadStats = [];
+    let fileActivityStats = [];
+    let deviceStats = [];
+    let browserStats = [];
+    let osStats = [];
+    let hourlyActivity = [];
+    let classActivity = [];
+    let topFiles = [];
+    let userGrowth = [];
+    let registrationStats = [];
+    let platformEngagement = [];
+
+    try {
+      userStats = await User.aggregate([
         {
           $group: {
             _id: '$role',
@@ -284,10 +175,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { _id: 1 } }
-      ]),
-      
-      // 2. Login Statistics
-      Click.aggregate([
+      ]);
+    } catch (err) {
+      console.error('User stats error:', err);
+      userStats = [];
+    }
+
+    try {
+      loginStats = await Click.aggregate([
         {
           $match: {
             type: 'login',
@@ -309,7 +204,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
           $group: {
             _id: "$_id.period",
             count: { $sum: "$count" },
-            uniqueCount: { $size: "$uniqueUsers" },
+            uniqueCount: { $size: { $ifNull: ["$uniqueUsers", []] } },
             locations: {
               $push: {
                 location: "$_id.location",
@@ -318,16 +213,15 @@ router.get('/overview', requireAdmin, async (req, res) => {
             }
           }
         },
-        {
-          $addFields: {
-            uniqueCount: { $size: { $ifNull: ["$uniqueUsers", []] } }
-          }
-        },
-        { $sort: { "_id.period": 1 } }
-      ]),
-      
-      // 3. Download Statistics (PC App)
-      Click.aggregate([
+        { $sort: { "_id": 1 } }
+      ]);
+    } catch (err) {
+      console.error('Login stats error:', err);
+      loginStats = [];
+    }
+
+    try {
+      downloadStats = await Click.aggregate([
         {
           $match: {
             type: 'download',
@@ -344,10 +238,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { "_id.period": 1 } }
-      ]),
-      
-      // 4. File Activity Statistics
-      FileActivity.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Download stats error:', err);
+      downloadStats = [];
+    }
+
+    try {
+      fileActivityStats = await FileActivity.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -363,10 +261,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { "_id.period": 1, "_id.type": 1 } }
-      ]),
-      
-      // 5. Device Statistics
-      Click.aggregate([
+      ]);
+    } catch (err) {
+      console.error('File activity stats error:', err);
+      fileActivityStats = [];
+    }
+
+    try {
+      deviceStats = await Click.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -379,10 +281,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { count: -1 } }
-      ]),
-      
-      // 6. Browser Statistics
-      Click.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Device stats error:', err);
+      deviceStats = [];
+    }
+
+    try {
+      browserStats = await Click.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end },
@@ -397,10 +303,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
         },
         { $sort: { count: -1 } },
         { $limit: 10 }
-      ]),
-      
-      // 7. OS Statistics
-      Click.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Browser stats error:', err);
+      browserStats = [];
+    }
+
+    try {
+      osStats = await Click.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end },
@@ -415,10 +325,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
         },
         { $sort: { count: -1 } },
         { $limit: 10 }
-      ]),
-      
-      // 8. Hourly Activity Pattern
-      Click.aggregate([
+      ]);
+    } catch (err) {
+      console.error('OS stats error:', err);
+      osStats = [];
+    }
+
+    try {
+      hourlyActivity = await Click.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -431,10 +345,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { "_id.hour": 1 } }
-      ]),
-      
-      // 9. Class Activity Statistics
-      FileActivity.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Hourly activity error:', err);
+      hourlyActivity = [];
+    }
+
+    try {
+      classActivity = await FileActivity.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end },
@@ -484,10 +402,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
         },
         { $sort: { totalActivity: -1 } },
         { $limit: 15 }
-      ]),
-      
-      // 10. Top Files by Activity
-      FileActivity.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Class activity error:', err);
+      classActivity = [];
+    }
+
+    try {
+      topFiles = await FileActivity.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -513,10 +435,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
         },
         { $sort: { totalActivity: -1 } },
         { $limit: 15 }
-      ]),
-      
-      // 11. User Growth
-      User.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Top files error:', err);
+      topFiles = [];
+    }
+
+    try {
+      userGrowth = await User.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -547,10 +473,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { _id: 1 } }
-      ]),
-      
-      // 12. Registration Statistics
-      Click.aggregate([
+      ]);
+    } catch (err) {
+      console.error('User growth error:', err);
+      userGrowth = [];
+    }
+
+    try {
+      registrationStats = await Click.aggregate([
         {
           $match: {
             type: 'registration',
@@ -567,10 +497,14 @@ router.get('/overview', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { "_id.period": 1 } }
-      ]),
-      
-      // 13. Platform Engagement (session duration, etc.)
-      Click.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Registration stats error:', err);
+      registrationStats = [];
+    }
+
+    try {
+      platformEngagement = await Click.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end },
@@ -609,8 +543,11 @@ router.get('/overview', requireAdmin, async (req, res) => {
             uniqueUsers: { $sum: 1 }
           }
         }
-      ])
-    ]);
+      ]);
+    } catch (err) {
+      console.error('Platform engagement error:', err);
+      platformEngagement = [];
+    }
     
     // Format data for different types of charts
     const formattedData = {
@@ -673,7 +610,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
           title: 'Login Trends Over Time',
           type: 'line',
           data: loginStats.map(stat => ({
-            date: stat._id.period,
+            date: stat._id,
             total: stat.count,
             unique: stat.uniqueCount
           })),
@@ -805,9 +742,9 @@ router.get('/overview', requireAdmin, async (req, res) => {
           {
             metric: 'Engagement',
             value: platformEngagement[0]?.avgSessionDuration 
-              ? platformEngagement[0].avgSessionDuration / (60 * 1000) // Convert to minutes
+              ? platformEngagement[0].avgSessionDuration / (60 * 1000)
               : 0,
-            fullMark: 30 // 30 minutes max
+            fullMark: 30
           },
           {
             metric: 'Activity',
@@ -868,7 +805,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
           if (stat._id.type === 'view') existing.views = stat.count;
           if (stat._id.type === 'download') existing.downloads = stat.count;
           return acc;
-        }, []).slice(-7), // Last 7 periods
+        }, []).slice(-7),
         stacks: [
           { key: 'views', name: 'Views', color: '#8B5CF6' },
           { key: 'downloads', name: 'Downloads', color: '#EC4899' }
@@ -886,7 +823,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
           engagement: platformEngagement[0]?.avgSessionDuration 
             ? platformEngagement[0].avgSessionDuration / (60 * 1000)
             : 0
-        })).slice(-15), // Last 15 periods
+        })).slice(-15),
         bars: [
           { key: 'newUsers', name: 'New Users', color: '#3B82F6' },
           { key: 'activeUsers', name: 'Active Users', color: '#10B981' }
@@ -1022,7 +959,6 @@ router.get('/filter', requireAdmin, async (req, res) => {
         if (activityType) filter.activityType = activityType;
         if (classCode) filter.classCode = classCode;
         if (role) {
-          // Need to look up user role
           const users = await User.find({ role }).select('_id');
           filter.studentId = { $in: users.map(u => u._id) };
         }
@@ -1051,13 +987,10 @@ router.get('/filter', requireAdmin, async (req, res) => {
         });
     }
     
-    // Count total documents
     total = await model.countDocuments(filter);
     
-    // Fetch data with pagination
     let query = model.find(filter).sort(sort).skip(skip).limit(parseInt(limit));
     
-    // Add population based on model
     switch(type) {
       case 'logins':
       case 'downloads':
@@ -1085,7 +1018,6 @@ router.get('/filter', requireAdmin, async (req, res) => {
     
     data = await query.lean();
     
-    // Calculate summary stats
     const summary = {
       total,
       page: parseInt(page),
@@ -1113,7 +1045,7 @@ router.get('/filter', requireAdmin, async (req, res) => {
     console.error('Filter error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch class status analytics',
+      error: 'Failed to fetch filtered data',
       details: error.message
     });
   }
@@ -1136,18 +1068,16 @@ router.get('/feedback', requireAdmin, async (req, res) => {
     
     const groupFormat = getGroupFormat(period);
     
-    // Get feedback analytics
-    const [
-      feedbackStats,
-      feedbackTrends,
-      feedbackByCategory,
-      feedbackByRating,
-      feedbackByRole,
-      feedbackByStatus,
-      feedbackBySchool
-    ] = await Promise.all([
-      // 1. Overall feedback statistics
-      Feedback.aggregate([
+    let feedbackStats = [];
+    let feedbackTrends = [];
+    let feedbackByCategory = [];
+    let feedbackByRating = [];
+    let feedbackByRole = [];
+    let feedbackByStatus = [];
+    let feedbackBySchool = [];
+
+    try {
+      feedbackStats = await Feedback.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -1166,10 +1096,14 @@ router.get('/feedback', requireAdmin, async (req, res) => {
             }
           }
         }
-      ]),
-      
-      // 2. Feedback trends over time
-      Feedback.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Feedback stats error:', err);
+      feedbackStats = [];
+    }
+
+    try {
+      feedbackTrends = await Feedback.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -1191,10 +1125,14 @@ router.get('/feedback', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { "_id.period": 1 } }
-      ]),
-      
-      // 3. Feedback by category
-      Feedback.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Feedback trends error:', err);
+      feedbackTrends = [];
+    }
+
+    try {
+      feedbackByCategory = await Feedback.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -1214,10 +1152,14 @@ router.get('/feedback', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { count: -1 } }
-      ]),
-      
-      // 4. Feedback by rating
-      Feedback.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Feedback by category error:', err);
+      feedbackByCategory = [];
+    }
+
+    try {
+      feedbackByRating = await Feedback.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -1236,10 +1178,14 @@ router.get('/feedback', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { "_id": 1 } }
-      ]),
-      
-      // 5. Feedback by user role
-      Feedback.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Feedback by rating error:', err);
+      feedbackByRating = [];
+    }
+
+    try {
+      feedbackByRole = await Feedback.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -1259,10 +1205,14 @@ router.get('/feedback', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { count: -1 } }
-      ]),
-      
-      // 6. Feedback by status
-      Feedback.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Feedback by role error:', err);
+      feedbackByRole = [];
+    }
+
+    try {
+      feedbackByStatus = await Feedback.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -1276,10 +1226,14 @@ router.get('/feedback', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { count: -1 } }
-      ]),
-      
-      // 7. Feedback by school
-      Feedback.aggregate([
+      ]);
+    } catch (err) {
+      console.error('Feedback by status error:', err);
+      feedbackByStatus = [];
+    }
+
+    try {
+      feedbackBySchool = await Feedback.aggregate([
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end }
@@ -1299,12 +1253,13 @@ router.get('/feedback', requireAdmin, async (req, res) => {
           }
         },
         { $sort: { count: -1 } }
-      ])
-    ]);
+      ]);
+    } catch (err) {
+      console.error('Feedback by school error:', err);
+      feedbackBySchool = [];
+    }
     
-    // Format data for charts
     const formattedData = {
-      // Summary stats
       summary: feedbackStats[0] || {
         total: 0,
         avgRating: 0,
@@ -1312,7 +1267,6 @@ router.get('/feedback', requireAdmin, async (req, res) => {
         responded: 0
       },
       
-      // Line chart for feedback trends
       feedbackTrends: {
         title: 'Feedback Trends Over Time',
         type: 'line',
@@ -1331,7 +1285,6 @@ router.get('/feedback', requireAdmin, async (req, res) => {
         ]
       },
       
-      // Bar chart for categories
       feedbackByCategory: {
         title: 'Feedback by Category',
         type: 'vertical-bar',
@@ -1347,7 +1300,6 @@ router.get('/feedback', requireAdmin, async (req, res) => {
         colors: ['#3B82F6']
       },
       
-      // Pie chart for ratings distribution
       ratingDistribution: {
         title: 'Rating Distribution',
         type: 'pie',
@@ -1360,7 +1312,6 @@ router.get('/feedback', requireAdmin, async (req, res) => {
         colors: ['#EF4444', '#F59E0B', '#FCD34D', '#10B981', '#059669']
       },
       
-      // Grouped bar chart by role
       feedbackByRole: {
         title: 'Feedback by User Role',
         type: 'grouped-bar',
@@ -1378,7 +1329,6 @@ router.get('/feedback', requireAdmin, async (req, res) => {
         ]
       },
       
-      // Pie chart for status
       statusDistribution: {
         title: 'Feedback Status Distribution',
         type: 'pie',
@@ -1390,7 +1340,6 @@ router.get('/feedback', requireAdmin, async (req, res) => {
         colors: ['#F59E0B', '#10B981']
       },
       
-      // Raw data for tables
       rawData: {
         byCategory: feedbackByCategory,
         byRating: feedbackByRating,
@@ -1430,17 +1379,48 @@ router.get('/export', requireAdmin, async (req, res) => {
       ...filters 
     } = req.query;
     
-    // Use the filter endpoint to get data
-    const filterResponse = await axios.get(`https://btbtestservice.onrender.com/api/analytics/filter`, {
-      params: { ...filters, type, limit: 10000 },
-      headers: req.headers
-    });
+    // Build filter object
+    const filter = {};
+    if (filters.startDate) filter.createdAt = { $gte: new Date(filters.startDate) };
+    if (filters.endDate) filter.createdAt = { ...filter.createdAt, $lte: new Date(filters.endDate) };
+    if (filters.role) filter.userRole = filters.role;
+    if (filters.deviceType) filter.deviceType = filters.deviceType;
+    if (filters.browser) filter.browser = filters.browser;
     
-    if (!filterResponse.data.success) {
-      throw new Error(filterResponse.data.error);
+    let data = [];
+    let model;
+    
+    switch(type) {
+      case 'logins':
+        model = Click;
+        filter.type = 'login';
+        break;
+      case 'downloads':
+        model = Click;
+        filter.type = 'download';
+        filter.location = 'homepage_pc_app';
+        break;
+      case 'file-activities':
+        model = FileActivity;
+        if (filters.activityType) filter.activityType = filters.activityType;
+        if (filters.classCode) filter.classCode = filters.classCode;
+        break;
+      case 'registrations':
+        model = Click;
+        filter.type = 'registration';
+        break;
+      case 'users':
+        model = User;
+        if (filters.role) filter.role = filters.role;
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid export type'
+        });
     }
     
-    const data = filterResponse.data.data;
+    data = await model.find(filter).limit(10000).lean();
     
     if (format === 'csv') {
       if (data.length === 0) {
@@ -1450,7 +1430,6 @@ router.get('/export', requireAdmin, async (req, res) => {
         });
       }
       
-      // Convert to CSV
       const headers = Object.keys(data[0] || {});
       const csvRows = [
         headers.join(','),
@@ -1471,7 +1450,11 @@ router.get('/export', requireAdmin, async (req, res) => {
       return res.send(csvRows.join('\n'));
     }
     
-    res.json(filterResponse.data);
+    res.json({
+      success: true,
+      data,
+      count: data.length
+    });
     
   } catch (error) {
     console.error('Export error:', error);
@@ -1490,51 +1473,62 @@ router.get('/realtime', requireAdmin, async (req, res) => {
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    const [
-      activeUsersNow,
-      recentLogins,
-      recentDownloads,
-      recentFileActivities,
-      todayStats,
-      systemHealth
-    ] = await Promise.all([
-      // Active users in last 15 minutes
-      User.countDocuments({
+    let activeUsersNow = 0;
+    let recentLogins = [];
+    let recentDownloads = [];
+    let recentFileActivities = [];
+    let todayStats = { logins: 0, downloads: 0, fileActivities: 0, newUsers: 0 };
+    let systemHealth = { database: 'connected', api: 'online', uptime: process.uptime(), memory: process.memoryUsage(), timestamp: now.toISOString() };
+
+    try {
+      activeUsersNow = await User.countDocuments({
         lastLogin: { $gte: new Date(now.getTime() - 15 * 60 * 1000) }
-      }),
-      
-      // Recent logins
-      Click.find({
+      });
+    } catch (err) {
+      console.error('Active users error:', err);
+    }
+
+    try {
+      recentLogins = await Click.find({
         type: 'login',
         createdAt: { $gte: oneHourAgo }
       })
       .populate('userId', 'fullName email role')
       .sort({ createdAt: -1 })
       .limit(10)
-      .lean(),
-      
-      // Recent downloads
-      Click.find({
+      .lean();
+    } catch (err) {
+      console.error('Recent logins error:', err);
+    }
+
+    try {
+      recentDownloads = await Click.find({
         type: 'download',
         location: 'homepage_pc_app',
         createdAt: { $gte: oneHourAgo }
       })
       .sort({ createdAt: -1 })
       .limit(10)
-      .lean(),
-      
-      // Recent file activities
-      FileActivity.find({
+      .lean();
+    } catch (err) {
+      console.error('Recent downloads error:', err);
+    }
+
+    try {
+      recentFileActivities = await FileActivity.find({
         createdAt: { $gte: oneHourAgo }
       })
       .populate('studentId', 'fullName email')
       .populate('fileId', 'name originalName')
       .sort({ createdAt: -1 })
       .limit(10)
-      .lean(),
-      
-      // Today's stats
-      {
+      .lean();
+    } catch (err) {
+      console.error('Recent file activities error:', err);
+    }
+
+    try {
+      todayStats = {
         logins: await Click.countDocuments({
           type: 'login',
           createdAt: { $gte: todayStart }
@@ -1550,17 +1544,10 @@ router.get('/realtime', requireAdmin, async (req, res) => {
         newUsers: await User.countDocuments({
           createdAt: { $gte: todayStart }
         })
-      },
-      
-      // System health
-      {
-        database: 'connected',
-        api: 'online',
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        timestamp: now.toISOString()
-      }
-    ]);
+      };
+    } catch (err) {
+      console.error('Today stats error:', err);
+    }
     
     res.json({
       success: true,
@@ -1593,7 +1580,8 @@ router.get('/test', (req, res) => {
       'GET /api/analytics/overview',
       'GET /api/analytics/filter',
       'GET /api/analytics/export',
-      'GET /api/analytics/realtime'
+      'GET /api/analytics/realtime',
+      'GET /api/analytics/feedback'
     ]
   });
 });
@@ -1614,6 +1602,7 @@ router.post('/download-homepage', async (req, res) => {
     await click.save();
     res.json({ success: true });
   } catch (error) {
+    console.error('Download tracking error:', error);
     res.status(500).json({ success: false, error: 'Failed to track download' });
   }
 });
