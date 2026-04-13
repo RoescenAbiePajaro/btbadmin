@@ -1607,4 +1607,61 @@ router.post('/download-homepage', async (req, res) => {
   }
 });
 
+// ==================== DEBUG ENDPOINT ====================
+router.get('/debug-login-clicks', requireAdmin, async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    
+    const loginSuccess = await Click.countDocuments({
+      type: 'login',
+      location: 'login_success',
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+    
+    const homepageLogin = await Click.countDocuments({
+      type: 'login',
+      location: 'homepage_login_button',
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+    
+    const totalLogins = await Click.countDocuments({
+      type: 'login',
+      location: { $in: ['login_success', 'homepage_login_button'] },
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+    
+    // Get recent entries for debugging
+    const recent = await Click.find({
+      type: 'login',
+      location: { $in: ['login_success', 'homepage_login_button'] }
+    }).sort({ createdAt: -1 }).limit(10);
+    
+    res.json({
+      success: true,
+      counts: {
+        login_success: loginSuccess,
+        homepage_login_button: homepageLogin,
+        total: totalLogins
+      },
+      recent: recent.map(click => ({
+        date: click.createdAt,
+        location: click.location,
+        type: click.type,
+        userId: click.userId,
+        userRole: click.userRole
+      })),
+      dateRange: {
+        start: thirtyDaysAgo,
+        end: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

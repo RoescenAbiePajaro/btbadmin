@@ -524,6 +524,22 @@ export default function AdminDashboard() {
     setTimeRange(range);
   };
 
+  // Debug function to check login clicks
+  const checkLoginClicks = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        'https://btbtestservice.onrender.com/api/analytics/debug-login-clicks',
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log('Login clicks debug data:', response.data);
+      alert(`Login Success: ${response.data.counts.login_success}\nHomepage Login Button: ${response.data.counts.homepage_login_button}\nTotal: ${response.data.counts.total}`);
+    } catch (error) {
+      console.error('Debug error:', error);
+      alert('Error checking login clicks: ' + error.message);
+    }
+  };
+
   if (loading && !statistics) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -549,6 +565,14 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex items-center gap-4">
+              <button
+                onClick={checkLoginClicks}
+                className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition duration-200"
+                title="Debug Login Clicks"
+              >
+                <FiSearch className="w-5 h-5" />
+              </button>
+              
               <button
                 onClick={() => {
                   fetchDashboardData();
