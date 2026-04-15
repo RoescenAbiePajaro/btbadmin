@@ -43,6 +43,10 @@ export default function AdminDashboard() {
   const [materialSearch, setMaterialSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
 
+  // Pagination states for Users tab
+  const [usersCurrentPage, setUsersCurrentPage] = useState(1);
+  const usersItemsPerPage = 10;
+
   // Filter states
   const [filters, setFilters] = useState({
     startDate: '',
@@ -52,7 +56,7 @@ export default function AdminDashboard() {
     activityType: '',
     deviceType: '',
     browser: '',
-    sortOrder: 'newest' // Added sortOrder to filters
+    sortOrder: 'newest'
   });
 
   // Helper function to format file size
@@ -494,6 +498,11 @@ export default function AdminDashboard() {
     }
   }, [activeTab]);
 
+  // Reset users page when filters or search changes
+  useEffect(() => {
+    setUsersCurrentPage(1);
+  }, [filteredData, userSearch, filters]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -539,6 +548,76 @@ export default function AdminDashboard() {
       alert('Error checking login clicks: ' + error.message);
     }
   };
+
+  // ─── Users Pagination Helpers ───────────────────────────────────────────────
+
+  const getFilteredUsers = () => {
+    let users = filteredData?.data || [];
+
+    // Apply text search
+    if (userSearch) {
+      users = users.filter(user => {
+        const searchText = [
+          user.fullName || '',
+          user.email || '',
+          user.role || '',
+          deriveUserSchool(user),
+          user.isActive ? 'active' : 'inactive',
+          user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''
+        ].join(' ').toLowerCase();
+        return searchText.includes(userSearch.toLowerCase());
+      });
+    }
+
+    // Apply role filter
+    if (filters.role) {
+      users = users.filter(user => user.role === filters.role);
+    }
+
+    // Apply sorting
+    users = [...users].sort((a, b) => {
+      const sortOrder = filters.sortOrder || 'newest';
+      switch (sortOrder) {
+        case 'newest':
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        case 'oldest':
+          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        case 'a-z':
+          return (a.fullName || '').localeCompare(b.fullName || '');
+        case 'z-a':
+          return (b.fullName || '').localeCompare(a.fullName || '');
+        default:
+          return 0;
+      }
+    });
+
+    // Apply date filtering
+    if (filters.startDate || filters.endDate) {
+      users = users.filter(user => {
+        if (!user.createdAt) return false;
+        const userDate = new Date(user.createdAt);
+        const startDate = filters.startDate ? new Date(filters.startDate) : null;
+        const endDate = filters.endDate ? new Date(filters.endDate) : null;
+        if (startDate && userDate < startDate) return false;
+        if (endDate && userDate > endDate) return false;
+        return true;
+      });
+    }
+
+    return users;
+  };
+
+  const getPaginatedUsers = () => {
+    const filtered = getFilteredUsers();
+    const startIndex = (usersCurrentPage - 1) * usersItemsPerPage;
+    return filtered.slice(startIndex, startIndex + usersItemsPerPage);
+  };
+
+  const getUsersTotalPages = () => {
+    return Math.ceil(getFilteredUsers().length / usersItemsPerPage);
+  };
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   if (loading && !statistics) {
     return (
@@ -926,7 +1005,7 @@ export default function AdminDashboard() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             Email
                           </th>
-                          <th className="px6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                             Role
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -941,136 +1020,125 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
-                        {(() => {
-                          // Get users from filteredData
-                          let users = filteredData.data || [];
-                          
-                          // Apply text search filtering
-                          if (userSearch) {
-                            users = users.filter(user => {
-                              const searchText = [
-                                user.fullName || '',
-                                user.email || '',
-                                user.role || '',
-                                deriveUserSchool(user),
-                                user.isActive ? 'active' : 'inactive',
-                                user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''
-                              ].join(' ').toLowerCase();
-                              return searchText.includes(userSearch.toLowerCase());
-                            });
-                          }
-                          
-                          // Apply role filter
-                          if (filters.role) {
-                            users = users.filter(user => user.role === filters.role);
-                          }
-                          
-                          // Apply sorting
-                          users.sort((a, b) => {
-                            const sortOrder = filters.sortOrder || 'newest';
-                            switch (sortOrder) {
-                              case 'newest':
-                                return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-                              case 'oldest':
-                                return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-                              case 'a-z':
-                                return (a.fullName || '').localeCompare(b.fullName || '');
-                              case 'z-a':
-                                return (b.fullName || '').localeCompare(a.fullName || '');
-                              default:
-                                return 0;
-                            }
-                          });
-                          
-                          // Apply date filtering
-                          if (filters.startDate || filters.endDate) {
-                            users = users.filter(user => {
-                              if (!user.createdAt) return false;
-                              const userDate = new Date(user.createdAt);
-                              const startDate = filters.startDate ? new Date(filters.startDate) : null;
-                              const endDate = filters.endDate ? new Date(filters.endDate) : null;
-                              
-                              if (startDate && userDate < startDate) return false;
-                              if (endDate && userDate > endDate) return false;
-                              return true;
-                            });
-                          }
-                          
-                          return users.length > 0 ? (
-                            users.map((user, index) => {
-                              let userSchool = user.school;
-                              
-                              if (user.role === 'educator') {
-                                if (educatorClassSummary?.[user._id]?.school) {
-                                  userSchool = educatorClassSummary[user._id].school;
-                                } else if (classCodes.length > 0) {
-                                  const educatorClasses = classCodes.filter(cls => 
-                                    cls.educator?._id === user._id || 
-                                    cls.educatorId === user._id
-                                  );
-                                  if (educatorClasses.length > 0) {
-                                    userSchool = educatorClasses[0]?.school;
-                                  }
+                        {getPaginatedUsers().length > 0 ? (
+                          getPaginatedUsers().map((user, index) => {
+                            let userSchool = user.school;
+
+                            if (user.role === 'educator') {
+                              if (educatorClassSummary?.[user._id]?.school) {
+                                userSchool = educatorClassSummary[user._id].school;
+                              } else if (classCodes.length > 0) {
+                                const educatorClasses = classCodes.filter(cls =>
+                                  cls.educator?._id === user._id ||
+                                  cls.educatorId === user._id
+                                );
+                                if (educatorClasses.length > 0) {
+                                  userSchool = educatorClasses[0]?.school;
                                 }
                               }
-                              
-                              return (
-                                <tr key={user._id || index} className="hover:bg-gray-800">
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    {user.fullName || 'N/A'}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    {user.email}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    <span className={`px-2 py-1 rounded text-xs ${
-                                      user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
-                                      user.role === 'educator' ? 'bg-pink-500/20 text-pink-400' :
-                                      'bg-blue-500/20 text-blue-400'
-                                    }`}>
-                                      {user.role}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    {userSchool ? getSchoolName(userSchool) : 'Not specified'}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    <span className={`px-2 py-1 rounded text-xs ${
-                                      user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                                    }`}>
-                                      {user.isActive ? 'Active' : 'Inactive'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          ) : (
-                            <tr>
-                              <td colSpan="6" className="px-6 py-8 text-center text-gray-400">
-                                <div className="flex flex-col items-center justify-center">
-                                  <FiUsers className="w-12 h-12 text-gray-600 mb-3" />
-                                  <p>No users found matching your filters</p>
-                                  {(userSearch || filters.role || filters.startDate || filters.endDate) && (
-                                    <button
-                                      onClick={() => {
-                                        setUserSearch('');
-                                        resetFilters();
-                                      }}
-                                      className="mt-2 text-violet-400 hover:text-violet-300 text-sm"
-                                    >
-                                      Clear all filters
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })()}
+                            }
+
+                            return (
+                              <tr key={user._id || index} className="hover:bg-gray-800">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.fullName || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                                    user.role === 'educator' ? 'bg-pink-500/20 text-pink-400' :
+                                    'bg-blue-500/20 text-blue-400'
+                                  }`}>
+                                    {user.role}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {userSchool ? getSchoolName(userSchool) : 'Not specified'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                  }`}>
+                                    {user.isActive ? 'Active' : 'Inactive'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="px-6 py-8 text-center text-gray-400">
+                              <div className="flex flex-col items-center justify-center">
+                                <FiUsers className="w-12 h-12 text-gray-600 mb-3" />
+                                <p>No users found matching your filters</p>
+                                {(userSearch || filters.role || filters.startDate || filters.endDate) && (
+                                  <button
+                                    onClick={() => {
+                                      setUserSearch('');
+                                      resetFilters();
+                                    }}
+                                    className="mt-2 text-violet-400 hover:text-violet-300 text-sm"
+                                  >
+                                    Clear all filters
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
+
+                    {/* Pagination Controls */}
+                    {getUsersTotalPages() > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-700">
+                        <button
+                          onClick={() => setUsersCurrentPage(Math.max(1, usersCurrentPage - 1))}
+                          disabled={usersCurrentPage === 1}
+                          className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+
+                        <div className="flex gap-1">
+                          {Array.from({ length: getUsersTotalPages() }, (_, i) => i + 1).map((page) => (
+                            <button
+                              key={page}
+                              onClick={() => setUsersCurrentPage(page)}
+                              className={`px-3 py-2 rounded-lg transition duration-200 ${
+                                usersCurrentPage === page
+                                  ? 'bg-violet-600 text-white'
+                                  : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setUsersCurrentPage(Math.min(getUsersTotalPages(), usersCurrentPage + 1))}
+                          disabled={usersCurrentPage === getUsersTotalPages()}
+                          className="px-3 py-2 border border-gray-700 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+
+                        <span className="text-gray-400 text-sm ml-4">
+                          Page {usersCurrentPage} of {getUsersTotalPages()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-12">
