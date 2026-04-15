@@ -13,7 +13,8 @@ import {
   FiLogOut, FiHome, FiBarChart2, FiActivity, FiEye, FiUpload,
   FiClock, FiGlobe, FiMonitor, FiUserCheck, FiDatabase,
   FiAlertCircle, FiCheckCircle, FiRefreshCw, FiSearch,
-  FiChevronUp, FiChevronDown, FiMoreVertical, FiMessageSquare, FiStar, FiSend, FiX
+  FiChevronUp, FiChevronDown, FiMoreVertical, FiMessageSquare, FiStar, FiSend, FiX,
+  FiMenu
 } from 'react-icons/fi';
 
 export default function AdminDashboard() {
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
   const [educatorUsers, setEducatorUsers] = useState({});
   const [educatorSharedFiles, setEducatorSharedFiles] = useState([]);
   const [classCodes, setClassCodes] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [academicSettings, setAcademicSettings] = useState({
     schools: [],
     courses: [],
@@ -619,6 +621,15 @@ export default function AdminDashboard() {
 
   // ────────────────────────────────────────────────────────────────────────────
 
+  const sidebarTabs = [
+    { id: 'overview', label: 'Overview', icon: <FiHome size={20} /> },
+    { id: 'users', label: 'Users', icon: <FiUsers size={20} /> },
+    { id: 'classes', label: 'Classes', icon: <FiBook size={20} /> },
+    { id: 'activities', label: 'Learning Materials', icon: <FiActivity size={20} /> },
+    { id: 'feedback', label: 'Feedback', icon: <FiMessageSquare size={20} /> },
+    { id: 'charts', label: 'Charts', icon: <FiBarChart2 size={20} /> }
+  ];
+
   if (loading && !statistics) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -631,190 +642,259 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <h1 className="text-base sm:text-xl font-bold flex items-center gap-2">
-                <FiDatabase className="text-blue-500" />
-                Admin Dashboard
-              </h1>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <button
-                onClick={checkLoginClicks}
-                className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition duration-200"
-                title="Debug Login Clicks"
-              >
-                <FiSearch className="w-5 h-5" />
-              </button>
-              
-              <button
-                onClick={() => {
-                  fetchDashboardData();
-                  fetchAnalyticsData();
-                }}
-                className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition duration-200"
-                title="Refresh Data"
-              >
-                <FiRefreshCw className="w-5 h-5" />
-              </button>
-              
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200"
-              >
-                <FiLogOut /> Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-6">
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+    <div className="min-h-screen bg-black text-white flex">
+      {/* Mobile Menu Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 border-r border-gray-800 transition-all duration-300 flex flex-col fixed h-full z-50 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+          {sidebarOpen && (
             <div className="flex items-center gap-2">
-              <FiAlertCircle className="text-red-400" />
-              <p className="text-red-300">{error}</p>
+              <FiDatabase className="text-blue-500" />
+              <h1 className="text-xl font-bold hidden sm:block">Admin Panel</h1>
+              <h1 className="text-lg font-bold sm:hidden">Admin</h1>
             </div>
-          </div>
-        )}
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Users</p>
-                <p className="text-3xl font-bold mt-2">
-                  {statistics?.users?.total || 0}
-                </p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {statistics?.users?.byRole?.map(role => (
-                    <span key={role._id} className="text-xs px-2 py-1 bg-gray-800 rounded">
-                      {role._id}: {role.count}
-                    </span>
-                  )) || (
-                    <span className="text-gray-500 text-sm">No role data</span>
-                  )}
-                </div>
-              </div>
-              <FiUsers className="w-8 h-8 text-yellow-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Classes</p>
-                <p className="text-3xl font-bold mt-2">
-                  {statistics?.classes?.active || 0}
-                </p>
-                <p className="text-gray-400 text-sm mt-2">
-                  Total: {statistics?.classes?.total || 0}
-                </p>
-              </div>
-              <FiBook className="w-8 h-8 text-green-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Feedback</p>
-                <p className="text-3xl font-bold mt-2">
-                  {feedbackStats?.total || 0}
-                </p>
-              </div>
-              <FiMessageSquare className="w-8 h-8 text-indigo-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Learning Materials</p>
-                <p className="text-3xl font-bold mt-2">
-                  {statistics?.materials?.total || 0}
-                </p>
-                <div className="text-gray-400 text-sm mt-2 space-y-1">
-                  <div>Views: {statistics?.activities?.views || 0}</div>
-                  <div>Downloads: {statistics?.activities?.downloads || 0}</div>
-                </div>
-              </div>
-              <FiFileText className="w-8 h-8 text-pink-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total of School Created</p>
-                <p className="text-3xl font-bold mt-2">
-                  {statistics?.schools?.total || 0}
-                </p>
-              </div>
-              <FiHome className="w-8 h-8 text-pink-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Page Visit</p>
-                <p className="text-3xl font-bold mt-2">
-                  {analyticsData?.rawData?.platformMetrics?.totalLogins || 0}
-                </p>
-              </div>
-              <FiActivity className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">PC App Downloads</p>
-                <p className="text-3xl font-bold mt-2">
-                  {analyticsData?.rawData?.platformMetrics?.totalDownloads || 0}
-                </p>
-              </div>
-              <FiDownload className="w-8 h-8 text-orange-500" />
-            </div>
-          </div>
+          )}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-800 transition duration-200"
+          >
+            <FiMenu size={20} />
+          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-gray-800">
-          <div className="flex space-x-4 overflow-x-auto">
-            {[
-              { id: 'overview', label: 'Overview', icon: <FiHome /> },
-              { id: 'users', label: 'Users', icon: <FiUsers /> },
-              { id: 'classes', label: 'Classes', icon: <FiBook /> },
-              { id: 'activities', label: 'Learning Materials', icon: <FiActivity /> },
-              { id: 'feedback', label: 'Feedback', icon: <FiMessageSquare /> },
-              { id: 'charts', label: 'Charts', icon: <FiBarChart2 /> }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-2 px-4 flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === tab.id 
-                    ? 'border-b-2 border-violet-500 text-violet-500' 
-                    : 'text-gray-400 hover:text-gray-300'
-                }`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
+        {/* Navigation Items */}
+        <nav className="flex-1 py-6 overflow-y-auto">
+          {sidebarTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                // Close sidebar on mobile after selection
+                if (window.innerWidth < 1024) {
+                  setSidebarOpen(false);
+                }
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 transition duration-200 ${
+                activeTab === tab.id
+                  ? 'bg-violet-500/20 text-violet-500 border-r-2 border-violet-500'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              {tab.icon}
+              {sidebarOpen && (
+                <span className="text-sm sm:text-base">{tab.label}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-gray-800 space-y-2">
+          <button
+            onClick={() => {
+              fetchDashboardData();
+              fetchAnalyticsData();
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition duration-200 text-gray-400 hover:text-white`}
+          >
+            <FiRefreshCw size={20} />
+            {sidebarOpen && <span className="text-sm sm:text-base">Refresh</span>}
+          </button>
+          
+          <button
+            onClick={checkLoginClicks}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition duration-200 text-gray-400 hover:text-white`}
+          >
+            <FiSearch size={20} />
+            {sidebarOpen && <span className="text-sm sm:text-base">Debug</span>}
+          </button>
+          
+          <button
+            onClick={handleLogout}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 transition duration-200 text-white`}
+          >
+            <FiLogOut size={20} />
+            {sidebarOpen && <span className="text-sm sm:text-base">Logout</span>}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} ml-0`}>
+        {/* Mobile Header with Menu Button */}
+        <div className="lg:hidden bg-gray-900 border-b border-gray-800 sticky top-0 z-30">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-lg hover:bg-gray-800 transition duration-200"
+            >
+              <FiMenu size={20} />
+            </button>
+            <h2 className="text-lg font-bold text-white">
+              {sidebarTabs.find(tab => tab.id === activeTab)?.label || 'Dashboard'}
+            </h2>
+            <div className="w-10" /> {/* Spacer for balance */}
           </div>
         </div>
+        
+        {/* Header */}
+        <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-40 hidden lg:block">
+          <div className="px-6 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-white">
+                  {sidebarTabs.find(tab => tab.id === activeTab)?.label || 'Dashboard'}
+                </h2>
+                <p className="text-gray-400 text-sm mt-1">Welcome back, Admin</p>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* Time range selector for charts */}
+                {activeTab === 'charts' && (
+                  <select
+                    value={timeRange}
+                    onChange={(e) => handleTimeRangeChange(e.target.value)}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                  >
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                  </select>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
 
-        {/* Tab Content */}
-        <div className="mb-8">
+        <div className="p-4 sm:p-6">
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <FiAlertCircle className="text-red-400 flex-shrink-0" />
+                <p className="text-red-300 text-sm">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Stats Overview - Only show on overview tab */}
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4 sm:gap-6 mb-8">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm">Total Users</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+                      {statistics?.users?.total || 0}
+                    </p>
+                    <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
+                      {statistics?.users?.byRole?.slice(0, 2).map(role => (
+                        <span key={role._id} className="text-xs px-1 sm:px-2 py-1 bg-gray-800 rounded">
+                          {role._id}: {role.count}
+                        </span>
+                      )) || (
+                        <span className="text-gray-500 text-xs sm:text-sm">No role data</span>
+                      )}
+                      {statistics?.users?.byRole?.length > 2 && (
+                        <span className="text-xs px-1 sm:px-2 py-1 bg-gray-800 rounded">
+                          +{statistics.users.byRole.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <FiUsers className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500 flex-shrink-0" />
+                </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm">Classes</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+                      {statistics?.classes?.active || 0}
+                    </p>
+                    <p className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2">
+                      Total: {statistics?.classes?.total || 0}
+                    </p>
+                  </div>
+                  <FiBook className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 flex-shrink-0" />
+                </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm">Total Feedback</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+                      {feedbackStats?.total || 0}
+                    </p>
+                  </div>
+                  <FiMessageSquare className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-500 flex-shrink-0" />
+                </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm">Learning Materials</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+                      {statistics?.materials?.total || 0}
+                    </p>
+                    <div className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2 space-y-1">
+                      <div className="text-xs">Views: {statistics?.activities?.views || 0}</div>
+                      <div className="text-xs">Downloads: {statistics?.activities?.downloads || 0}</div>
+                    </div>
+                  </div>
+                  <FiFileText className="w-6 h-6 sm:w-8 sm:h-8 text-pink-500 flex-shrink-0" />
+                </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm">Schools Created</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+                      {statistics?.schools?.total || 0}
+                    </p>
+                  </div>
+                  <FiHome className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-500 flex-shrink-0" />
+                </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm">Total Page Visits</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+                      {analyticsData?.rawData?.platformMetrics?.totalLogins || 0}
+                    </p>
+                  </div>
+                  <FiActivity className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500 flex-shrink-0" />
+                </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm">PC App Downloads</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+                      {analyticsData?.rawData?.platformMetrics?.totalDownloads || 0}
+                    </p>
+                  </div>
+                  <FiDownload className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500 flex-shrink-0" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Content */}
           {activeTab === 'overview' && (
             <div className="space-y-8">
               {/* Platform Metrics */}
