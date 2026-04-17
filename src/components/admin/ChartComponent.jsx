@@ -25,8 +25,9 @@ export default function ChartComponent({
   timeRange,
   handleTimeRangeChange,
   classStatusData,
-  classTrendsData
-  // Removed: feedbackData prop
+  classTrendsData,
+  feedbackData,
+  loginCountsByRole
 }) {
   const [dateFilters, setDateFilters] = useState({
     startDate: '',
@@ -243,6 +244,54 @@ export default function ChartComponent({
                 />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Login Distribution by Role - Donut Chart */}
+      {loginCountsByRole?.data && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white">Login Distribution by Role</h3>
+            <div className="text-sm text-gray-400">
+              Total: {loginCountsByRole.total || 0} logins
+            </div>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={loginCountsByRole.data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                  labelLine={false}
+                >
+                  {loginCountsByRole.data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }}
+                  formatter={(value, name) => [`${value} logins`, name]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex justify-center gap-6 mt-4">
+            {loginCountsByRole.data.map((item) => (
+              <div key={item.name} className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="text-sm text-gray-300">{item.name}: {item.value}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   });
   const [feedbackStats, setFeedbackStats] = useState(null);
   const [feedbackData, setFeedbackData] = useState(null);
+  const [loginCountsByRole, setLoginCountsByRole] = useState(null);
   const [classSearch, setClassSearch] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
@@ -465,15 +466,36 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch login counts by role
+  const fetchLoginCountsByRole = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `https://btbtestservice.onrender.com/api/analytics/login-counts-by-role?period=${timeRange}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setLoginCountsByRole(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching login counts by role:', error);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     fetchAcademicSettings();
     fetchFeedbackStats();
     fetchFeedbackChartData();
+    fetchLoginCountsByRole();
   }, []);
 
   useEffect(() => {
     fetchAnalyticsData();
+    fetchLoginCountsByRole();
   }, [timeRange]);
 
   useEffect(() => {
@@ -972,6 +994,7 @@ export default function AdminDashboard() {
               timeRange={timeRange}
               handleTimeRangeChange={handleTimeRangeChange}
               feedbackData={feedbackData}
+              loginCountsByRole={loginCountsByRole}
             />
           )}
 
