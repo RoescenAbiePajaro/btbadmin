@@ -1,4 +1,3 @@
-// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -246,126 +245,6 @@ const getOSFromUA = (userAgent) => {
 };
 
 // =====================
-// 📊 TRACK LOGIN SUCCESS (RESTORED - FIXES 500 ERRORS)
-// =====================
-app.post('/api/analytics/login', verifyToken, async (req, res) => {
-  try {
-    const click = new Click({
-      type: 'login',
-      location: 'login_success', // RESTORED - This was missing
-      userId: req.user.id,
-      userRole: req.user.role,
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-      deviceType: getDeviceType(req.headers['user-agent']),
-      browser: getBrowserFromUA(req.headers['user-agent']),
-      operatingSystem: getOSFromUA(req.headers['user-agent']),
-      metadata: {
-        loginMethod: 'email',
-        timestamp: new Date()
-      }
-    });
-    
-    await click.save();
-    console.log('✅ Login tracked successfully for user:', req.user.id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Login tracking error:', error);
-    // Don't fail the request if tracking fails
-    res.json({ success: false, error: 'Tracking failed but login successful' });
-  }
-});
-
-// Track homepage download
-app.post('/api/analytics/download-homepage', async (req, res) => {
-  try {
-    const click = new Click({
-      type: 'download',
-      location: 'homepage_pc_app',
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-      deviceType: getDeviceType(req.headers['user-agent']),
-      browser: getBrowserFromUA(req.headers['user-agent']),
-      operatingSystem: getOSFromUA(req.headers['user-agent']),
-      metadata: {
-        downloadType: 'pc_app',
-        source: 'homepage',
-        timestamp: new Date()
-      }
-    });
-    
-    await click.save();
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Download tracking error:', error);
-    res.status(500).json({ error: 'Tracking failed' });
-  }
-});
-
-// Track file view/download (protected)
-app.post('/api/analytics/file-activity', verifyToken, async (req, res) => {
-  try {
-    const { fileId, fileName, activityType, classCode, educatorId } = req.body;
-    
-    // Verify the student has access to this file
-    const user = await User.findById(req.user.id);
-    
-    if (user.role !== 'student') {
-      return res.status(403).json({ error: 'Only students can track file activities' });
-    }
-    
-    const activity = new FileActivity({
-      fileId,
-      fileName,
-      studentId: req.user.id,
-      studentName: user.fullName,
-      activityType,
-      classCode,
-      educatorId,
-      metadata: {
-        userAgent: req.headers['user-agent'],
-        ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-        deviceType: getDeviceType(req.headers['user-agent']),
-        timestamp: new Date()
-      }
-    });
-    
-    await activity.save();
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('File activity tracking error:', error);
-    res.status(500).json({ error: 'Tracking failed' });
-  }
-});
-
-// Get device statistics
-app.get('/api/analytics/device-stats', verifyToken, async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const deviceStats = await Click.aggregate([
-      {
-        $group: {
-          _id: '$deviceType',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      }
-    ]);
-    
-    res.json({ success: true, data: deviceStats });
-  } catch (error) {
-    console.error('Device stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch device stats' });
-  }
-});
-
-// =====================
 // 🌐 ROOT ENDPOINT (FOR RENDER DEPLOYMENT)
 // =====================
 app.get('/', (req, res) => {
@@ -396,6 +275,93 @@ app.get('/api/health', (req, res) => {
     nodeEnv: process.env.NODE_ENV,
     port: process.env.PORT
   });
+});
+
+// =====================
+// 📊 USER COUNTS ENDPOINTS (PUBLIC) - ADDED FOR HOMEPAGE
+// =====================
+
+// Get all user counts at once (BEST FOR HOMEPAGE)
+app.get('/api/users/counts/all', async (req, res) => {
+  try {
+    const [students, educators, admins] = await Promise.all([
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'educator' }),
+      User.countDocuments({ role: 'admin' })
+    ]);
+    
+    res.json({
+      success: true,
+      counts: {
+        students: students || 0,
+        educators: educators || 0,
+        admins: admins || 0,
+        total: (students || 0) + (educators || 0) + (admins || 0)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user counts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user counts'
+    });
+  }
+});
+
+// Get count by specific role
+app.get('/api/users/count/:role', async (req, res) => {
+  try {
+    const { role } = req.params;
+    const validRoles = ['student', 'educator', 'admin'];
+    
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid role specified. Use: student, educator, or admin'
+      });
+    }
+    
+    const count = await User.countDocuments({ role });
+    
+    res.json({
+      success: true,
+      role,
+      count: count || 0
+    });
+  } catch (error) {
+    console.error('Error fetching user count:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user count'
+    });
+  }
+});
+
+// Dashboard user counts endpoint (for compatibility)
+app.get('/api/dashboard/user-counts', async (req, res) => {
+  try {
+    const [students, educators, admins] = await Promise.all([
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'educator' }),
+      User.countDocuments({ role: 'admin' })
+    ]);
+    
+    res.json({
+      success: true,
+      counts: {
+        students: students || 0,
+        educators: educators || 0,
+        admins: admins || 0,
+        total: (students || 0) + (educators || 0) + (admins || 0)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard user counts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user counts'
+    });
+  }
 });
 
 // =====================
@@ -1986,6 +1952,126 @@ app.post('/api/clicks', async (req, res) => {
 });
 
 // =====================
+// 📊 TRACK LOGIN SUCCESS
+// =====================
+app.post('/api/analytics/login', verifyToken, async (req, res) => {
+  try {
+    const click = new Click({
+      type: 'login',
+      location: 'login_success',
+      userId: req.user.id,
+      userRole: req.user.role,
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      deviceType: getDeviceType(req.headers['user-agent']),
+      browser: getBrowserFromUA(req.headers['user-agent']),
+      operatingSystem: getOSFromUA(req.headers['user-agent']),
+      metadata: {
+        loginMethod: 'email',
+        timestamp: new Date()
+      }
+    });
+    
+    await click.save();
+    console.log('✅ Login tracked successfully for user:', req.user.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Login tracking error:', error);
+    // Don't fail the request if tracking fails
+    res.json({ success: false, error: 'Tracking failed but login successful' });
+  }
+});
+
+// Track homepage download
+app.post('/api/analytics/download-homepage', async (req, res) => {
+  try {
+    const click = new Click({
+      type: 'download',
+      location: 'homepage_pc_app',
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      deviceType: getDeviceType(req.headers['user-agent']),
+      browser: getBrowserFromUA(req.headers['user-agent']),
+      operatingSystem: getOSFromUA(req.headers['user-agent']),
+      metadata: {
+        downloadType: 'pc_app',
+        source: 'homepage',
+        timestamp: new Date()
+      }
+    });
+    
+    await click.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Download tracking error:', error);
+    res.status(500).json({ error: 'Tracking failed' });
+  }
+});
+
+// Track file view/download (protected)
+app.post('/api/analytics/file-activity', verifyToken, async (req, res) => {
+  try {
+    const { fileId, fileName, activityType, classCode, educatorId } = req.body;
+    
+    // Verify the student has access to this file
+    const user = await User.findById(req.user.id);
+    
+    if (user.role !== 'student') {
+      return res.status(403).json({ error: 'Only students can track file activities' });
+    }
+    
+    const activity = new FileActivity({
+      fileId,
+      fileName,
+      studentId: req.user.id,
+      studentName: user.fullName,
+      activityType,
+      classCode,
+      educatorId,
+      metadata: {
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        deviceType: getDeviceType(req.headers['user-agent']),
+        timestamp: new Date()
+      }
+    });
+    
+    await activity.save();
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('File activity tracking error:', error);
+    res.status(500).json({ error: 'Tracking failed' });
+  }
+});
+
+// Get device statistics
+app.get('/api/analytics/device-stats', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const deviceStats = await Click.aggregate([
+      {
+        $group: {
+          _id: '$deviceType',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+    
+    res.json({ success: true, data: deviceStats });
+  } catch (error) {
+    console.error('Device stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch device stats' });
+  }
+});
+
+// =====================
 // 👤 USER PROFILE
 // =====================
 
@@ -2446,6 +2532,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log('✅ Health check endpoint: GET /api/health');
   console.log('✅ Database test endpoint: GET /api/test-db');
+  console.log('✅ User counts endpoints: GET /api/users/counts/all, GET /api/users/count/:role, GET /api/dashboard/user-counts');
   console.log('✅ CORS configured with cache-control header support');
   console.log('✅ Login tracking restored with login_success location');
   console.log('📁 File sharing endpoints available:');

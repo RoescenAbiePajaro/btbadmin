@@ -15,6 +15,7 @@ export default function HomePage() {
     total: 0 
   });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoadingCounts, setIsLoadingCounts] = useState(true);
 
   const handleMenuClick = () => {
     navigate("/login");
@@ -74,20 +75,38 @@ export default function HomePage() {
   }, []);
 
   const fetchUserCounts = async () => {
+    setIsLoadingCounts(true);
     try {
-      const response = await axios.get('https://btbtestservice.onrender.com/api/dashboard/user-counts');
+      // Try to get all counts at once from the new endpoint
+      const response = await axios.get('https://btbtestservice.onrender.com/api/users/counts/all');
       if (response.data.success) {
         setUserCounts(response.data.counts);
+      } else {
+        throw new Error('Invalid response');
       }
     } catch (error) {
-      console.error('Error fetching user counts:', error);
-      // Fallback counts if API fails
-      setUserCounts({
-        students: 124,
-        educators: 45,
-        admins: 3,
-        total: 172
-      });
+      console.error('Error fetching user counts from primary endpoint:', error);
+      
+      // Try alternative endpoint if primary fails
+      try {
+        const response = await axios.get('https://btbtestservice.onrender.com/api/dashboard/user-counts');
+        if (response.data.success) {
+          setUserCounts(response.data.counts);
+        } else {
+          throw new Error('Invalid response');
+        }
+      } catch (fallbackError) {
+        console.error('Error fetching from fallback endpoint:', fallbackError);
+        // Fallback counts if API fails
+        setUserCounts({
+          students: 124,
+          educators: 45,
+          admins: 3,
+          total: 172
+        });
+      }
+    } finally {
+      setIsLoadingCounts(false);
     }
   };
 
@@ -301,27 +320,38 @@ export default function HomePage() {
           {/* Platform Stats */}
           <div id="features" className="mt-8 scroll-mt-20">
             <h3 className="text-white font-bold mb-4 text-lg">Platform Statistics</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-blue-900/30 to-blue-700/20 border border-blue-500/30 rounded-lg p-4 text-center hover:border-blue-400/50 transition duration-300">
-                <div className="text-2xl font-bold text-white mb-1">{userCounts.students.toLocaleString()}</div>
-                <p className="text-gray-300 text-sm">Students</p>
+            {isLoadingCounts ? (
+              <div className="grid grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-gradient-to-br from-gray-900/30 to-gray-700/20 border border-gray-500/30 rounded-lg p-4 text-center">
+                    <div className="h-8 w-16 bg-gray-700/50 rounded animate-pulse mx-auto mb-1"></div>
+                    <div className="h-4 w-20 bg-gray-700/50 rounded animate-pulse mx-auto"></div>
+                  </div>
+                ))}
               </div>
-              
-              <div className="bg-gradient-to-br from-pink-900/30 to-pink-700/20 border border-pink-500/30 rounded-lg p-4 text-center hover:border-pink-400/50 transition duration-300">
-                <div className="text-2xl font-bold text-white mb-1">{userCounts.educators.toLocaleString()}</div>
-                <p className="text-gray-300 text-sm">Educators</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-blue-900/30 to-blue-700/20 border border-blue-500/30 rounded-lg p-4 text-center hover:border-blue-400/50 transition duration-300">
+                  <div className="text-2xl font-bold text-white mb-1">{userCounts.students.toLocaleString()}</div>
+                  <p className="text-gray-300 text-sm">Students</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-pink-900/30 to-pink-700/20 border border-pink-500/30 rounded-lg p-4 text-center hover:border-pink-400/50 transition duration-300">
+                  <div className="text-2xl font-bold text-white mb-1">{userCounts.educators.toLocaleString()}</div>
+                  <p className="text-gray-300 text-sm">Educators</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-purple-900/30 to-purple-700/20 border border-purple-500/30 rounded-lg p-4 text-center hover:border-purple-400/50 transition duration-300">
+                  <div className="text-2xl font-bold text-white mb-1">{userCounts.admins.toLocaleString()}</div>
+                  <p className="text-gray-300 text-sm">Admins</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-700/20 border border-yellow-500/30 rounded-lg p-4 text-center hover:border-yellow-400/50 transition duration-300">
+                  <div className="text-2xl font-bold text-white mb-1">{userCounts.total.toLocaleString()}</div>
+                  <p className="text-gray-300 text-sm">Total Users</p>
+                </div>
               </div>
-              
-              <div className="bg-gradient-to-br from-purple-900/30 to-purple-700/20 border border-purple-500/30 rounded-lg p-4 text-center hover:border-purple-400/50 transition duration-300">
-                <div className="text-2xl font-bold text-white mb-1">{userCounts.admins.toLocaleString()}</div>
-                <p className="text-gray-300 text-sm">Admins</p>
-              </div>
-              
-              <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-700/20 border border-yellow-500/30 rounded-lg p-4 text-center hover:border-yellow-400/50 transition duration-300">
-                <div className="text-2xl font-bold text-white mb-1">{userCounts.total.toLocaleString()}</div>
-                <p className="text-gray-300 text-sm">Total Users</p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Info Cards */}
