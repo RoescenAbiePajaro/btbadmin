@@ -118,15 +118,28 @@ export default function HomePage() {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsMenuOpen(false);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-black flex flex-col relative overflow-x-hidden">
       <AnimatedBackground />
       
-      {/* Header Navigation */}
-      <header className="w-full bg-black/90 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
+      {/* Header Navigation - Fixed and Non-scrollable */}
+      <header className="w-full bg-black/90 backdrop-blur-sm border-b border-gray-800 fixed top-0 left-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={scrollToTop}>
             <div className="w-10 h-10">
               <img
                 src="/icon/logo.png"
@@ -142,36 +155,30 @@ export default function HomePage() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            <a 
-              href="#features" 
+            <button 
+              onClick={scrollToTop}
               className="text-gray-300 hover:text-white transition duration-200"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
-              }}
+            >
+              Home
+            </button>
+            <button 
+              onClick={() => scrollToSection('features')}
+              className="text-gray-300 hover:text-white transition duration-200"
             >
               Features
-            </a>
-            <a 
-              href="#demo" 
+            </button>
+            <button 
+              onClick={() => scrollToSection('demo')}
               className="text-gray-300 hover:text-white transition duration-200"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('demo').scrollIntoView({ behavior: 'smooth' });
-              }}
             >
               Demo
-            </a>
-            <a 
-              href="#contact" 
+            </button>
+            <button 
+              onClick={() => scrollToSection('contact')}
               className="text-gray-300 hover:text-white transition duration-200"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
-              }}
             >
-              Contact
-            </a>
+              Contacts
+            </button>
           </div>
           
           {/* Mobile Menu Button */}
@@ -193,46 +200,37 @@ export default function HomePage() {
         {isMenuOpen && (
           <div className="md:hidden bg-gray-900 border-t border-gray-800 px-4 py-3">
             <div className="flex flex-col gap-3">
-              <a 
-                href="#features" 
-                className="text-gray-300 hover:text-white py-2 transition duration-200"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
-                  setIsMenuOpen(false);
-                }}
+              <button 
+                onClick={scrollToTop}
+                className="text-gray-300 hover:text-white py-2 transition duration-200 text-left"
+              >
+                Home
+              </button>
+              <button 
+                onClick={() => scrollToSection('features')}
+                className="text-gray-300 hover:text-white py-2 transition duration-200 text-left"
               >
                 Features
-              </a>
-              <a 
-                href="#demo" 
-                className="text-gray-300 hover:text-white py-2 transition duration-200"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('demo').scrollIntoView({ behavior: 'smooth' });
-                  setIsMenuOpen(false);
-                }}
+              </button>
+              <button 
+                onClick={() => scrollToSection('demo')}
+                className="text-gray-300 hover:text-white py-2 transition duration-200 text-left"
               >
                 Demo
-              </a>
-              <a 
-                href="#contact" 
-                className="text-gray-300 hover:text-white py-2 transition duration-200"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
-                  setIsMenuOpen(false);
-                }}
+              </button>
+              <button 
+                onClick={() => scrollToSection('contact')}
+                className="text-gray-300 hover:text-white py-2 transition duration-200 text-left"
               >
-                Contact
-              </a>
+                Contacts
+              </button>
             </div>
           </div>
         )}
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 w-full pt-8">
+      {/* Main Content - Add padding top to account for fixed header */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 w-full pt-24">
         <div className="bg-black/60 backdrop-blur-sm border border-gray-800 rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-md text-center mx-2 sm:mx-4 shadow-2xl">
           {/* Main Logo - Responsive */}
           <div className="w-28 h-28 mx-auto mb-8 flex items-center justify-center">
@@ -301,7 +299,7 @@ export default function HomePage() {
           </div>
 
           {/* Platform Stats */}
-          <div id="features" className="mt-8">
+          <div id="features" className="mt-8 scroll-mt-20">
             <h3 className="text-white font-bold mb-4 text-lg">Platform Statistics</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gradient-to-br from-blue-900/30 to-blue-700/20 border border-blue-500/30 rounded-lg p-4 text-center hover:border-blue-400/50 transition duration-300">
@@ -361,7 +359,7 @@ export default function HomePage() {
         </div>
 
         {/* Demo Section */}
-        <div id="demo" className="mt-12 sm:mt-16 w-full max-w-6xl px-2 sm:px-4">
+        <div id="demo" className="mt-12 sm:mt-16 w-full max-w-6xl px-2 sm:px-4 scroll-mt-20">
           <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-8">
             See It In Action
           </h2>
@@ -495,7 +493,7 @@ export default function HomePage() {
       )}
       
       {/* Footer */}
-      <footer id="contact" className="w-full py-12 mt-12 bg-gradient-to-r from-gray-900 via-black to-gray-900">
+      <footer id="contact" className="w-full py-12 mt-12 bg-gradient-to-r from-gray-900 via-black to-gray-900 scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="mb-4 md:mb-0 text-center md:text-left">
