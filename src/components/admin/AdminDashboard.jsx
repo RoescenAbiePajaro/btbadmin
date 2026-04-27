@@ -8,7 +8,7 @@ import ChartComponent from './ChartComponent.jsx';
 import ClassTabComponent from './ClassTabComponent.jsx';
 import LearningMaterialsComponent from './LearningMaterialsComponent.jsx';
 import {
-  FiUsers, FiBook, FiFileText, FiDownload, 
+  FiUsers, FiBook, FiFileText, FiDownload,
   FiTrendingUp, FiCalendar, FiFilter,
   FiLogOut, FiHome, FiBarChart2, FiActivity, FiEye, FiUpload,
   FiClock, FiGlobe, FiMonitor, FiUserCheck, FiDatabase,

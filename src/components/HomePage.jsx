@@ -249,7 +249,7 @@ export default function HomePage() {
       </header>
 
       {/* Main Content - Add padding top to account for fixed header */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 w-full pt-24">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 w-full pt-24 sm:pt-32">
         <div className="bg-black/60 backdrop-blur-sm border border-gray-800 rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-md text-center mx-2 sm:mx-4 shadow-2xl">
           {/* Main Logo - Responsive */}
           <div className="w-28 h-28 mx-auto mb-8 flex items-center justify-center">
