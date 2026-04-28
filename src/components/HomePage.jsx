@@ -269,6 +269,16 @@ export default function HomePage() {
 
           <div className="flex flex-col space-y-4">
             <button
+              className="w-full bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-700 hover:to-blue-800 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold text-base sm:text-lg transition duration-200 text-center flex items-center justify-center gap-2 sm:gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              onClick={() => window.open('https://btbairdraww.onrender.com/', '_blank')}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Click Now
+            </button>
+            
+            <button
               className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold text-base sm:text-lg transition duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               onClick={handleDownload}
               disabled={isDownloadLoading}
