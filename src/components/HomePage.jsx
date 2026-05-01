@@ -410,10 +410,10 @@ export default function HomePage() {
               <div className="relative group">
                 <img
                   loading="lazy"
-                  src="/1.jpg"
+                  src="/Screenshot 2026-04-28 090316.png"
                   alt="Art Showcase"
                   className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
-                  onClick={() => setSelectedImage("/1.jpg")}
+                  onClick={() => setSelectedImage("/Screenshot 2026-04-28 090316.png")}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4">
                   <span className="text-white text-sm">Click to enlarge</span>
@@ -429,17 +429,17 @@ export default function HomePage() {
               <div className="relative group">
                 <img
                   loading="lazy"
-                  src="/7faf63e8-ed37-4167-8bc3-8354acbdca5f.jpg"
+                  src="/Screenshot 2026-04-28 091158.png"
                   alt="Art Collaboration"
                   className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
-                  onClick={() => setSelectedImage("/7faf63e8-ed37-4167-8bc3-8354acbdca5f.jpg")}
+                  onClick={() => setSelectedImage("/Screenshot 2026-04-28 091158.png")}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4">
                   <span className="text-white text-sm">Click to enlarge</span>
                 </div>
               </div>
               <p className="text-gray-300 mt-3 text-sm max-w-xs">
-                Another example of drawing made in Beyond The Brush Lite.
+                Log In to your account and enjoy!
               </p>
             </div>
 
