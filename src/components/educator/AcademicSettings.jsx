@@ -201,7 +201,7 @@ export default function AcademicSettings() {
   };
 
   const typeLabels = {
-    school: 'Schools',
+    school: 'School',
     course: 'Courses',
     year: 'Years',
     block: 'Blocks'
@@ -238,7 +238,7 @@ export default function AcademicSettings() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-white">Academic Settings</h2>
-        <p className="text-gray-400">Manage schools, courses, years, and blocks for student registration</p>
+        <p className="text-gray-400">Manage school, courses, years, and blocks for student registration</p>
         <p className="text-sm text-pink-400 mt-1">
           These settings are specific to your account and will be shown to students joining your classes.
         </p>

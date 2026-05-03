@@ -116,7 +116,7 @@ export default function EducatorDashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white">Educator Panel</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">Educator Dashboard</h1>
               <p className="text-gray-400">Welcome back, {user?.fullName}</p>
             </div>
             <div className="flex items-center flex-wrap gap-2 sm:gap-4">
