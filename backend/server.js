@@ -1,3 +1,4 @@
+// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -376,6 +377,62 @@ app.get('/api/auth/roles', (req, res) => {
   });
 });
 
+// Track various user actions
+app.post('/api/analytics/track', verifyToken, async (req, res) => {
+  try {
+    const { action, location, metadata } = req.body;
+    const userAgent = req.headers['user-agent'];
+    
+    const click = new Click({
+      type: action,
+      location: location,
+      userId: req.user.id,
+      userRole: req.user.role,
+      userAgent: userAgent,
+      deviceType: getDeviceType(userAgent),
+      browser: getBrowserFromUA(userAgent),
+      operatingSystem: getOSFromUA(userAgent),
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      metadata: metadata || {}
+    });
+    
+    await click.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Tracking error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Track file view (for analytics)
+app.post('/api/analytics/file-view', verifyToken, async (req, res) => {
+  try {
+    const { fileId, fileName, classCode } = req.body;
+    
+    const click = new Click({
+      type: 'view',
+      location: 'file_view',
+      userId: req.user.id,
+      userRole: req.user.role,
+      userAgent: req.headers['user-agent'],
+      deviceType: getDeviceType(req.headers['user-agent']),
+      browser: getBrowserFromUA(req.headers['user-agent']),
+      operatingSystem: getOSFromUA(req.headers['user-agent']),
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      metadata: {
+        fileId,
+        fileName,
+        classCode
+      }
+    });
+    
+    await click.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('File view tracking error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 // =====================
 // 📝 STUDENT REGISTRATION (UPDATED - No class code required)
 // =====================

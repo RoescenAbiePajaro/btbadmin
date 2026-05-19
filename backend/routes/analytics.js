@@ -1138,6 +1138,640 @@ router.get('/filter', requireAdmin, async (req, res) => {
   }
 });
 
+// ==================== CLASS STATUS TRENDS ====================
+router.get('/classes/active-inactive-trends', requireAdmin, async (req, res) => {
+  try {
+    const { bucket = 'month', startDate, endDate } = req.query;
+    
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    } else {
+      const end = new Date();
+      const start = new Date();
+      start.setFullYear(start.getFullYear() - 1);
+      dateFilter.createdAt = { $gte: start, $lte: end };
+    }
+    
+    let groupFormat;
+    let sortOrder;
+    switch(bucket) {
+      case 'year':
+        groupFormat = "%Y";
+        sortOrder = 1;
+        break;
+      case 'month':
+        groupFormat = "%Y-%m";
+        sortOrder = 1;
+        break;
+      case 'day':
+        groupFormat = "%Y-%m-%d";
+        sortOrder = 1;
+        break;
+      default:
+        groupFormat = "%Y-%m";
+        sortOrder = 1;
+    }
+    
+    // Get class creation trends (active vs inactive over time)
+    const classTrends = await Class.aggregate([
+      {
+        $match: dateFilter
+      },
+      {
+        $group: {
+          _id: {
+            period: { $dateToString: { format: groupFormat, date: "$createdAt" } },
+            isActive: "$isActive"
+          },
+          count: { $sum: 1 },
+          classes: { $push: { className: "$className", classCode: "$classCode", school: "$school" } }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.period",
+          active: {
+            $sum: { $cond: [{ $eq: ["$_id.isActive", true] }, "$count", 0] }
+          },
+          inactive: {
+            $sum: { $cond: [{ $eq: ["$_id.isActive", false] }, "$count", 0] }
+          },
+          total: { $sum: "$count" },
+          activeClasses: {
+            $push: {
+              $cond: [{ $eq: ["$_id.isActive", true] }, "$classes", []]
+            }
+          },
+          inactiveClasses: {
+            $push: {
+              $cond: [{ $eq: ["$_id.isActive", false] }, "$classes", []]
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          activeClassesList: {
+            $reduce: {
+              input: "$activeClasses",
+              initialValue: [],
+              in: { $concatArrays: ["$$value", "$$this"] }
+            }
+          },
+          inactiveClassesList: {
+            $reduce: {
+              input: "$inactiveClasses",
+              initialValue: [],
+              in: { $concatArrays: ["$$value", "$$this"] }
+            }
+          }
+        }
+      },
+      { $sort: { "_id": sortOrder } }
+    ]);
+    
+    // Format data for chart
+    const formattedData = classTrends.map(item => ({
+      label: item._id,
+      date: item._id,
+      active: item.active || 0,
+      inactive: item.inactive || 0,
+      total: item.total || 0,
+      activeClasses: item.activeClassesList.slice(0, 5),
+      inactiveClasses: item.inactiveClassesList.slice(0, 5)
+    }));
+    
+    res.json({
+      success: true,
+      data: formattedData,
+      summary: {
+        totalActive: classTrends.reduce((sum, t) => sum + (t.active || 0), 0),
+        totalInactive: classTrends.reduce((sum, t) => sum + (t.inactive || 0), 0),
+        totalClasses: classTrends.reduce((sum, t) => sum + (t.total || 0), 0)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Class status trends error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch class status trends'
+    });
+  }
+});
+
+// ==================== SCHOOLS CREATED TRENDS ====================
+router.get('/schools/created-trends', requireAdmin, async (req, res) => {
+  try {
+    const { bucket = 'month', startDate, endDate } = req.query;
+    
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    } else {
+      const end = new Date();
+      const start = new Date();
+      start.setFullYear(start.getFullYear() - 1);
+      dateFilter.createdAt = { $gte: start, $lte: end };
+    }
+    
+    let groupFormat;
+    switch(bucket) {
+      case 'year':
+        groupFormat = "%Y";
+        break;
+      case 'month':
+        groupFormat = "%Y-%m";
+        break;
+      case 'day':
+        groupFormat = "%Y-%m-%d";
+        break;
+      default:
+        groupFormat = "%Y-%m";
+    }
+    
+    // Get distinct schools created over time
+    const schoolTrends = await AcademicSetting.aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          type: 'school',
+          isActive: true
+        }
+      },
+      {
+        $group: {
+          _id: {
+            period: { $dateToString: { format: groupFormat, date: "$createdAt" } }
+          },
+          count: { $sum: 1 },
+          schools: { $push: "$name" }
+        }
+      },
+      {
+        $addFields: {
+          uniqueSchools: { $setUnion: ["$schools", []] }
+        }
+      },
+      { $sort: { "_id.period": 1 } }
+    ]);
+    
+    const formattedData = schoolTrends.map(item => ({
+      date: item._id.period,
+      count: item.count,
+      schools: item.uniqueSchools.slice(0, 10)
+    }));
+    
+    // Calculate cumulative totals
+    let cumulative = 0;
+    const cumulativeData = formattedData.map(item => {
+      cumulative += item.count;
+      return { ...item, cumulative };
+    });
+    
+    res.json({
+      success: true,
+      data: cumulativeData,
+      summary: {
+        totalSchools: cumulativeData[cumulativeData.length - 1]?.cumulative || 0,
+        periodCount: formattedData.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Schools created trends error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch schools created trends'
+    });
+  }
+});
+
+// ==================== ENHANCED ANALYTICS ENDPOINTS ====================
+
+// Get click analytics with advanced filtering
+router.get('/clicks/analytics', requireAdmin, async (req, res) => {
+  try {
+    const { 
+      period = '30d', 
+      type, 
+      deviceType, 
+      browser, 
+      userRole,
+      startDate, 
+      endDate 
+    } = req.query;
+    
+    let dateRange;
+    if (startDate && endDate) {
+      dateRange = {
+        start: new Date(startDate),
+        end: new Date(endDate)
+      };
+    } else {
+      dateRange = getDateRange(period);
+    }
+    
+    // Build match filter
+    const matchFilter = {
+      createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+    };
+    
+    if (type) matchFilter.type = type;
+    if (deviceType) matchFilter.deviceType = deviceType;
+    if (browser) matchFilter.browser = browser;
+    if (userRole) matchFilter.userRole = userRole;
+    
+    // Get total clicks by type
+    const clicksByType = await Click.aggregate([
+      { $match: matchFilter },
+      { $group: { _id: '$type', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    // Get clicks over time (time series)
+    let groupFormat;
+    switch(period) {
+      case 'today':
+        groupFormat = '%Y-%m-%d %H:00';
+        break;
+      case '7d':
+        groupFormat = '%Y-%m-%d';
+        break;
+      case '30d':
+        groupFormat = '%Y-%m-%d';
+        break;
+      case '90d':
+        groupFormat = '%Y-%U';
+        break;
+      default:
+        groupFormat = '%Y-%m-%d';
+    }
+    
+    const clicksOverTime = await Click.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: {
+            period: { $dateToString: { format: groupFormat, date: '$createdAt' } },
+            type: '$type'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.period',
+          logins: { $sum: { $cond: [{ $eq: ['$_id.type', 'login'] }, '$count', 0] } },
+          downloads: { $sum: { $cond: [{ $eq: ['$_id.type', 'download'] }, '$count', 0] } },
+          views: { $sum: { $cond: [{ $eq: ['$_id.type', 'view'] }, '$count', 0] } },
+          registrations: { $sum: { $cond: [{ $eq: ['$_id.type', 'registration'] }, '$count', 0] } },
+          total: { $sum: '$count' }
+        }
+      },
+      { $sort: { '_id': 1 } }
+    ]);
+    
+    // Get device distribution
+    const deviceDistribution = await Click.aggregate([
+      { $match: matchFilter },
+      { $group: { _id: '$deviceType', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    // Get browser distribution
+    const browserDistribution = await Click.aggregate([
+      { $match: { ...matchFilter, browser: { $exists: true, $ne: null } } },
+      { $group: { _id: '$browser', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    
+    // Get OS distribution
+    const osDistribution = await Click.aggregate([
+      { $match: { ...matchFilter, operatingSystem: { $exists: true, $ne: null } } },
+      { $group: { _id: '$operatingSystem', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    
+    // Get hourly activity pattern
+    const hourlyActivity = await Click.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: { hour: { $hour: '$createdAt' } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.hour': 1 } }
+    ]);
+    
+    // Get daily activity pattern (day of week)
+    const dailyActivity = await Click.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: { dayOfWeek: { $dayOfWeek: '$createdAt' } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.dayOfWeek': 1 } }
+    ]);
+    
+    // Get top users by activity
+    const topUsers = await Click.aggregate([
+      { $match: { ...matchFilter, userId: { $exists: true, $ne: null } } },
+      {
+        $group: {
+          _id: '$userId',
+          activityCount: { $sum: 1 },
+          lastActivity: { $max: '$createdAt' },
+          activityTypes: { $addToSet: '$type' }
+        }
+      },
+      { $sort: { activityCount: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } }
+    ]);
+    
+    // Get conversion funnels (login -> download -> view)
+    const loginUsers = await Click.distinct('userId', { type: 'login', ...matchFilter });
+    const downloadUsers = await Click.distinct('userId', { type: 'download', ...matchFilter });
+    const viewUsers = await Click.distinct('userId', { type: 'view', ...matchFilter });
+    
+    const conversionFunnel = {
+      totalUniqueUsers: loginUsers.length,
+      logins: loginUsers.length,
+      downloads: downloadUsers.length,
+      views: viewUsers.length,
+      loginToDownloadRate: loginUsers.length > 0 ? (downloadUsers.length / loginUsers.length * 100).toFixed(1) : 0,
+      downloadToViewRate: downloadUsers.length > 0 ? (viewUsers.length / downloadUsers.length * 100).toFixed(1) : 0,
+      overallConversion: loginUsers.length > 0 ? (viewUsers.length / loginUsers.length * 100).toFixed(1) : 0
+    };
+    
+    // Get real-time stats (last hour)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const realtimeStats = {
+      lastHour: {
+        logins: await Click.countDocuments({ type: 'login', createdAt: { $gte: oneHourAgo } }),
+        downloads: await Click.countDocuments({ type: 'download', createdAt: { $gte: oneHourAgo } }),
+        views: await Click.countDocuments({ type: 'view', createdAt: { $gte: oneHourAgo } }),
+        registrations: await Click.countDocuments({ type: 'registration', createdAt: { $gte: oneHourAgo } }),
+        total: await Click.countDocuments({ createdAt: { $gte: oneHourAgo } })
+      },
+      activeDevices: deviceDistribution,
+      peakHour: hourlyActivity.length > 0 ? 
+        hourlyActivity.reduce((max, curr) => curr.count > max.count ? curr : max, hourlyActivity[0]) : null
+    };
+    
+    res.json({
+      success: true,
+      period,
+      dateRange: {
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString()
+      },
+      data: {
+        summary: {
+          totalClicks: await Click.countDocuments(matchFilter),
+          clicksByType,
+          uniqueUsers: (await Click.distinct('userId', matchFilter)).length
+        },
+        timeSeries: clicksOverTime,
+        deviceStats: {
+          devices: deviceDistribution,
+          browsers: browserDistribution,
+          operatingSystems: osDistribution
+        },
+        activityPatterns: {
+          hourly: hourlyActivity.map(h => ({ hour: h._id.hour, count: h.count })),
+          daily: dailyActivity.map(d => ({ dayOfWeek: d._id.dayOfWeek, count: d.count }))
+        },
+        topUsers,
+        conversionFunnel,
+        realtime: realtimeStats
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Click analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch click analytics',
+      details: error.message
+    });
+  }
+});
+
+// Get click heatmap data
+router.get('/clicks/heatmap', requireAdmin, async (req, res) => {
+  try {
+    const { period = '30d', startDate, endDate } = req.query;
+    
+    let dateRange;
+    if (startDate && endDate) {
+      dateRange = {
+        start: new Date(startDate),
+        end: new Date(endDate)
+      };
+    } else {
+      dateRange = getDateRange(period);
+    }
+    
+    // Generate heatmap data (hourly for each day)
+    const heatmapData = await Click.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            dayOfWeek: { $dayOfWeek: '$createdAt' },
+            hour: { $hour: '$createdAt' }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.dayOfWeek': 1, '_id.hour': 1 } }
+    ]);
+    
+    // Format for heatmap (7 days x 24 hours)
+    const heatmapMatrix = Array(7).fill().map(() => Array(24).fill(0));
+    
+    heatmapData.forEach(item => {
+      const dayIndex = item._id.dayOfWeek - 1; // Convert 1-7 to 0-6
+      const hourIndex = item._id.hour;
+      if (dayIndex >= 0 && dayIndex < 7 && hourIndex >= 0 && hourIndex < 24) {
+        heatmapMatrix[dayIndex][hourIndex] = item.count;
+      }
+    });
+    
+    const maxCount = Math.max(...heatmapMatrix.flat());
+    
+    res.json({
+      success: true,
+      period,
+      data: {
+        matrix: heatmapMatrix,
+        maxValue: maxCount,
+        days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        hours: Array.from({ length: 24 }, (_, i) => `${i}:00`)
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Heatmap error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch heatmap data'
+    });
+  }
+});
+
+// Get user journey analytics
+router.get('/clicks/journey', requireAdmin, async (req, res) => {
+  try {
+    const { userId, period = '30d' } = req.query;
+    const dateRange = getDateRange(period);
+    
+    const matchFilter = {
+      createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+    };
+    
+    if (userId) matchFilter.userId = mongoose.Types.ObjectId(userId);
+    
+    // Get user journeys (sequence of actions)
+    const userJourneys = await Click.aggregate([
+      { $match: matchFilter },
+      { $sort: { userId: 1, createdAt: 1 } },
+      {
+        $group: {
+          _id: '$userId',
+          actions: {
+            $push: {
+              type: '$type',
+              location: '$location',
+              timestamp: '$createdAt',
+              deviceType: '$deviceType'
+            }
+          },
+          firstAction: { $first: '$createdAt' },
+          lastAction: { $last: '$createdAt' },
+          totalActions: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } }
+    ]);
+    
+    // Calculate average session duration
+    const sessions = await Click.aggregate([
+      { $match: matchFilter },
+      { $sort: { userId: 1, createdAt: 1 } },
+      {
+        $group: {
+          _id: '$userId',
+          actions: { $push: '$$ROOT' }
+        }
+      },
+      {
+        $project: {
+          sessions: {
+            $reduce: {
+              input: '$actions',
+              initialValue: [],
+              in: {
+                $cond: [
+                  { $eq: [{ $size: '$$value' }, 0] },
+                  { $concatArrays: ['$$value', [{ start: '$$this.createdAt', actions: 1 }]] },
+                  {
+                    $let: {
+                      vars: {
+                        lastSession: { $last: '$$value' },
+                        timeDiff: {
+                          $divide: [
+                            { $subtract: ['$$this.createdAt', { $last: '$$value.start' }] },
+                            60 * 1000
+                          ]
+                        }
+                      },
+                      in: {
+                        $cond: [
+                          { $lt: ['$$timeDiff', 30] },
+                          {
+                            $concatArrays: [
+                              { $slice: ['$$value', 0, { $subtract: [{ $size: '$$value' }, 1] }] },
+                              [{
+                                start: { $last: '$$value.start' },
+                                actions: { $add: [{ $last: '$$value.actions' }, 1] }
+                              }]
+                            ]
+                          },
+                          {
+                            $concatArrays: [
+                              '$$value',
+                              [{ start: '$$this.createdAt', actions: 1 }]
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]);
+    
+    res.json({
+      success: true,
+      period,
+      data: {
+        journeys: userJourneys,
+        totalUsers: userJourneys.length,
+        averageActionsPerUser: userJourneys.reduce((sum, j) => sum + j.totalActions, 0) / userJourneys.length || 0
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('User journey error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user journey data'
+    });
+  }
+});
+
 // ==================== FEEDBACK ANALYTICS ====================
 router.get('/feedback', requireAdmin, async (req, res) => {
   try {
