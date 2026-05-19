@@ -108,62 +108,6 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
-// ==================== DEBUG ENDPOINT ====================
-// Debug endpoint to check login clicks
-router.get('/debug-login-clicks', requireAdmin, async (req, res) => {
-  try {
-    const loginSuccessCount = await Click.countDocuments({ 
-      type: 'login', 
-      location: 'login_success' 
-    });
-    
-    const homepageButtonCount = await Click.countDocuments({ 
-      type: 'login', 
-      location: 'homepage_login_button' 
-    });
-    
-    const allLoginClicks = await Click.find({ type: 'login' })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .select('location createdAt userId userAgent deviceType browser');
-    
-    // Get date range for last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const recentLoginSuccess = await Click.countDocuments({
-      type: 'login',
-      location: 'login_success',
-      createdAt: { $gte: thirtyDaysAgo }
-    });
-    
-    const recentHomepageButton = await Click.countDocuments({
-      type: 'login',
-      location: 'homepage_login_button',
-      createdAt: { $gte: thirtyDaysAgo }
-    });
-    
-    res.json({
-      success: true,
-      counts: {
-        login_success: loginSuccessCount,
-        homepage_login_button: homepageButtonCount,
-        total: loginSuccessCount + homepageButtonCount,
-        last_30_days: {
-          login_success: recentLoginSuccess,
-          homepage_login_button: recentHomepageButton,
-          total: recentLoginSuccess + recentHomepageButton
-        }
-      },
-      recentClicks: allLoginClicks,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Debug error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // ==================== DASHBOARD OVERVIEW ====================
 router.get('/overview', requireAdmin, async (req, res) => {
   try {
@@ -202,7 +146,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
     // Wrap each aggregation in try-catch to handle missing data gracefully
     let userStats = [];
     let loginStats = [];
-    let downloadStats = [];
     let fileActivityStats = [];
     let deviceStats = [];
     let browserStats = [];
@@ -244,7 +187,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
     }
 
     try {
-      // FIXED: Login stats aggregation with proper matching
       loginStats = await Click.aggregate([
         {
           $match: {
@@ -280,43 +222,9 @@ router.get('/overview', requireAdmin, async (req, res) => {
       ]);
       
       console.log('Login stats found:', loginStats.length);
-      if (loginStats.length > 0) {
-        console.log('Sample login stats:', JSON.stringify(loginStats[0], null, 2));
-      } else {
-        // Check if there are any login clicks in the date range
-        const clicksInRange = await Click.countDocuments({
-          type: 'login',
-          createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-        });
-        console.log(`No login stats aggregated. Clicks in date range: ${clicksInRange}`);
-      }
     } catch (err) {
       console.error('Login stats error:', err);
       loginStats = [];
-    }
-
-    try {
-      downloadStats = await Click.aggregate([
-        {
-          $match: {
-            type: 'download',
-            location: 'homepage_pc_app',
-            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-          }
-        },
-        {
-          $group: {
-            _id: {
-              period: { $dateToString: { format: groupFormat, date: "$createdAt" } }
-            },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { "_id.period": 1 } }
-      ]);
-    } catch (err) {
-      console.error('Download stats error:', err);
-      downloadStats = [];
     }
 
     try {
@@ -583,7 +491,7 @@ router.get('/overview', requireAdmin, async (req, res) => {
         {
           $match: {
             createdAt: { $gte: dateRange.start, $lte: dateRange.end },
-            type: { $in: ['login', 'view', 'download'] }
+            type: { $in: ['login', 'view'] }
           }
         },
         {
@@ -627,12 +535,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
     // Calculate total logins for the platform metrics
     const totalLoginsInRange = await Click.countDocuments({
       type: 'login',
-      createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-    });
-    
-    const totalDownloadsInRange = await Click.countDocuments({
-      type: 'download',
-      location: 'homepage_pc_app',
       createdAt: { $gte: dateRange.start, $lte: dateRange.end }
     });
     
@@ -707,17 +609,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
           ]
         },
         
-        downloadTrends: {
-          title: 'PC App Downloads',
-          type: 'line',
-          data: downloadStats.map(stat => ({
-            date: stat._id.period,
-            downloads: stat.count
-          })),
-          lines: [
-            { key: 'downloads', name: 'Downloads', color: '#F59E0B' }
-          ]
-        },
         userGrowthTrend: {
           title: 'User Growth Over Time',
           type: 'line',
@@ -843,11 +734,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
             value: userStats.reduce((sum, stat) => sum + stat.activeLast7d, 0) / 
                    Math.max(1, userStats.reduce((sum, stat) => sum + stat.count, 0)) * 100,
             fullMark: 100
-          },
-          {
-            metric: 'Downloads',
-            value: downloadStats.reduce((sum, stat) => sum + stat.count, 0) || 0,
-            fullMark: Math.max(100, downloadStats.reduce((sum, stat) => sum + stat.count, 0) * 1.5)
           }
         ]
       },
@@ -956,7 +842,6 @@ router.get('/overview', requireAdmin, async (req, res) => {
           activeUsers: userStats.reduce((sum, stat) => sum + stat.activeLast7d, 0),
           totalLogins: totalLoginsInRange,
           uniqueLogins: loginStats.reduce((sum, stat) => sum + stat.uniqueCount, 0),
-          totalDownloads: totalDownloadsInRange,
           fileActivities: fileActivityStats.reduce((sum, stat) => sum + stat.count, 0),
           avgSessionDuration: platformEngagement[0]?.avgSessionDuration 
             ? (platformEngagement[0].avgSessionDuration / (60 * 1000)).toFixed(1) + ' min'
@@ -1033,14 +918,6 @@ router.get('/filter', requireAdmin, async (req, res) => {
         if (browser) filter.browser = browser;
         break;
         
-      case 'downloads':
-        model = Click;
-        filter.type = 'download';
-        filter.location = 'homepage_pc_app';
-        if (deviceType) filter.deviceType = deviceType;
-        if (browser) filter.browser = browser;
-        break;
-        
       case 'file-activities':
         model = FileActivity;
         if (activityType) filter.activityType = activityType;
@@ -1080,7 +957,6 @@ router.get('/filter', requireAdmin, async (req, res) => {
     
     switch(type) {
       case 'logins':
-      case 'downloads':
       case 'registrations':
         query = query.populate('userId', 'fullName email role');
         break;
@@ -1350,424 +1226,6 @@ router.get('/schools/created-trends', requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch schools created trends'
-    });
-  }
-});
-
-// ==================== ENHANCED ANALYTICS ENDPOINTS ====================
-
-// Get click analytics with advanced filtering
-router.get('/clicks/analytics', requireAdmin, async (req, res) => {
-  try {
-    const { 
-      period = '30d', 
-      type, 
-      deviceType, 
-      browser, 
-      userRole,
-      startDate, 
-      endDate 
-    } = req.query;
-    
-    let dateRange;
-    if (startDate && endDate) {
-      dateRange = {
-        start: new Date(startDate),
-        end: new Date(endDate)
-      };
-    } else {
-      dateRange = getDateRange(period);
-    }
-    
-    // Build match filter
-    const matchFilter = {
-      createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-    };
-    
-    if (type) matchFilter.type = type;
-    if (deviceType) matchFilter.deviceType = deviceType;
-    if (browser) matchFilter.browser = browser;
-    if (userRole) matchFilter.userRole = userRole;
-    
-    // Get total clicks by type
-    const clicksByType = await Click.aggregate([
-      { $match: matchFilter },
-      { $group: { _id: '$type', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
-    
-    // Get clicks over time (time series)
-    let groupFormat;
-    switch(period) {
-      case 'today':
-        groupFormat = '%Y-%m-%d %H:00';
-        break;
-      case '7d':
-        groupFormat = '%Y-%m-%d';
-        break;
-      case '30d':
-        groupFormat = '%Y-%m-%d';
-        break;
-      case '90d':
-        groupFormat = '%Y-%U';
-        break;
-      default:
-        groupFormat = '%Y-%m-%d';
-    }
-    
-    const clicksOverTime = await Click.aggregate([
-      { $match: matchFilter },
-      {
-        $group: {
-          _id: {
-            period: { $dateToString: { format: groupFormat, date: '$createdAt' } },
-            type: '$type'
-          },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $group: {
-          _id: '$_id.period',
-          logins: { $sum: { $cond: [{ $eq: ['$_id.type', 'login'] }, '$count', 0] } },
-          downloads: { $sum: { $cond: [{ $eq: ['$_id.type', 'download'] }, '$count', 0] } },
-          views: { $sum: { $cond: [{ $eq: ['$_id.type', 'view'] }, '$count', 0] } },
-          registrations: { $sum: { $cond: [{ $eq: ['$_id.type', 'registration'] }, '$count', 0] } },
-          total: { $sum: '$count' }
-        }
-      },
-      { $sort: { '_id': 1 } }
-    ]);
-    
-    // Get device distribution
-    const deviceDistribution = await Click.aggregate([
-      { $match: matchFilter },
-      { $group: { _id: '$deviceType', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
-    
-    // Get browser distribution
-    const browserDistribution = await Click.aggregate([
-      { $match: { ...matchFilter, browser: { $exists: true, $ne: null } } },
-      { $group: { _id: '$browser', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
-    
-    // Get OS distribution
-    const osDistribution = await Click.aggregate([
-      { $match: { ...matchFilter, operatingSystem: { $exists: true, $ne: null } } },
-      { $group: { _id: '$operatingSystem', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
-    
-    // Get hourly activity pattern
-    const hourlyActivity = await Click.aggregate([
-      { $match: matchFilter },
-      {
-        $group: {
-          _id: { hour: { $hour: '$createdAt' } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { '_id.hour': 1 } }
-    ]);
-    
-    // Get daily activity pattern (day of week)
-    const dailyActivity = await Click.aggregate([
-      { $match: matchFilter },
-      {
-        $group: {
-          _id: { dayOfWeek: { $dayOfWeek: '$createdAt' } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { '_id.dayOfWeek': 1 } }
-    ]);
-    
-    // Get top users by activity
-    const topUsers = await Click.aggregate([
-      { $match: { ...matchFilter, userId: { $exists: true, $ne: null } } },
-      {
-        $group: {
-          _id: '$userId',
-          activityCount: { $sum: 1 },
-          lastActivity: { $max: '$createdAt' },
-          activityTypes: { $addToSet: '$type' }
-        }
-      },
-      { $sort: { activityCount: -1 } },
-      { $limit: 10 },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'user'
-        }
-      },
-      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } }
-    ]);
-    
-    // Get conversion funnels (login -> download -> view)
-    const loginUsers = await Click.distinct('userId', { type: 'login', ...matchFilter });
-    const downloadUsers = await Click.distinct('userId', { type: 'download', ...matchFilter });
-    const viewUsers = await Click.distinct('userId', { type: 'view', ...matchFilter });
-    
-    const conversionFunnel = {
-      totalUniqueUsers: loginUsers.length,
-      logins: loginUsers.length,
-      downloads: downloadUsers.length,
-      views: viewUsers.length,
-      loginToDownloadRate: loginUsers.length > 0 ? (downloadUsers.length / loginUsers.length * 100).toFixed(1) : 0,
-      downloadToViewRate: downloadUsers.length > 0 ? (viewUsers.length / downloadUsers.length * 100).toFixed(1) : 0,
-      overallConversion: loginUsers.length > 0 ? (viewUsers.length / loginUsers.length * 100).toFixed(1) : 0
-    };
-    
-    // Get real-time stats (last hour)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const realtimeStats = {
-      lastHour: {
-        logins: await Click.countDocuments({ type: 'login', createdAt: { $gte: oneHourAgo } }),
-        downloads: await Click.countDocuments({ type: 'download', createdAt: { $gte: oneHourAgo } }),
-        views: await Click.countDocuments({ type: 'view', createdAt: { $gte: oneHourAgo } }),
-        registrations: await Click.countDocuments({ type: 'registration', createdAt: { $gte: oneHourAgo } }),
-        total: await Click.countDocuments({ createdAt: { $gte: oneHourAgo } })
-      },
-      activeDevices: deviceDistribution,
-      peakHour: hourlyActivity.length > 0 ? 
-        hourlyActivity.reduce((max, curr) => curr.count > max.count ? curr : max, hourlyActivity[0]) : null
-    };
-    
-    res.json({
-      success: true,
-      period,
-      dateRange: {
-        start: dateRange.start.toISOString(),
-        end: dateRange.end.toISOString()
-      },
-      data: {
-        summary: {
-          totalClicks: await Click.countDocuments(matchFilter),
-          clicksByType,
-          uniqueUsers: (await Click.distinct('userId', matchFilter)).length
-        },
-        timeSeries: clicksOverTime,
-        deviceStats: {
-          devices: deviceDistribution,
-          browsers: browserDistribution,
-          operatingSystems: osDistribution
-        },
-        activityPatterns: {
-          hourly: hourlyActivity.map(h => ({ hour: h._id.hour, count: h.count })),
-          daily: dailyActivity.map(d => ({ dayOfWeek: d._id.dayOfWeek, count: d.count }))
-        },
-        topUsers,
-        conversionFunnel,
-        realtime: realtimeStats
-      },
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('Click analytics error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch click analytics',
-      details: error.message
-    });
-  }
-});
-
-// Get click heatmap data
-router.get('/clicks/heatmap', requireAdmin, async (req, res) => {
-  try {
-    const { period = '30d', startDate, endDate } = req.query;
-    
-    let dateRange;
-    if (startDate && endDate) {
-      dateRange = {
-        start: new Date(startDate),
-        end: new Date(endDate)
-      };
-    } else {
-      dateRange = getDateRange(period);
-    }
-    
-    // Generate heatmap data (hourly for each day)
-    const heatmapData = await Click.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            dayOfWeek: { $dayOfWeek: '$createdAt' },
-            hour: { $hour: '$createdAt' }
-          },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { '_id.dayOfWeek': 1, '_id.hour': 1 } }
-    ]);
-    
-    // Format for heatmap (7 days x 24 hours)
-    const heatmapMatrix = Array(7).fill().map(() => Array(24).fill(0));
-    
-    heatmapData.forEach(item => {
-      const dayIndex = item._id.dayOfWeek - 1; // Convert 1-7 to 0-6
-      const hourIndex = item._id.hour;
-      if (dayIndex >= 0 && dayIndex < 7 && hourIndex >= 0 && hourIndex < 24) {
-        heatmapMatrix[dayIndex][hourIndex] = item.count;
-      }
-    });
-    
-    const maxCount = Math.max(...heatmapMatrix.flat());
-    
-    res.json({
-      success: true,
-      period,
-      data: {
-        matrix: heatmapMatrix,
-        maxValue: maxCount,
-        days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        hours: Array.from({ length: 24 }, (_, i) => `${i}:00`)
-      },
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('Heatmap error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch heatmap data'
-    });
-  }
-});
-
-// Get user journey analytics
-router.get('/clicks/journey', requireAdmin, async (req, res) => {
-  try {
-    const { userId, period = '30d' } = req.query;
-    const dateRange = getDateRange(period);
-    
-    const matchFilter = {
-      createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-    };
-    
-    if (userId) matchFilter.userId = mongoose.Types.ObjectId(userId);
-    
-    // Get user journeys (sequence of actions)
-    const userJourneys = await Click.aggregate([
-      { $match: matchFilter },
-      { $sort: { userId: 1, createdAt: 1 } },
-      {
-        $group: {
-          _id: '$userId',
-          actions: {
-            $push: {
-              type: '$type',
-              location: '$location',
-              timestamp: '$createdAt',
-              deviceType: '$deviceType'
-            }
-          },
-          firstAction: { $first: '$createdAt' },
-          lastAction: { $last: '$createdAt' },
-          totalActions: { $sum: 1 }
-        }
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'user'
-        }
-      },
-      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } }
-    ]);
-    
-    // Calculate average session duration
-    const sessions = await Click.aggregate([
-      { $match: matchFilter },
-      { $sort: { userId: 1, createdAt: 1 } },
-      {
-        $group: {
-          _id: '$userId',
-          actions: { $push: '$$ROOT' }
-        }
-      },
-      {
-        $project: {
-          sessions: {
-            $reduce: {
-              input: '$actions',
-              initialValue: [],
-              in: {
-                $cond: [
-                  { $eq: [{ $size: '$$value' }, 0] },
-                  { $concatArrays: ['$$value', [{ start: '$$this.createdAt', actions: 1 }]] },
-                  {
-                    $let: {
-                      vars: {
-                        lastSession: { $last: '$$value' },
-                        timeDiff: {
-                          $divide: [
-                            { $subtract: ['$$this.createdAt', { $last: '$$value.start' }] },
-                            60 * 1000
-                          ]
-                        }
-                      },
-                      in: {
-                        $cond: [
-                          { $lt: ['$$timeDiff', 30] },
-                          {
-                            $concatArrays: [
-                              { $slice: ['$$value', 0, { $subtract: [{ $size: '$$value' }, 1] }] },
-                              [{
-                                start: { $last: '$$value.start' },
-                                actions: { $add: [{ $last: '$$value.actions' }, 1] }
-                              }]
-                            ]
-                          },
-                          {
-                            $concatArrays: [
-                              '$$value',
-                              [{ start: '$$this.createdAt', actions: 1 }]
-                            ]
-                          }
-                        ]
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
-    ]);
-    
-    res.json({
-      success: true,
-      period,
-      data: {
-        journeys: userJourneys,
-        totalUsers: userJourneys.length,
-        averageActionsPerUser: userJourneys.reduce((sum, j) => sum + j.totalActions, 0) / userJourneys.length || 0
-      },
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('User journey error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch user journey data'
     });
   }
 });
@@ -2091,102 +1549,6 @@ router.get('/feedback', requireAdmin, async (req, res) => {
   }
 });
 
-// ==================== EXPORT DATA ====================
-router.get('/export', requireAdmin, async (req, res) => {
-  try {
-    const { 
-      type, 
-      format = 'csv',
-      ...filters 
-    } = req.query;
-    
-    // Build filter object
-    const filter = {};
-    if (filters.startDate) filter.createdAt = { $gte: new Date(filters.startDate) };
-    if (filters.endDate) filter.createdAt = { ...filter.createdAt, $lte: new Date(filters.endDate) };
-    if (filters.role) filter.userRole = filters.role;
-    if (filters.deviceType) filter.deviceType = filters.deviceType;
-    if (filters.browser) filter.browser = filters.browser;
-    
-    let data = [];
-    let model;
-    
-    switch(type) {
-      case 'logins':
-        model = Click;
-        filter.type = 'login';
-        break;
-      case 'downloads':
-        model = Click;
-        filter.type = 'download';
-        filter.location = 'homepage_pc_app';
-        break;
-      case 'file-activities':
-        model = FileActivity;
-        if (filters.activityType) filter.activityType = filters.activityType;
-        if (filters.classCode) filter.classCode = filters.classCode;
-        break;
-      case 'registrations':
-        model = Click;
-        filter.type = 'registration';
-        break;
-      case 'users':
-        model = User;
-        if (filters.role) filter.role = filters.role;
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid export type'
-        });
-    }
-    
-    data = await model.find(filter).limit(10000).lean();
-    
-    if (format === 'csv') {
-      if (data.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'No data found for the specified filters'
-        });
-      }
-      
-      const headers = Object.keys(data[0] || {});
-      const csvRows = [
-        headers.join(','),
-        ...data.map(row => {
-          return headers.map(header => {
-            const value = row[header];
-            if (value === null || value === undefined) return '';
-            if (typeof value === 'object') return JSON.stringify(value);
-            return `"${String(value).replace(/"/g, '""')}"`;
-          }).join(',');
-        })
-      ];
-      
-      const filename = `${type}_export_${Date.now()}.csv`;
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      return res.send(csvRows.join('\n'));
-    }
-    
-    res.json({
-      success: true,
-      data,
-      count: data.length
-    });
-    
-  } catch (error) {
-    console.error('Export error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to export data',
-      details: error.message
-    });
-  }
-});
-
 // ==================== REAL-TIME STATS ====================
 router.get('/realtime', requireAdmin, async (req, res) => {
   try {
@@ -2196,9 +1558,8 @@ router.get('/realtime', requireAdmin, async (req, res) => {
     
     let activeUsersNow = 0;
     let recentLogins = [];
-    let recentDownloads = [];
     let recentFileActivities = [];
-    let todayStats = { logins: 0, downloads: 0, fileActivities: 0, newUsers: 0 };
+    let todayStats = { logins: 0, fileActivities: 0, newUsers: 0 };
     let systemHealth = { database: 'connected', api: 'online', uptime: process.uptime(), memory: process.memoryUsage(), timestamp: now.toISOString() };
 
     try {
@@ -2223,19 +1584,6 @@ router.get('/realtime', requireAdmin, async (req, res) => {
     }
 
     try {
-      recentDownloads = await Click.find({
-        type: 'download',
-        location: 'homepage_pc_app',
-        createdAt: { $gte: oneHourAgo }
-      })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean();
-    } catch (err) {
-      console.error('Recent downloads error:', err);
-    }
-
-    try {
       recentFileActivities = await FileActivity.find({
         createdAt: { $gte: oneHourAgo }
       })
@@ -2252,11 +1600,6 @@ router.get('/realtime', requireAdmin, async (req, res) => {
       todayStats = {
         logins: await Click.countDocuments({
           type: 'login',
-          createdAt: { $gte: todayStart }
-        }),
-        downloads: await Click.countDocuments({
-          type: 'download',
-          location: 'homepage_pc_app',
           createdAt: { $gte: todayStart }
         }),
         fileActivities: await FileActivity.countDocuments({
@@ -2276,7 +1619,6 @@ router.get('/realtime', requireAdmin, async (req, res) => {
       activeUsers: activeUsersNow,
       recent: {
         logins: recentLogins,
-        downloads: recentDownloads,
         fileActivities: recentFileActivities
       },
       today: todayStats,
@@ -2300,34 +1642,10 @@ router.get('/test', (req, res) => {
     endpoints: [
       'GET /api/analytics/overview',
       'GET /api/analytics/filter',
-      'GET /api/analytics/export',
       'GET /api/analytics/realtime',
-      'GET /api/analytics/feedback',
-      'GET /api/analytics/debug-login-clicks'
+      'GET /api/analytics/feedback'
     ]
   });
-});
-
-// Track homepage download (public endpoint)
-router.post('/download-homepage', async (req, res) => {
-  try {
-    const userAgent = req.headers['user-agent'] || req.body.userAgent || '';
-    const click = new Click({
-      type: 'download',
-      location: 'homepage_pc_app',
-      userAgent,
-      deviceType: req.body.deviceType || 'Unknown',
-      browser: req.body.browser || undefined,
-      operatingSystem: req.body.operatingSystem || undefined,
-      ipAddress: req.ip,
-      metadata: req.body.metadata || {}
-    });
-    await click.save();
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Download tracking error:', error);
-    res.status(500).json({ success: false, error: 'Failed to track download' });
-  }
 });
 
 module.exports = router;

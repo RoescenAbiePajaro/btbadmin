@@ -880,18 +880,8 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-gray-400 text-xs sm:text-sm">PC App Downloads</p>
-                    <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
-                      {analyticsData?.rawData?.platformMetrics?.totalDownloads || 0}
-                    </p>
-                  </div>
-                  <FiDownload className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500 flex-shrink-0" />
-                </div>
+              
               </div>
-            </div>
           )}
 
           {/* Tab Content */}

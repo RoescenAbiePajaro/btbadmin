@@ -482,25 +482,9 @@ export default function ChartComponent({
         </div>
       )}
 
-      {/* PC App Downloads Trend */}
-      {analyticsData?.lineCharts?.downloadTrends?.data?.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h3 className="text-lg font-bold mb-4 text-white flex items-center gap-2">
-            <FiDownload className="text-orange-400" /> PC App Downloads Over Time
-          </h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filterDataByDateRange(analyticsData.lineCharts.downloadTrends.data)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="date" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <Tooltip contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151' }} />
-                <Area type="monotone" dataKey="downloads" name="Downloads" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+      
+        
+      
     </div>
   );
 }

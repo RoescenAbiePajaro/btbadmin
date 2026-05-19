@@ -1,3 +1,4 @@
+// backend/models/Click.js
 const mongoose = require('mongoose');
 
 const clickSchema = new mongoose.Schema({
