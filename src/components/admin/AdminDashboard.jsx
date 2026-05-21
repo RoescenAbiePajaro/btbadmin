@@ -187,10 +187,14 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch filtered data
+  // Fetch filtered data - FIXED: Use larger limit for users tab
   const fetchFilteredData = async () => {
     try {
       const token = localStorage.getItem('token');
+      
+      // For users tab, use a larger limit to get all users (55+)
+      const limit = activeTab === 'users' ? 1000 : 50;
+      
       const response = await axios.get(
         'https://btbtestservice.onrender.com/api/analytics/filter',
         {
@@ -198,7 +202,7 @@ export default function AdminDashboard() {
             type: activeTab,
             ...filters,
             page: 1,
-            limit: 50
+            limit: limit
           },
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -476,6 +480,7 @@ export default function AdminDashboard() {
     fetchAnalyticsData();
   }, [timeRange]);
 
+  // FIXED: Use fetchFilteredData for all tabs including users
   useEffect(() => {
     if (activeTab !== 'overview') {
       fetchFilteredData();
@@ -551,8 +556,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // ─── Users Pagination Helpers ───────────────────────────────────────────────
-
+  // Users Pagination Helpers
   const getFilteredUsers = () => {
     let users = filteredData?.data || [];
 
@@ -618,8 +622,6 @@ export default function AdminDashboard() {
   const getUsersTotalPages = () => {
     return Math.ceil(getFilteredUsers().length / usersItemsPerPage);
   };
-
-  // ────────────────────────────────────────────────────────────────────────────
 
   const sidebarTabs = [
     { id: 'overview', label: 'Overview', icon: <FiHome size={20} /> },
@@ -879,9 +881,7 @@ export default function AdminDashboard() {
                   <FiActivity className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500 flex-shrink-0" />
                 </div>
               </div>
-
-              
-              </div>
+            </div>
           )}
 
           {/* Tab Content */}
