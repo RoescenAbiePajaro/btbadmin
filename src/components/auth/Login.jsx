@@ -65,23 +65,25 @@ export default function Login() {
         localStorage.setItem('token', response.data.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
         
-        // Track successful login
-        await axios.post('https://btbtestservice.onrender.com/api/analytics/login', {}, {
-          headers: {
-            Authorization: `Bearer ${response.data.data.token}` 
-          }
-        });
+        // Track successful login (skip for admin — admin visits should not count)
+        const loggedInUser = response.data.data.user;
+        if (loggedInUser.role !== 'admin') {
+          await axios.post('https://btbtestservice.onrender.com/api/analytics/login', {}, {
+            headers: {
+              Authorization: `Bearer ${response.data.data.token}` 
+            }
+          });
+        }
         
         // Clear fresh registration flag if it exists
         localStorage.removeItem('freshRegistration');
         
         // Redirect based on role
-        const user = response.data.data.user;
-        if (user.role === 'student') {
+        if (loggedInUser.role === 'student') {
           navigate('/student/dashboard', { replace: true });
-        } else if (user.role === 'educator') {
+        } else if (loggedInUser.role === 'educator') {
           navigate('/educator/dashboard', { replace: true });
-        } else if (user.role === 'admin') {
+        } else if (loggedInUser.role === 'admin') {
           navigate('/admin/dashboard', { replace: true });
         }
       }

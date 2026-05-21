@@ -2013,6 +2013,12 @@ app.post('/api/clicks', async (req, res) => {
 // =====================
 app.post('/api/analytics/login', verifyToken, async (req, res) => {
   try {
+    // Skip tracking for admin users — admin logins should not count as page visits
+    if (req.user.role === 'admin') {
+      console.log('ℹ️ Admin login — skipping visit tracking for user:', req.user.id);
+      return res.json({ success: true });
+    }
+
     const click = new Click({
       type: 'login',
       location: 'login_success',
