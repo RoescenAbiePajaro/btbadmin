@@ -199,7 +199,7 @@ export default function ClassTabComponent({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0 w-full">
       {/* Search Bar */}
       <div className="flex items-center justify-between mb-4">
         <div className="relative w-full sm:w-96">
@@ -215,10 +215,10 @@ export default function ClassTabComponent({
       </div>
 
       {/* Educator Classes Summary */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-w-0">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">Educator Classes Summary</h3>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex flex-wrap gap-2">
               <select
                 value={classFilters.sortBy}
@@ -325,7 +325,7 @@ export default function ClassTabComponent({
       </div>
 
       {/* Class Details */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-w-0">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">Class Details</h3>
           <ExportClassDetails filteredData={filteredData} getSchoolName={getSchoolName} />

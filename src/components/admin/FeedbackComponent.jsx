@@ -284,7 +284,7 @@ export default function FeedbackComponent({
   }, [feedbackData, feedbackSearch]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0 w-full">
       {/* Toggle View Button */}
       <div className="flex items-center justify-between mb-4">
         <div className="relative w-full sm:w-96">
@@ -311,10 +311,10 @@ export default function FeedbackComponent({
       </div>
 
       {/* Feedback Statistics Overview */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-w-0">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">Feedback Overview</h3>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex flex-wrap gap-2">
               <select
                 value={feedbackFilters.status}
@@ -508,7 +508,7 @@ export default function FeedbackComponent({
         </div>
       ) : (
         /* Feedback Table View */
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-w-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-800">

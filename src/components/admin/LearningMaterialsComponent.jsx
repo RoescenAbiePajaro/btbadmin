@@ -162,7 +162,7 @@ export default function LearningMaterialsComponent({
   const sortedEducators = getFilteredAndSortedEducators();
 
   return (
-    <div className="space-y-8" ref={componentRef}>
+    <div className="space-y-8 min-w-0 w-full" ref={componentRef}>
       {/* Search Bar */}
       <div className="flex items-center justify-between mb-4">
         <div className="relative w-full sm:w-96">
@@ -189,7 +189,7 @@ export default function LearningMaterialsComponent({
       )}
       
       {/* Educator Summary Section */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-w-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <h3 className="text-lg font-bold text-white">Educators Summary</h3>
           <div className="flex items-center gap-4">
@@ -340,7 +340,7 @@ export default function LearningMaterialsComponent({
       </div>
 
       {/* Educator Shared Files Section */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-w-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-lg font-bold text-white">Files Shared by Educator</h3>
         </div>

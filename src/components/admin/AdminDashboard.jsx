@@ -730,7 +730,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} ml-0`}>
+      <div className={`flex-1 min-w-0 overflow-hidden transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} ml-0`}>
         {/* Mobile Header with Menu Button */}
         <div className="lg:hidden bg-gray-900 border-b border-gray-800 sticky top-0 z-30">
           <div className="px-4 py-3 flex items-center justify-between">
@@ -776,7 +776,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <div className="p-4 sm:p-6">
+        <div className="p-4 sm:p-6 min-w-0 w-full overflow-hidden">
           {error && (
             <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
               <div className="flex items-center gap-2">
@@ -966,7 +966,7 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'users' && (
-            <div className="space-y-8">
+            <div className="space-y-8 min-w-0 w-full">
               {/* Search Section */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                 <div className="relative w-full sm:w-96">
@@ -982,7 +982,7 @@ export default function AdminDashboard() {
               </div>
               
               {/* User Table */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-w-0">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
                   <h3 className="text-lg font-bold text-white">User Management</h3>
                   
