@@ -367,7 +367,7 @@ export default function EducatorDashboard() {
                       {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
                     </p>
                     <p className="text-pink-400 text-xs mt-1">
-                      {user.school || 'No School Assigned'}
+                      {user.educatorSchool || user.school || 'No School Assigned'}
                     </p>
                   </div>
                 </div>
@@ -458,7 +458,7 @@ export default function EducatorDashboard() {
                 <h3 className="text-lg font-semibold text-white mb-4">Academic Information</h3>
                 <div>
                   <label className="block text-gray-400 text-sm">School</label>
-                  <p className="text-white mt-1">{user?.school || 'Not specified'}</p>
+                  <p className="text-white mt-1">{user?.educatorSchool || user?.school || 'Not specified'}</p>
                 </div>
               </div>
             </div>

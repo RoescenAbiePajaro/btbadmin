@@ -77,10 +77,12 @@ const StudentProfileSettings = ({ user, onProfileUpdate }) => {
   };
 
   const handleProfilePictureUpdate = (newProfilePicture) => {
-    if (onProfileUpdate) {
-      const updatedUser = { ...user, profilePicture: newProfilePicture };
-      onProfileUpdate(updatedUser);
-    }
+    const updatedUser = {
+      ...user,
+      profilePicture: newProfilePicture || { url: '', publicId: '', updatedAt: null }
+    };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    if (onProfileUpdate) onProfileUpdate(updatedUser);
   };
 
   if (isEditing) {

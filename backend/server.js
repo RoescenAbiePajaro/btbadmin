@@ -36,12 +36,6 @@ if (process.env.MONGODB_URI) {
 // Initialize Express app
 const app = express();
 
-// Add to backend/server.js - Add this with other route imports
-const profileRoutes = require('./routes/profileRoutes');
-
-// Add after other app.use statements
-app.use('/api/profile', profileRoutes);
-
 // backend/server.js - Update the CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
@@ -2174,6 +2168,16 @@ app.get('/api/auth/profile', verifyToken, async (req, res) => {
 
     // Prepare user data with class details
     const userData = user.toObject();
+
+    if (user.role === 'educator') {
+      const schoolSetting = await AcademicSetting.findOne({
+        educator: user._id,
+        type: 'school',
+        isActive: true
+      }).sort({ createdAt: 1 });
+      userData.educatorSchool = schoolSetting?.name || '';
+      userData.school = userData.educatorSchool;
+    }
     
     // Current enrolled class details (if any)
     if (user.enrolledClass) {
@@ -2595,6 +2599,8 @@ app.get('/api/admin/cleanup', verifyToken, requireAdmin, async (req, res) => {
 // =====================
 // 📁 ROUTES
 // =====================
+const profileRoutes = require('./routes/profileRoutes');
+app.use('/api/profile', profileRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);

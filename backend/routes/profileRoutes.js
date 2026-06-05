@@ -1,15 +1,28 @@
-// backend/routes/profileRoutes.js - Add explicit CORS headers
+// backend/routes/profileRoutes.js
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const User = require('../models/User');
+const AcademicSetting = require('../models/AcademicSetting');
 const { supabase } = require('../config/supabase');
 const { verifyToken } = require('../middleware/auth');
 
-// Add CORS headers middleware for this router
+const PROFILE_BUCKET = 'class-files';
+
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://btbstatictest.onrender.com',
+  'https://btbtestservice.onrender.com'
+];
+
 router.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://btbstatictest.onrender.com');
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, Accept, cache-control, Origin');
@@ -19,361 +32,273 @@ router.use((req, res, next) => {
   next();
 });
 
-// Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
     if (mimetype && extname) {
       return cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
     }
+    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
   }
 });
 
-// Helper function to upload to Supabase
+async function getEducatorSchoolName(educatorId) {
+  const schoolSetting = await AcademicSetting.findOne({
+    educator: educatorId,
+    type: 'school',
+    isActive: true
+  }).sort({ createdAt: 1 });
+  return schoolSetting?.name || '';
+}
+
+async function attachEducatorSchool(userObj) {
+  if (userObj.role === 'educator') {
+    userObj.educatorSchool = await getEducatorSchoolName(userObj._id);
+    userObj.school = userObj.educatorSchool;
+  }
+  return userObj;
+}
+
 async function uploadToSupabase(file, userId, role) {
   const fileExt = path.extname(file.originalname).toLowerCase();
   const timestamp = Date.now();
   const randomString = Math.random().toString(36).substring(7);
   const fileName = `profile-pictures/${role}s/${userId}/${timestamp}_${randomString}${fileExt}`;
-  
-  const { data, error } = await supabase.storage
-    .from('avatars')
+
+  const { error } = await supabase.storage
+    .from(PROFILE_BUCKET)
     .upload(fileName, file.buffer, {
       contentType: file.mimetype,
       cacheControl: '3600',
       upsert: true
     });
-  
+
   if (error) {
     console.error('Supabase upload error:', error);
-    throw new Error('Failed to upload image');
+    throw new Error('Failed to upload image. Please try again.');
   }
-  
+
   const { data: { publicUrl } } = supabase.storage
-    .from('avatars')
+    .from(PROFILE_BUCKET)
     .getPublicUrl(fileName);
-  
-  return {
-    url: publicUrl,
-    publicId: fileName
-  };
+
+  return { url: publicUrl, publicId: fileName };
 }
 
-// Helper function to delete old profile picture
 async function deleteOldProfilePicture(publicId) {
   if (!publicId) return;
-  
   try {
-    const { error } = await supabase.storage
-      .from('avatars')
-      .remove([publicId]);
-    
-    if (error) {
-      console.error('Error deleting old profile picture:', error);
-    }
+    const { error } = await supabase.storage.from(PROFILE_BUCKET).remove([publicId]);
+    if (error) console.error('Error deleting old profile picture:', error);
   } catch (error) {
     console.error('Error deleting old profile picture:', error);
   }
 }
 
-// Upload profile picture
-router.post('/upload-profile-picture', verifyToken, upload.single('profilePicture'), async (req, res) => {
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'File size must be less than 5MB'
+      : err.message;
+    return res.status(400).json({
+      toast: { show: true, message, type: 'error' }
+    });
+  }
+  if (err) {
+    return res.status(400).json({
+      toast: { show: true, message: err.message, type: 'error' }
+    });
+  }
+  next();
+};
+
+router.post('/upload-profile-picture', verifyToken, upload.single('profilePicture'), handleMulterError, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
-        toast: {
-          show: true,
-          message: 'No file uploaded',
-          type: 'error'
-        }
+        toast: { show: true, message: 'No file uploaded', type: 'error' }
       });
     }
-    
+
     const userId = req.user.id;
     const userRole = req.user.role;
-    
     const user = await User.findById(userId);
+
     if (!user) {
       return res.status(404).json({
-        toast: {
-          show: true,
-          message: 'User not found',
-          type: 'error'
-        }
+        toast: { show: true, message: 'User not found', type: 'error' }
       });
     }
-    
-    // Delete old profile picture if exists
-    if (user.profilePicture && user.profilePicture.publicId) {
+
+    if (user.profilePicture?.publicId) {
       await deleteOldProfilePicture(user.profilePicture.publicId);
     }
-    
-    // Upload new profile picture
+
     const uploadResult = await uploadToSupabase(req.file, userId, userRole);
-    
-    // Update user
+
     user.profilePicture = {
       url: uploadResult.url,
       publicId: uploadResult.publicId,
       updatedAt: new Date()
     };
-    
     await user.save();
-    
+
     return res.json({
-      toast: {
-        show: true,
-        message: 'Profile picture updated successfully!',
-        type: 'success'
-      },
-      data: {
-        profilePicture: user.profilePicture
-      }
+      toast: { show: true, message: 'Profile picture updated successfully!', type: 'success' },
+      data: { profilePicture: user.profilePicture }
     });
-    
   } catch (error) {
     console.error('Upload error:', error);
     return res.status(500).json({
-      toast: {
-        show: true,
-        message: error.message || 'Failed to upload profile picture',
-        type: 'error'
-      }
+      toast: { show: true, message: error.message || 'Failed to upload profile picture', type: 'error' }
     });
   }
 });
 
-// Remove profile picture
 router.delete('/remove-profile-picture', verifyToken, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const user = await User.findById(userId);
-    
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
-        toast: {
-          show: true,
-          message: 'User not found',
-          type: 'error'
-        }
+        toast: { show: true, message: 'User not found', type: 'error' }
       });
     }
-    
-    if (user.profilePicture && user.profilePicture.publicId) {
+
+    if (user.profilePicture?.publicId) {
       await deleteOldProfilePicture(user.profilePicture.publicId);
     }
-    
-    user.profilePicture = {
-      url: '',
-      publicId: '',
-      updatedAt: null
-    };
-    
+
+    user.profilePicture = { url: '', publicId: '', updatedAt: null };
     await user.save();
-    
+
     return res.json({
-      toast: {
-        show: true,
-        message: 'Profile picture removed successfully',
-        type: 'success'
-      }
+      toast: { show: true, message: 'Profile picture removed successfully', type: 'success' }
     });
-    
   } catch (error) {
     console.error('Remove error:', error);
     return res.status(500).json({
-      toast: {
-        show: true,
-        message: 'Failed to remove profile picture',
-        type: 'error'
-      }
+      toast: { show: true, message: 'Failed to remove profile picture', type: 'error' }
     });
   }
 });
 
-// Update educator profile
 router.put('/educator/profile', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'educator') {
       return res.status(403).json({
-        toast: {
-          show: true,
-          message: 'Access denied. Educator only.',
-          type: 'error'
-        }
+        toast: { show: true, message: 'Access denied. Educator only.', type: 'error' }
       });
     }
-    
-    const { fullName, email, username, school, homeAddress, cellphoneNumber } = req.body;
+
+    const { fullName, email, username, homeAddress, cellphoneNumber } = req.body;
     const userId = req.user.id;
-    
+
     const updateData = {};
     if (fullName !== undefined) updateData.fullName = fullName;
     if (email !== undefined) updateData.email = email.toLowerCase();
     if (username !== undefined) updateData.username = username;
-    if (school !== undefined) updateData.school = school;
     if (homeAddress !== undefined) updateData.homeAddress = homeAddress;
     if (cellphoneNumber !== undefined) updateData.cellphoneNumber = cellphoneNumber;
-    
-    // Check for duplicates
+
     if (email || username) {
       const existingUser = await User.findOne({
         $or: [
           ...(email ? [{ email: email.toLowerCase() }] : []),
-          ...(username ? [{ username: username }] : [])
+          ...(username ? [{ username }] : [])
         ],
         _id: { $ne: userId }
       });
-      
+
       if (existingUser) {
         const field = existingUser.email === email?.toLowerCase() ? 'Email' : 'Username';
         return res.status(400).json({
-          toast: {
-            show: true,
-            message: `${field} already exists`,
-            type: 'error'
-          }
+          toast: { show: true, message: `${field} already exists`, type: 'error' }
         });
       }
     }
-    
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, select: '-password' }
-    );
-    
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true, select: '-password' });
+    const userData = updatedUser.toObject();
+    await attachEducatorSchool(userData);
+
     return res.json({
-      toast: {
-        show: true,
-        message: 'Profile updated successfully!',
-        type: 'success'
-      },
-      data: {
-        user: updatedUser
-      }
+      toast: { show: true, message: 'Profile updated successfully!', type: 'success' },
+      data: { user: userData }
     });
-    
   } catch (error) {
     console.error('Update error:', error);
     return res.status(500).json({
-      toast: {
-        show: true,
-        message: 'Failed to update profile',
-        type: 'error'
-      }
+      toast: { show: true, message: 'Failed to update profile', type: 'error' }
     });
   }
 });
 
-// Update student profile
 router.put('/student/profile', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'student') {
       return res.status(403).json({
-        toast: {
-          show: true,
-          message: 'Access denied. Student only.',
-          type: 'error'
-        }
+        toast: { show: true, message: 'Access denied. Student only.', type: 'error' }
       });
     }
-    
+
     const { username, school, course, year, block } = req.body;
     const userId = req.user.id;
-    
+
     const updateData = {};
     if (username !== undefined) updateData.username = username;
     if (school !== undefined) updateData.school = school;
     if (course !== undefined) updateData.course = course;
     if (year !== undefined) updateData.year = year;
     if (block !== undefined) updateData.block = block;
-    
+
     if (username) {
-      const existingUser = await User.findOne({
-        username: username,
-        _id: { $ne: userId }
-      });
-      
+      const existingUser = await User.findOne({ username, _id: { $ne: userId } });
       if (existingUser) {
         return res.status(400).json({
-          toast: {
-            show: true,
-            message: 'Username already exists',
-            type: 'error'
-          }
+          toast: { show: true, message: 'Username already exists', type: 'error' }
         });
       }
     }
-    
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, select: '-password' }
-    );
-    
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true, select: '-password' });
+
     return res.json({
-      toast: {
-        show: true,
-        message: 'Profile updated successfully!',
-        type: 'success'
-      },
-      data: {
-        user: updatedUser
-      }
+      toast: { show: true, message: 'Profile updated successfully!', type: 'success' },
+      data: { user: updatedUser }
     });
-    
   } catch (error) {
     console.error('Update error:', error);
     return res.status(500).json({
-      toast: {
-        show: true,
-        message: 'Failed to update profile',
-        type: 'error'
-      }
+      toast: { show: true, message: 'Failed to update profile', type: 'error' }
     });
   }
 });
 
-// Get profile
 router.get('/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({
-        toast: {
-          show: true,
-          message: 'User not found',
-          type: 'error'
-        }
+        toast: { show: true, message: 'User not found', type: 'error' }
       });
     }
-    
+
+    const userData = user.toObject();
+    await attachEducatorSchool(userData);
+
     return res.json({
       success: true,
-      data: {
-        user
-      }
+      data: { user: userData }
     });
-    
   } catch (error) {
     console.error('Get profile error:', error);
     return res.status(500).json({
-      toast: {
-        show: true,
-        message: 'Failed to fetch profile',
-        type: 'error'
-      }
+      toast: { show: true, message: 'Failed to fetch profile', type: 'error' }
     });
   }
 });

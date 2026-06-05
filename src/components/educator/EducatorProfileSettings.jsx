@@ -12,10 +12,10 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
     fullName: '',
     email: '',
     username: '',
-    school: '',
     homeAddress: '',
     cellphoneNumber: ''
   });
+  const [educatorSchool, setEducatorSchool] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -25,10 +25,32 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
         fullName: user.fullName || '',
         email: user.email || '',
         username: user.username || '',
-        school: user.school || '',
         homeAddress: user.homeAddress || '',
         cellphoneNumber: user.cellphoneNumber || ''
       });
+      setEducatorSchool(user.educatorSchool || user.school || '');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const fetchSchool = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `${API_URL}/api/academic-settings/school`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const schools = Array.isArray(response.data) ? response.data : [];
+        const activeSchool = schools.find(s => s.isActive) || schools[0];
+        if (activeSchool?.name) {
+          setEducatorSchool(activeSchool.name);
+        }
+      } catch (error) {
+        console.error('Error fetching educator school:', error);
+      }
+    };
+    if (user?.role === 'educator') {
+      fetchSchool();
     }
   }, [user]);
 
@@ -82,10 +104,12 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
   };
 
   const handleProfilePictureUpdate = (newProfilePicture) => {
-    if (onProfileUpdate) {
-      const updatedUser = { ...user, profilePicture: newProfilePicture };
-      onProfileUpdate(updatedUser);
-    }
+    const updatedUser = {
+      ...user,
+      profilePicture: newProfilePicture || { url: '', publicId: '', updatedAt: null }
+    };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    if (onProfileUpdate) onProfileUpdate(updatedUser);
   };
 
   if (isEditing) {
@@ -148,13 +172,10 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
             <label className="block text-gray-300 text-sm font-medium mb-1">
               School
             </label>
-            <input
-              type="text"
-              name="school"
-              value={formData.school}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
+            <p className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-300">
+              {educatorSchool || 'No school created yet'}
+            </p>
+            <p className="text-gray-500 text-xs mt-1">Manage your school in Academic Settings</p>
           </div>
 
           <div>
@@ -255,7 +276,8 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
           </div>
           <div>
             <label className="block text-gray-400 text-sm">School</label>
-            <p className="text-white">{user?.school || 'Not set'}</p>
+            <p className="text-white">{educatorSchool || 'Not set'}</p>
+            <p className="text-gray-500 text-xs mt-1">Set in Academic Settings tab</p>
           </div>
           <div>
             <label className="block text-gray-400 text-sm">Home Address</label>
