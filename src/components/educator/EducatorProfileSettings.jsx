@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ProfilePicture from '../ProfilePicture';
-import { Save, Edit2, X, Check } from 'lucide-react';
+import { Save, Edit2, X } from 'lucide-react';
+
+const API_URL = 'https://btbtestservice.onrender.com';
 
 const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -33,7 +35,6 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -57,28 +58,24 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/profile/educator/profile`,
+        `${API_URL}/api/profile/educator/profile`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.toast?.type === 'success') {
-        // Update local storage
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         const updatedUser = { ...userData, ...response.data.data.user };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
         if (onProfileUpdate) onProfileUpdate(updatedUser);
-        
         setIsEditing(false);
+      } else {
+        alert(response.data.toast?.message || 'Update failed');
       }
     } catch (error) {
       console.error('Update error:', error);
-      if (error.response?.data?.toast?.message) {
-        alert(error.response.data.toast.message);
-      } else {
-        alert('Failed to update profile');
-      }
+      alert(error.response?.data?.toast?.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -114,7 +111,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
             {errors.fullName && <p className="text-red-400 text-xs mt-1">{errors.fullName}</p>}
           </div>
@@ -128,7 +125,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
           </div>
@@ -142,7 +139,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
             {errors.username && <p className="text-red-400 text-xs mt-1">{errors.username}</p>}
           </div>
@@ -156,7 +153,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
               name="school"
               value={formData.school}
               onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
 
@@ -169,7 +166,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
               value={formData.homeAddress}
               onChange={handleChange}
               rows="3"
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
 
@@ -182,7 +179,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
               name="cellphoneNumber"
               value={formData.cellphoneNumber}
               onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
 
@@ -197,7 +194,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 bg-pink-600 hover:bg-pink-700 text-white py-2 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

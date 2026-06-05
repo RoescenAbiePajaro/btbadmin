@@ -42,7 +42,7 @@ const profileRoutes = require('./routes/profileRoutes');
 // Add after other app.use statements
 app.use('/api/profile', profileRoutes);
 
-// Middleware - FIXED CORS CONFIGURATION
+// backend/server.js - Update CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
@@ -56,7 +56,7 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('Blocked origin:', origin);
@@ -71,7 +71,7 @@ app.use(cors({
     'Content-Length', 
     'X-Requested-With', 
     'Accept',
-    'cache-control' // ADDED THIS - FIXES CORS ERROR
+    'cache-control'
   ],
   exposedHeaders: ['Content-Disposition']
 }));
@@ -2592,6 +2592,7 @@ app.use('/api/folders', folderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/image-converter', imageConverterRoutes);
+
 
 // =====================
 // 🚀 SERVER START

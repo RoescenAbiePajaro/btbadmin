@@ -8,7 +8,9 @@ import StudentList from './StudentList';
 import FileSharing from './FileSharing';
 import EducFeedback from './EducFeedback';
 import EducatorProfileSettings from './EducatorProfileSettings';
-import { FiMessageSquare, FiHome, FiUsers, FiFolder, FiSettings, FiUser, FiBookOpen, FiMail, FiUserCheck } from 'react-icons/fi';
+import { FiMessageSquare, FiHome, FiUsers, FiFolder, FiSettings, FiUser, FiBookOpen, FiMail, FiUserCheck, FiRefreshCw } from 'react-icons/fi';
+
+const API_URL = 'https://btbtestservice.onrender.com';
 
 export default function EducatorDashboard() {
   const navigate = useNavigate();
@@ -30,21 +32,17 @@ export default function EducatorDashboard() {
     }
 
     try {
-      // Always fetch fresh user data from server
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
+      const response = await axios.get(`${API_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.data?.user) {
         const userData = response.data.data.user;
         console.log('Fetched fresh user data:', userData);
-        
-        // Update localStorage with fresh data
         localStorage.setItem('user', JSON.stringify(userData));
         setLastUpdated(new Date());
         return userData;
       } else {
-        // Fallback to localStorage data
         const parsedUser = JSON.parse(userData);
         if (parsedUser.role !== 'educator') {
           navigate('/login');
@@ -54,7 +52,6 @@ export default function EducatorDashboard() {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Fallback to localStorage data
       try {
         const parsedUser = JSON.parse(userData);
         if (parsedUser.role !== 'educator') {
@@ -76,7 +73,7 @@ export default function EducatorDashboard() {
     if (!token) return;
 
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
+      const response = await axios.get(`${API_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -93,7 +90,6 @@ export default function EducatorDashboard() {
 
   useEffect(() => {
     const isFreshRegistration = localStorage.getItem('freshRegistration');
-    
     if (isFreshRegistration === 'true') {
       console.log('Fresh registration detected, forcing reload...');
       localStorage.removeItem('freshRegistration');
@@ -110,17 +106,14 @@ export default function EducatorDashboard() {
       }
       setLoading(false);
     };
-
     loadUserData();
   }, [fetchUserData, forceRefresh]);
 
-  // Auto-refresh setup
   useEffect(() => {
     if (autoRefreshEnabled) {
       refreshIntervalRef.current = setInterval(() => {
         refreshUserData();
       }, 30000);
-      
       return () => {
         if (refreshIntervalRef.current) {
           clearInterval(refreshIntervalRef.current);
@@ -133,45 +126,29 @@ export default function EducatorDashboard() {
     }
   }, [autoRefreshEnabled]);
 
-  // Handle browser/tab close or navigation away
   useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      // Clear local storage on close
+    const handleBeforeUnload = () => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      
-      // Send a logout request to the server if possible
-      const token = localStorage.getItem('token');
-      if (token) {
-        const data = new FormData();
-        data.append('token', token);
-        navigator.sendBeacon(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/logout`, data);
-      }
     };
 
-    // Prevent caching of dashboard page
     window.onpageshow = function(event) {
       if (event.persisted) {
         window.location.reload();
       }
     };
     
-    // Clear browser history and replace current entry
     window.history.pushState(null, document.title, window.location.href);
     
-    // Handle back/forward navigation
-    window.onpopstate = function(event) {
+    window.onpopstate = function() {
       window.history.pushState(null, document.title, window.location.href);
-      
       if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
         navigate('/login');
       }
     };
 
-    // Add event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // Cleanup function
     return () => {
       window.onpopstate = null;
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -196,7 +173,6 @@ export default function EducatorDashboard() {
     navigate('/login', { replace: true });
   };
 
-  // Get initials for profile picture fallback
   const getInitials = (name) => {
     if (!name) return 'U';
     return name
@@ -235,9 +211,7 @@ export default function EducatorDashboard() {
                   className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded-lg transition duration-200 flex items-center gap-2"
                   title="Refresh data"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <FiRefreshCw className="w-4 h-4" />
                   Refresh
                 </button>
                 <button
@@ -247,7 +221,6 @@ export default function EducatorDashboard() {
                       ? 'bg-green-600 hover:bg-green-700 text-white' 
                       : 'bg-gray-700 hover:bg-gray-600 text-white'
                   }`}
-                  title={autoRefreshEnabled ? 'Auto-refresh enabled (30s)' : 'Auto-refresh disabled'}
                 >
                   {autoRefreshEnabled ? (
                     <>
@@ -371,10 +344,9 @@ export default function EducatorDashboard() {
         {activeTab === 'overview' && (
           <>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {/* User Info Card with Profile Picture */}
+              {/* User Info Card */}
               <div className="bg-gradient-to-br from-pink-600/20 to-purple-600/20 border border-pink-500/30 rounded-xl p-6">
                 <div className="flex items-center gap-4 mb-4">
-                  {/* Profile Picture Circle */}
                   {user?.profilePicture?.url ? (
                     <img
                       src={user.profilePicture.url}
@@ -400,7 +372,6 @@ export default function EducatorDashboard() {
                   </div>
                 </div>
                 
-                {/* User Details */}
                 <div className="mt-4 pt-4 border-t border-pink-500/20 space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <FiMail className="w-4 h-4 text-gray-400" />
@@ -468,35 +439,26 @@ export default function EducatorDashboard() {
               </div>
             </div>
 
-            {/* Additional Info Section */}
+            {/* Contact & Academic Info */}
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Contact Information */}
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Contact Information</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-gray-400 text-sm">Home Address</label>
-                    <p className="text-white mt-1">
-                      {user?.homeAddress || 'Not specified'}
-                    </p>
+                    <p className="text-white mt-1">{user?.homeAddress || 'Not specified'}</p>
                   </div>
                   <div>
                     <label className="block text-gray-400 text-sm">Cellphone Number</label>
-                    <p className="text-white mt-1">
-                      {user?.cellphoneNumber || 'Not specified'}
-                    </p>
+                    <p className="text-white mt-1">{user?.cellphoneNumber || 'Not specified'}</p>
                   </div>
                 </div>
               </div>
-
-              {/* Academic Information */}
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Academic Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-gray-400 text-sm">School</label>
-                    <p className="text-white mt-1">{user?.school || 'Not specified'}</p>
-                  </div>
+                <div>
+                  <label className="block text-gray-400 text-sm">School</label>
+                  <p className="text-white mt-1">{user?.school || 'Not specified'}</p>
                 </div>
               </div>
             </div>

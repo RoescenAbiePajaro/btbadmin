@@ -3,6 +3,8 @@ import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { Camera, X, Upload } from 'lucide-react';
 
+const API_URL = 'https://btbtestservice.onrender.com';
+
 const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
   const [uploading, setUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -18,17 +20,29 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
   };
 
   const getInitials = (name) => {
+    if (!name) return 'U';
     return name
-      ?.split(' ')
+      .split(' ')
       .map(word => word[0])
       .join('')
       .toUpperCase()
-      .slice(0, 2) || 'U';
+      .slice(0, 2);
   };
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -49,7 +63,7 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/profile/upload-profile-picture`,
+        `${API_URL}/api/profile/upload-profile-picture`,
         formData,
         {
           headers: {
@@ -70,6 +84,8 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
         setShowModal(false);
         setSelectedFile(null);
         setPreviewUrl(null);
+      } else {
+        alert(response.data.toast?.message || 'Upload failed');
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -86,7 +102,7 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.delete(
-        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/profile/remove-profile-picture`,
+        `${API_URL}/api/profile/remove-profile-picture`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -99,6 +115,8 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
         localStorage.setItem('user', JSON.stringify(userData));
         
         if (onUpdate) onUpdate(null);
+      } else {
+        alert(response.data.toast?.message || 'Remove failed');
       }
     } catch (error) {
       console.error('Remove error:', error);
@@ -110,10 +128,10 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
 
   return (
     <>
-      <div className="relative group">
+      <div className="relative group cursor-pointer">
         {/* Profile Picture Display */}
         <div
-          className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden cursor-pointer ring-2 ring-gray-700 hover:ring-blue-500 transition-all duration-200`}
+          className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden ring-2 ring-gray-700 hover:ring-blue-500 transition-all duration-200`}
           onClick={() => fileInputRef.current?.click()}
         >
           {user?.profilePicture?.url ? (

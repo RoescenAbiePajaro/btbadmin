@@ -7,6 +7,8 @@ import StudFeedback from './StudFeedback';
 import StudentProfileSettings from './StudentProfileSettings';
 import { FiMessageSquare, FiHome, FiFolder, FiUser, FiBookOpen, FiRefreshCw } from 'react-icons/fi';
 
+const API_URL = 'https://btbtestservice.onrender.com';
+
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -32,7 +34,7 @@ export default function StudentDashboard() {
     }
 
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
+      const response = await axios.get(`${API_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -73,7 +75,7 @@ export default function StudentDashboard() {
     if (!token) return;
 
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
+      const response = await axios.get(`${API_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -108,7 +110,6 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const isFreshRegistration = localStorage.getItem('freshRegistration');
-    
     if (isFreshRegistration === 'true') {
       console.log('Fresh registration detected, forcing reload...');
       localStorage.removeItem('freshRegistration');
@@ -125,7 +126,6 @@ export default function StudentDashboard() {
       }
       setLoading(false);
     };
-
     loadUserData();
   }, [fetchUserData, forceRefresh]);
 
@@ -134,7 +134,6 @@ export default function StudentDashboard() {
       refreshIntervalRef.current = setInterval(() => {
         refreshUserData();
       }, 30000);
-      
       return () => {
         if (refreshIntervalRef.current) {
           clearInterval(refreshIntervalRef.current);
@@ -146,12 +145,6 @@ export default function StudentDashboard() {
       }
     }
   }, [autoRefreshEnabled]);
-
-  useEffect(() => {
-    console.log('Current user state:', user);
-    console.log('Enrolled class:', user?.enrolledClass);
-    console.log('Enrolled class details:', user?.enrolledClassDetails);
-  }, [user]);
 
   const handleJoinClass = async () => {
     if (!joinClassCode.trim()) {
@@ -166,7 +159,7 @@ export default function StudentDashboard() {
       const token = localStorage.getItem('token');
       
       const validateResponse = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/classes/validate/${joinClassCode.toUpperCase()}`,
+        `${API_URL}/api/classes/validate/${joinClassCode.toUpperCase()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -184,7 +177,7 @@ export default function StudentDashboard() {
       });
 
       const joinResponse = await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/classes/join`,
+        `${API_URL}/api/classes/join`,
         { classCode: joinClassCode.toUpperCase() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -227,6 +220,16 @@ export default function StudentDashboard() {
     navigate('/login', { replace: true });
   };
 
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -265,7 +268,6 @@ export default function StudentDashboard() {
                       ? 'bg-green-600 hover:bg-green-700 text-white' 
                       : 'bg-gray-700 hover:bg-gray-600 text-white'
                   }`}
-                  title={autoRefreshEnabled ? 'Auto-refresh enabled (30s)' : 'Auto-refresh disabled'}
                 >
                   {autoRefreshEnabled ? (
                     <>
@@ -460,7 +462,7 @@ export default function StudentDashboard() {
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                       <span className="text-white font-bold text-xl">
-                        {user?.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        {getInitials(user?.fullName)}
                       </span>
                     </div>
                   )}
@@ -506,12 +508,6 @@ export default function StudentDashboard() {
                     {user.allClasses ? user.allClasses.length : (user.enrolledClass ? 1 : 0)}
                   </div>
                 </div>
-                
-                {user?.enrolledClassDetails && !(user?.allClasses || []).some(c => c.classCode === user.enrolledClassDetails.classCode) && (
-                  <div className="mb-3 p-2 bg-red-900/30 border border-red-700 text-red-300 text-xs rounded">
-                    Your current class is inactive. Switch to an active class to access materials.
-                  </div>
-                )}
                 
                 <button
                   onClick={() => setShowJoinClassModal(true)}

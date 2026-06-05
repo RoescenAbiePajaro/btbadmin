@@ -4,6 +4,8 @@ import axios from 'axios';
 import ProfilePicture from '../ProfilePicture';
 import { Save, Edit2, X } from 'lucide-react';
 
+const API_URL = 'https://btbtestservice.onrender.com';
+
 const StudentProfileSettings = ({ user, onProfileUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -51,28 +53,24 @@ const StudentProfileSettings = ({ user, onProfileUpdate }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/profile/student/profile`,
+        `${API_URL}/api/profile/student/profile`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.toast?.type === 'success') {
-        // Update local storage
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         const updatedUser = { ...userData, ...response.data.data.user };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
         if (onProfileUpdate) onProfileUpdate(updatedUser);
-        
         setIsEditing(false);
+      } else {
+        alert(response.data.toast?.message || 'Update failed');
       }
     } catch (error) {
       console.error('Update error:', error);
-      if (error.response?.data?.toast?.message) {
-        alert(error.response.data.toast.message);
-      } else {
-        alert('Failed to update profile');
-      }
+      alert(error.response?.data?.toast?.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
