@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Feedback = require('../models/Feedback');
 const User = require('../models/User');
+const { sendFeedbackNotification } = require('../services/emailService');
 
 // Authentication middleware - copied from server.js to avoid import issues
 const verifyToken = (req, res, next) => {
@@ -91,6 +92,11 @@ router.post('/submit', verifyToken, async (req, res) => {
     });
 
     await feedback.save();
+
+    // Notify admin via Gmail (non-blocking — feedback still succeeds if email fails)
+    sendFeedbackNotification(feedback, user).catch((err) => {
+      console.error('Feedback email notification error:', err);
+    });
 
     res.status(201).json({
       toast: {

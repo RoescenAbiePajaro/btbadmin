@@ -21,6 +21,7 @@ const feedbackRoutes = require('./routes/feedback');
 const imageConverterRoutes = require('./routes/imageConverterRoutes');
 const path = require('path');
 const fs = require('fs');
+const { isEmailConfigured } = require('./services/emailService');
 
 // Load environment variables
 dotenv.config();
@@ -2620,6 +2621,9 @@ app.listen(PORT, () => {
   console.log('✅ User counts endpoints: GET /api/users/counts/all, GET /api/users/count/:role, GET /api/dashboard/user-counts');
   console.log('✅ CORS configured with cache-control header support');
   console.log('✅ Login tracking restored with login_success location');
+  console.log(isEmailConfigured()
+    ? '✅ Feedback Gmail notifications enabled'
+    : '⚠️ Feedback Gmail notifications disabled (set GMAIL_USER and GMAIL_APP_PASSWORD)');
   console.log('📁 File sharing endpoints available:');
   console.log('  GET  /api/files/list - Get files (shows current class files for students)');
   console.log('  GET  /api/files/class/:classCode - Get files by class');
