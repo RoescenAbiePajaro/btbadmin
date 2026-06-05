@@ -1,3 +1,7 @@
+
+
+
+// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -442,7 +446,6 @@ app.post('/api/analytics/file-view', verifyToken, async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
 // =====================
 // 📝 STUDENT REGISTRATION (UPDATED - No class code required)
 // =====================
@@ -2609,68 +2612,6 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/image-converter', imageConverterRoutes);
 
-// =====================
-// 📱 CLIENT-SIDE ROUTING SUPPORT (CATCH-ALL FOR REACT ROUTER)
-// =====================
-// This must be AFTER all API routes but BEFORE the server starts listening
-
-// Path to the built React frontend
-const clientDistPath = path.join(__dirname, '../frontend/dist'); // Adjust path as needed
-const possiblePaths = [
-  path.join(__dirname, '../frontend/dist'),
-  path.join(__dirname, '../client/dist'),
-  path.join(__dirname, '../build'),
-  path.join(__dirname, 'dist'),
-  path.join(__dirname, 'public')
-];
-
-let frontendPath = null;
-for (const testPath of possiblePaths) {
-  if (fs.existsSync(testPath) && fs.existsSync(path.join(testPath, 'index.html'))) {
-    frontendPath = testPath;
-    break;
-  }
-}
-
-if (frontendPath && fs.existsSync(frontendPath)) {
-  console.log('📁 Serving static files from:', frontendPath);
-  
-  // Serve static files from the React build
-  app.use(express.static(frontendPath));
-  
-  // For any non-API route, serve index.html (this enables client-side routing)
-  app.get('*', (req, res, next) => {
-    // Skip API routes and health check
-    if (req.path.startsWith('/api/') || req.path === '/health' || req.path === '/test-db') {
-      return next();
-    }
-    
-    // Serve index.html for all other routes (dashboard routes, etc.)
-    const indexPath = path.join(frontendPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).json({ error: 'Frontend not found' });
-    }
-  });
-} else {
-  console.log('⚠️ Frontend build not found. Client-side routes may not work on refresh.');
-  console.log('   Searched paths:', possiblePaths);
-  console.log('   Make sure to build your React app and place it in one of these directories.');
-  
-  // Simple fallback for development - redirect to local dev server or show helpful message
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api/') && req.path !== '/health') {
-      res.status(200).json({
-        message: 'Frontend not built. Please build the frontend first.',
-        path: req.path,
-        tip: 'Run: cd frontend && npm run build, then copy the dist folder to the backend directory'
-      });
-    } else {
-      res.status(404).json({ error: 'API endpoint not found' });
-    }
-  });
-}
 
 // =====================
 // 🚀 SERVER START
@@ -2696,13 +2637,6 @@ app.listen(PORT, () => {
   console.log('  GET  /api/student/classes - Get all enrolled classes for student');
   console.log('  DELETE /api/users/educator/:id - Delete educator (admin only)');
   console.log('  GET  /api/admin/cleanup - Clean up orphaned data (admin only)');
-  console.log('📱 Client-side routing enabled for React Router');
-  if (frontendPath) {
-    console.log(`  Serving frontend from: ${frontendPath}`);
-    console.log('  All non-API routes will serve index.html');
-  } else {
-    console.log('  ⚠️ Frontend not found - build and deploy the React app');
-  }
 });
 
 // Handle unhandled promise rejections
