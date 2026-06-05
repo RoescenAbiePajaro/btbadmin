@@ -1,3 +1,6 @@
+
+
+
 // backend/server.js
 const express = require('express');
 const cors = require('cors');
@@ -2608,43 +2611,6 @@ app.use('/api/folders', folderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/image-converter', imageConverterRoutes);
-
-// =====================
-// 🌐 SPA FALLBACK - Serve React app for all non-API routes
-// =====================
-// Serve static files from the React app build directory
-const frontendDistPath = path.join(__dirname, '../dist');
-app.use(express.static(frontendDistPath));
-
-// Catch-all handler: for any request that doesn't match an API route,
-// send back the React app's index.html so React Router can handle the routing
-// Using regex pattern for Express 5 compatibility
-app.get(/.*/, (req, res, next) => {
-  // Skip API routes - let them return 404 naturally
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-  // Serve index.html for all other routes (SPA fallback)
-  res.sendFile(path.join(frontendDistPath, 'index.html'), (err) => {
-    if (err) {
-      // If index.html doesn't exist (e.g., not built yet), return a helpful message
-      if (err.code === 'ENOENT') {
-        return res.status(404).send(`
-          <html>
-            <head><title>App Not Built</title></head>
-            <body style="font-family: sans-serif; padding: 2rem; text-align: center;">
-              <h1>Frontend Not Built</h1>
-              <p>The React application hasn't been built yet.</p>
-              <p>Run <code>npm run build</code> in the project root to build the frontend.</p>
-              <p>Or run <code>npm run dev</code> for development mode.</p>
-            </body>
-          </html>
-        `);
-      }
-      next(err);
-    }
-  });
-});
 
 
 // =====================
