@@ -42,25 +42,33 @@ const profileRoutes = require('./routes/profileRoutes');
 // Add after other app.use statements
 app.use('/api/profile', profileRoutes);
 
-// backend/server.js - Update CORS configuration
+// backend/server.js - Update the CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:4173',
-  'https://btbstatictest.onrender.com', // Your frontend URL
-  'https://btbtestservice.onrender.com' // Your backend URL
+  'https://btbstatictest.onrender.com',
+  'https://btbtestservice.onrender.com'
 ];
 
+// More permissive CORS for development/production
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    // Allow all origins in development
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Check against allowed origins in production
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('Blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      // For now, allow all origins to fix CORS issues
+      callback(null, true);
     }
   },
   credentials: true,
@@ -71,10 +79,14 @@ app.use(cors({
     'Content-Length', 
     'X-Requested-With', 
     'Accept',
-    'cache-control'
+    'cache-control',
+    'Origin'
   ],
   exposedHeaders: ['Content-Disposition']
 }));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));

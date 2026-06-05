@@ -1,14 +1,25 @@
-// backend/routes/profileRoutes.js
+// backend/routes/profileRoutes.js - Add explicit CORS headers
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const User = require('../models/User');
 const { supabase } = require('../config/supabase');
 const { verifyToken } = require('../middleware/auth');
 
-// Configure multer for memory storage (we'll upload directly to Supabase)
+// Add CORS headers middleware for this router
+router.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://btbstatictest.onrender.com');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, Accept, cache-control, Origin');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -48,7 +59,6 @@ async function uploadToSupabase(file, userId, role) {
     throw new Error('Failed to upload image');
   }
   
-  // Get public URL
   const { data: { publicUrl } } = supabase.storage
     .from('avatars')
     .getPublicUrl(fileName);
@@ -76,10 +86,6 @@ async function deleteOldProfilePicture(publicId) {
   }
 }
 
-// =====================
-// PROFILE PICTURE UPLOAD
-// =====================
-
 // Upload profile picture
 router.post('/upload-profile-picture', verifyToken, upload.single('profilePicture'), async (req, res) => {
   try {
@@ -96,7 +102,6 @@ router.post('/upload-profile-picture', verifyToken, upload.single('profilePictur
     const userId = req.user.id;
     const userRole = req.user.role;
     
-    // Get current user to check for existing profile picture
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
@@ -113,10 +118,10 @@ router.post('/upload-profile-picture', verifyToken, upload.single('profilePictur
       await deleteOldProfilePicture(user.profilePicture.publicId);
     }
     
-    // Upload new profile picture to Supabase
+    // Upload new profile picture
     const uploadResult = await uploadToSupabase(req.file, userId, userRole);
     
-    // Update user profile
+    // Update user
     user.profilePicture = {
       url: uploadResult.url,
       publicId: uploadResult.publicId,
@@ -137,7 +142,7 @@ router.post('/upload-profile-picture', verifyToken, upload.single('profilePictur
     });
     
   } catch (error) {
-    console.error('Profile picture upload error:', error);
+    console.error('Upload error:', error);
     return res.status(500).json({
       toast: {
         show: true,
@@ -164,12 +169,10 @@ router.delete('/remove-profile-picture', verifyToken, async (req, res) => {
       });
     }
     
-    // Delete from Supabase
     if (user.profilePicture && user.profilePicture.publicId) {
       await deleteOldProfilePicture(user.profilePicture.publicId);
     }
     
-    // Reset profile picture
     user.profilePicture = {
       url: '',
       publicId: '',
@@ -187,7 +190,7 @@ router.delete('/remove-profile-picture', verifyToken, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Remove profile picture error:', error);
+    console.error('Remove error:', error);
     return res.status(500).json({
       toast: {
         show: true,
@@ -198,11 +201,7 @@ router.delete('/remove-profile-picture', verifyToken, async (req, res) => {
   }
 });
 
-// =====================
-// EDUCATOR PROFILE UPDATE
-// =====================
-
-// Update educator profile (full profile including extra fields)
+// Update educator profile
 router.put('/educator/profile', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'educator') {
@@ -215,10 +214,9 @@ router.put('/educator/profile', verifyToken, async (req, res) => {
       });
     }
     
-    const { fullName, email, username, school, homeAddress, cellphoneNumber, role } = req.body;
+    const { fullName, email, username, school, homeAddress, cellphoneNumber } = req.body;
     const userId = req.user.id;
     
-    // Build update object
     const updateData = {};
     if (fullName !== undefined) updateData.fullName = fullName;
     if (email !== undefined) updateData.email = email.toLowerCase();
@@ -226,9 +224,8 @@ router.put('/educator/profile', verifyToken, async (req, res) => {
     if (school !== undefined) updateData.school = school;
     if (homeAddress !== undefined) updateData.homeAddress = homeAddress;
     if (cellphoneNumber !== undefined) updateData.cellphoneNumber = cellphoneNumber;
-    if (role !== undefined) updateData.role = role;
     
-    // Check if email or username already exists (excluding current user)
+    // Check for duplicates
     if (email || username) {
       const existingUser = await User.findOne({
         $or: [
@@ -268,7 +265,7 @@ router.put('/educator/profile', verifyToken, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Educator profile update error:', error);
+    console.error('Update error:', error);
     return res.status(500).json({
       toast: {
         show: true,
@@ -279,11 +276,7 @@ router.put('/educator/profile', verifyToken, async (req, res) => {
   }
 });
 
-// =====================
-// STUDENT PROFILE UPDATE
-// =====================
-
-// Update student profile (limited fields)
+// Update student profile
 router.put('/student/profile', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'student') {
@@ -299,7 +292,6 @@ router.put('/student/profile', verifyToken, async (req, res) => {
     const { username, school, course, year, block } = req.body;
     const userId = req.user.id;
     
-    // Build update object
     const updateData = {};
     if (username !== undefined) updateData.username = username;
     if (school !== undefined) updateData.school = school;
@@ -307,7 +299,6 @@ router.put('/student/profile', verifyToken, async (req, res) => {
     if (year !== undefined) updateData.year = year;
     if (block !== undefined) updateData.block = block;
     
-    // Check if username already exists (excluding current user)
     if (username) {
       const existingUser = await User.findOne({
         username: username,
@@ -343,7 +334,7 @@ router.put('/student/profile', verifyToken, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Student profile update error:', error);
+    console.error('Update error:', error);
     return res.status(500).json({
       toast: {
         show: true,
@@ -354,15 +345,10 @@ router.put('/student/profile', verifyToken, async (req, res) => {
   }
 });
 
-// =====================
-// GET PROFILE DATA
-// =====================
-
-// Get complete profile data
+// Get profile
 router.get('/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
-    
     if (!user) {
       return res.status(404).json({
         toast: {
