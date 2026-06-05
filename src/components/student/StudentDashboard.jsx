@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import StudentFileSharing from './StudentFileSharing'; // Import the component
+import StudentFileSharing from './StudentFileSharing';
 import StudFeedback from './StudFeedback';
-import { FiMessageSquare, FiHome } from 'react-icons/fi';
+import StudentProfileSettings from './StudentProfileSettings';
+import { FiMessageSquare, FiHome, FiFolder, FiUser, FiBookOpen, FiRefreshCw } from 'react-icons/fi';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -31,21 +32,17 @@ export default function StudentDashboard() {
     }
 
     try {
-      // Always fetch fresh user data from server
-      const response = await axios.get('https://btbtestservice.onrender.com/api/auth/profile', {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.data?.user) {
         const userData = response.data.data.user;
         console.log('Fetched fresh user data:', userData);
-        
-        // Update localStorage with fresh data
         localStorage.setItem('user', JSON.stringify(userData));
         setLastUpdated(new Date());
         return userData;
       } else {
-        // Fallback to localStorage data
         const parsedUser = JSON.parse(userData);
         if (parsedUser.role !== 'student') {
           navigate('/login');
@@ -55,7 +52,6 @@ export default function StudentDashboard() {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Fallback to localStorage data
       try {
         const parsedUser = JSON.parse(userData);
         if (parsedUser.role !== 'student') {
@@ -77,27 +73,22 @@ export default function StudentDashboard() {
     if (!token) return;
 
     try {
-      const response = await axios.get('https://btbtestservice.onrender.com/api/auth/profile', {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.data?.user) {
         const updatedUser = response.data.data.user;
-        console.log('Updated user data:', updatedUser);
-        
-        // Check if classes have changed
         const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
         const currentClasses = currentUser.allClasses?.map(c => c.classCode) || [];
         const newClasses = updatedUser.allClasses?.map(c => c.classCode) || [];
         
-        // If classes changed, update state and localStorage
         if (JSON.stringify(currentClasses) !== JSON.stringify(newClasses)) {
           console.log('Classes changed! Updating UI...');
           setUser(updatedUser);
           localStorage.setItem('user', JSON.stringify(updatedUser));
           setLastUpdated(new Date());
           
-          // Show notification if user was removed from a class
           if (newClasses.length < currentClasses.length) {
             const removedClass = currentClasses.find(code => !newClasses.includes(code));
             if (removedClass) {
@@ -105,7 +96,6 @@ export default function StudentDashboard() {
             }
           }
         } else {
-          // Still update to get fresh data
           setUser(updatedUser);
           localStorage.setItem('user', JSON.stringify(updatedUser));
           setLastUpdated(new Date());
@@ -139,10 +129,8 @@ export default function StudentDashboard() {
     loadUserData();
   }, [fetchUserData, forceRefresh]);
 
-  // Auto-refresh setup
   useEffect(() => {
     if (autoRefreshEnabled) {
-      // Refresh every 30 seconds
       refreshIntervalRef.current = setInterval(() => {
         refreshUserData();
       }, 30000);
@@ -177,9 +165,8 @@ export default function StudentDashboard() {
     try {
       const token = localStorage.getItem('token');
       
-      // First validate the class code
       const validateResponse = await axios.get(
-        `https://btbtestservice.onrender.com/api/classes/validate/${joinClassCode.toUpperCase()}`,
+        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/classes/validate/${joinClassCode.toUpperCase()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -196,26 +183,20 @@ export default function StudentDashboard() {
         academicData: validateResponse.data.academicData
       });
 
-      // Join the class
       const joinResponse = await axios.post(
-        'https://btbtestservice.onrender.com/api/classes/join',
+        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/classes/join`,
         { classCode: joinClassCode.toUpperCase() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (joinResponse.data.toast?.type === 'success') {
-        // Update user state with new data
         const updatedUser = joinResponse.data.data.user;
-        console.log('Updated user after joining:', updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         
-        // Close modal and reset
         setShowJoinClassModal(false);
         setJoinClassCode('');
         setJoinClassInfo(null);
-        
-        // Force refresh
         setForceRefresh(!forceRefresh);
       } else {
         setJoinClassError(joinResponse.data.toast?.message || 'Failed to join class');
@@ -260,7 +241,7 @@ export default function StudentDashboard() {
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700">
+      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
@@ -274,9 +255,7 @@ export default function StudentDashboard() {
                   className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded-lg transition duration-200 flex items-center gap-2"
                   title="Refresh data"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <FiRefreshCw className="w-4 h-4" />
                   Refresh
                 </button>
                 <button
@@ -412,126 +391,133 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* Add Tabs */}
-      <div className="container mx-auto px-4 py-4 border-b border-gray-700 overflow-x-auto">
-        <nav className="flex space-x-4 sm:space-x-8 whitespace-nowrap">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex-shrink-0 py-2 px-2 sm:py-3 sm:px-1 font-medium text-xs sm:text-sm border-b-2 transition duration-200 ${
-              activeTab === 'overview'
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <FiHome className="w-5 h-5" />
+      {/* Tabs Navigation */}
+      <div className="border-b border-gray-700 bg-gray-800/50 sticky top-[73px] z-10">
+        <div className="container mx-auto px-4">
+          <nav className="flex space-x-4 md:space-x-8 overflow-x-auto whitespace-nowrap py-2">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
+                activeTab === 'overview'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
+              }`}
+            >
+              <FiHome className="w-4 h-4" />
               Overview
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('files')}
-            className={`flex-shrink-0 py-2 px-2 sm:py-3 sm:px-1 font-medium text-xs sm:text-sm border-b-2 transition duration-200 ${
-              activeTab === 'files'
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+            </button>
+            <button
+              onClick={() => setActiveTab('files')}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
+                activeTab === 'files'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
+              }`}
+            >
+              <FiFolder className="w-4 h-4" />
               File Sharing
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('feedback')}
-            className={`flex-shrink-0 py-2 px-2 sm:py-3 sm:px-1 font-medium text-xs sm:text-sm border-b-2 transition duration-200 ${
-              activeTab === 'feedback'
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <FiMessageSquare className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
+                activeTab === 'feedback'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
+              }`}
+            >
+              <FiMessageSquare className="w-4 h-4" />
               Feedback
-            </span>
-          </button>
-        </nav>
+            </button>
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
+                activeTab === 'profile'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
+              }`}
+            >
+              <FiUser className="w-4 h-4" />
+              Profile
+            </button>
+          </nav>
+        </div>
       </div>
 
       {/* Dashboard Content */}
       <div className="container mx-auto px-4 py-8">
-        {activeTab === 'overview' ? (
+        {activeTab === 'overview' && (
           <>
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
               {/* User Info Card */}
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Your Information</h3>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-xl p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  {user?.profilePicture?.url ? (
+                    <img
+                      src={user.profilePicture.url}
+                      alt={user.fullName}
+                      className="w-16 h-16 rounded-full object-cover ring-2 ring-blue-500"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">
+                        {user?.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </span>
+                    </div>
+                  )}
                   <div>
-                    <span className="text-gray-400">Full Name:</span>
-                    <p className="text-white">{user.fullName}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Email:</span>
-                    <p className="text-white">{user.email}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Username:</span>
-                    <p className="text-white">{user.username}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Role:</span>
-                    <p className="text-white capitalize">{user.role}</p>
+                    <h3 className="text-lg font-semibold text-white">{user.fullName}</h3>
+                    <p className="text-gray-400 text-sm">{user.email}</p>
+                    <p className="text-blue-400 text-xs capitalize mt-1">Student</p>
                   </div>
                 </div>
               </div>
 
               {/* Academic Info Card */}
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Academic Information</h3>
-                <div className="space-y-3">
-                  <div>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <FiBookOpen className="w-5 h-5 text-blue-400" />
+                  Academic Information
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-gray-400">School:</span>
-                    <p className="text-white">{user.school || 'Not specified'}</p>
+                    <span className="text-white">{user.school || 'Not specified'}</span>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <span className="text-gray-400">Course:</span>
-                    <p className="text-white">{user.course || 'Not specified'}</p>
+                    <span className="text-white">{user.course || 'Not specified'}</span>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <span className="text-gray-400">Year:</span>
-                    <p className="text-white">{user.year || 'Not specified'}</p>
+                    <span className="text-white">{user.year || 'Not specified'}</span>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <span className="text-gray-400">Block:</span>
-                    <p className="text-white">{user.block || 'Not specified'}</p>
+                    <span className="text-white">{user.block || 'Not specified'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Class Info Card (shows only count) */}
+              {/* Class Info Card */}
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">Classes Joined</h3>
-                    <p className="text-gray-400 text-sm">Total number of classes</p>
-                  </div>
-                  <div className="bg-blue-900 text-blue-300 font-bold text-3xl px-5 py-3 rounded-lg">
+                  <h3 className="text-lg font-semibold text-white">Classes Joined</h3>
+                  <div className="bg-blue-900 text-blue-300 font-bold text-2xl px-4 py-2 rounded-lg">
                     {user.allClasses ? user.allClasses.length : (user.enrolledClass ? 1 : 0)}
                   </div>
                 </div>
+                
                 {user?.enrolledClassDetails && !(user?.allClasses || []).some(c => c.classCode === user.enrolledClassDetails.classCode) && (
-                  <div className="mt-2 bg-red-900/30 border border-red-700 text-red-300 text-sm rounded px-3 py-2">
+                  <div className="mb-3 p-2 bg-red-900/30 border border-red-700 text-red-300 text-xs rounded">
                     Your current class is inactive. Switch to an active class to access materials.
                   </div>
                 )}
                 
                 <button
                   onClick={() => setShowJoinClassModal(true)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200 flex items-center justify-center gap-2 text-sm"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Join New Class
@@ -540,43 +526,50 @@ export default function StudentDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="mt-8">
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-md mx-auto">
+            <div className="max-w-md mx-auto">
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  {!user.enrolledClassDetails && (
-                    <button
-                      onClick={() => setShowJoinClassModal(true)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Join a Class
-                    </button>
-                  )}
                   <button
                     onClick={() => setActiveTab('files')}
                     disabled={!user?.allClasses || user.allClasses.length === 0}
-                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2 ${(!user?.allClasses || user.allClasses.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition duration-200 flex items-center justify-center gap-2 text-sm ${
+                      (!user?.allClasses || user.allClasses.length === 0) ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                    <FiFolder className="w-4 h-4" />
                     Go to File Sharing
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition duration-200 flex items-center justify-center gap-2 text-sm"
+                  >
+                    <FiUser className="w-4 h-4" />
+                    Update Profile
                   </button>
                 </div>
               </div>
             </div>
           </>
-        ) : activeTab === 'feedback' ? (
-          <StudFeedback student={user} />
-        ) : (
-          // File Sharing Tab - Render the StudentFileSharing component
+        )}
+        
+        {activeTab === 'files' && (
           <StudentFileSharing 
             student={user} 
             onRefresh={handleManualRefresh}
             lastUpdated={lastUpdated}
+          />
+        )}
+        
+        {activeTab === 'feedback' && <StudFeedback student={user} />}
+        
+        {activeTab === 'profile' && (
+          <StudentProfileSettings 
+            user={user} 
+            onProfileUpdate={(updatedUser) => {
+              setUser(updatedUser);
+              refreshUserData();
+            }}
           />
         )}
       </div>

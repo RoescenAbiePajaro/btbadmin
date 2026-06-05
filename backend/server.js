@@ -36,6 +36,12 @@ if (process.env.MONGODB_URI) {
 // Initialize Express app
 const app = express();
 
+// Add to backend/server.js - Add this with other route imports
+const profileRoutes = require('./routes/profileRoutes');
+
+// Add after other app.use statements
+app.use('/api/profile', profileRoutes);
+
 // Middleware - FIXED CORS CONFIGURATION
 const allowedOrigins = [
   'http://localhost:3000',

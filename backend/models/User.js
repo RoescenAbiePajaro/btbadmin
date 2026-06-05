@@ -1,4 +1,4 @@
-// backend/models/User.js
+// backend/models/User.js - Add profile picture fields
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -30,17 +30,36 @@ const userSchema = new mongoose.Schema({
     enum: ['student', 'educator', 'admin'],
     default: 'student'
   },
+  // Profile picture fields
+  profilePicture: {
+    url: { type: String, default: '' },
+    publicId: { type: String, default: '' },
+    updatedAt: { type: Date, default: null }
+  },
+  // Educator additional fields
+  homeAddress: {
+    type: String,
+    default: ''
+  },
+  cellphoneNumber: {
+    type: String,
+    default: ''
+  },
   school: {
-    type: String
+    type: String,
+    default: ''
   },
   course: {
-    type: String
+    type: String,
+    default: ''
   },
   year: {
-    type: String
+    type: String,
+    default: ''
   },
   block: {
-    type: String
+    type: String,
+    default: ''
   },
   enrolledClass: {
     type: mongoose.Schema.Types.ObjectId,
@@ -64,11 +83,12 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  // For admin registration without access code
   adminRegistration: {
     type: Boolean,
     default: false
   }
+}, {
+  timestamps: true
 });
 
 // Hash password before saving
