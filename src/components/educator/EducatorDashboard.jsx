@@ -31,7 +31,7 @@ export default function EducatorDashboard() {
 
     try {
       // Always fetch fresh user data from server
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/profile`, {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -76,7 +76,7 @@ export default function EducatorDashboard() {
     if (!token) return;
 
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/profile`, {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -145,7 +145,7 @@ export default function EducatorDashboard() {
       if (token) {
         const data = new FormData();
         data.append('token', token);
-        navigator.sendBeacon(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/logout`, data);
+        navigator.sendBeacon(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/logout`, data);
       }
     };
 

@@ -49,7 +49,7 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/profile/upload-profile-picture`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/profile/upload-profile-picture`,
         formData,
         {
           headers: {
@@ -86,7 +86,7 @@ const ProfilePicture = ({ user, onUpdate, size = 'md' }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.delete(
-        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/profile/remove-profile-picture`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/profile/remove-profile-picture`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }

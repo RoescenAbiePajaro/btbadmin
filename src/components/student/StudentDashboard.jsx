@@ -32,7 +32,7 @@ export default function StudentDashboard() {
     }
 
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/profile`, {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -73,7 +73,7 @@ export default function StudentDashboard() {
     if (!token) return;
 
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/auth/profile`, {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -166,7 +166,7 @@ export default function StudentDashboard() {
       const token = localStorage.getItem('token');
       
       const validateResponse = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/classes/validate/${joinClassCode.toUpperCase()}`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/classes/validate/${joinClassCode.toUpperCase()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -184,7 +184,7 @@ export default function StudentDashboard() {
       });
 
       const joinResponse = await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/classes/join`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/classes/join`,
         { classCode: joinClassCode.toUpperCase() },
         { headers: { Authorization: `Bearer ${token}` } }
       );

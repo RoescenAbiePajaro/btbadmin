@@ -51,7 +51,7 @@ const StudentProfileSettings = ({ user, onProfileUpdate }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/profile/student/profile`,
+        `${process.env.REACT_APP_BACKEND_URL || 'https://btbtestservice.onrender.com'}/api/profile/student/profile`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
