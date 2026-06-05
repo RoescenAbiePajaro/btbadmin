@@ -7,6 +7,7 @@ import { Save, Edit2, X } from 'lucide-react';
 const API_URL = 'https://btbtestservice.onrender.com';
 
 const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
+  const [profile, setProfile] = useState(user);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -21,6 +22,7 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
 
   useEffect(() => {
     if (user) {
+      setProfile(user);
       setFormData({
         fullName: user.fullName || '',
         email: user.email || '',
@@ -81,14 +83,31 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
       const token = localStorage.getItem('token');
       const response = await axios.put(
         `${API_URL}/api/profile/educator/profile`,
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          fullName: formData.fullName,
+          email: formData.email,
+          username: formData.username,
+          homeAddress: formData.homeAddress,
+          cellphoneNumber: formData.cellphoneNumber
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
       if (response.data.toast?.type === 'success') {
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        const updatedUser = { ...userData, ...response.data.data.user };
+        const updatedUser = {
+          ...userData,
+          ...response.data.data.user,
+          homeAddress: response.data.data.user.homeAddress ?? formData.homeAddress,
+          cellphoneNumber: response.data.data.user.cellphoneNumber ?? formData.cellphoneNumber
+        };
         localStorage.setItem('user', JSON.stringify(updatedUser));
+        setProfile(updatedUser);
         
         if (onProfileUpdate) onProfileUpdate(updatedUser);
         setIsEditing(false);
@@ -105,9 +124,10 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
 
   const handleProfilePictureUpdate = (newProfilePicture) => {
     const updatedUser = {
-      ...user,
+      ...profile,
       profilePicture: newProfilePicture || { url: '', publicId: '', updatedAt: null }
     };
+    setProfile(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
     if (onProfileUpdate) onProfileUpdate(updatedUser);
   };
@@ -240,12 +260,12 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
       {/* Profile Picture Section */}
       <div className="flex flex-col items-center mb-6 pb-6 border-b border-gray-700">
         <ProfilePicture 
-          user={user} 
+          user={profile} 
           onUpdate={handleProfilePictureUpdate}
           size="xl"
         />
-        <h2 className="text-xl font-bold text-white mt-4">{user?.fullName}</h2>
-        <p className="text-gray-400 capitalize">{user?.role}</p>
+        <h2 className="text-xl font-bold text-white mt-4">{profile?.fullName}</h2>
+        <p className="text-gray-400 capitalize">{profile?.role}</p>
       </div>
 
       {/* Profile Information */}
@@ -264,15 +284,15 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="block text-gray-400 text-sm">Full Name</label>
-            <p className="text-white">{user?.fullName || 'Not set'}</p>
+            <p className="text-white">{profile?.fullName || 'Not set'}</p>
           </div>
           <div>
             <label className="block text-gray-400 text-sm">Email</label>
-            <p className="text-white">{user?.email || 'Not set'}</p>
+            <p className="text-white">{profile?.email || 'Not set'}</p>
           </div>
           <div>
             <label className="block text-gray-400 text-sm">Username</label>
-            <p className="text-white">{user?.username || 'Not set'}</p>
+            <p className="text-white">{profile?.username || 'Not set'}</p>
           </div>
           <div>
             <label className="block text-gray-400 text-sm">School</label>
@@ -281,11 +301,11 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
           </div>
           <div>
             <label className="block text-gray-400 text-sm">Home Address</label>
-            <p className="text-white whitespace-pre-wrap">{user?.homeAddress || 'Not set'}</p>
+            <p className="text-white whitespace-pre-wrap">{profile?.homeAddress || 'Not set'}</p>
           </div>
           <div>
             <label className="block text-gray-400 text-sm">Cellphone Number</label>
-            <p className="text-white">{user?.cellphoneNumber || 'Not set'}</p>
+            <p className="text-white">{profile?.cellphoneNumber || 'Not set'}</p>
           </div>
         </div>
       </div>

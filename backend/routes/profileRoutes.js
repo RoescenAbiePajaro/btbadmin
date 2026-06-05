@@ -195,15 +195,21 @@ router.put('/educator/profile', verifyToken, async (req, res) => {
       });
     }
 
+    if (!req.body || typeof req.body !== 'object' || Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        toast: { show: true, message: 'No profile data received', type: 'error' }
+      });
+    }
+
     const { fullName, email, username, homeAddress, cellphoneNumber } = req.body;
     const userId = req.user.id;
 
-    const updateData = {};
-    if (fullName !== undefined) updateData.fullName = fullName;
-    if (email !== undefined) updateData.email = email.toLowerCase();
-    if (username !== undefined) updateData.username = username;
-    if (homeAddress !== undefined) updateData.homeAddress = homeAddress;
-    if (cellphoneNumber !== undefined) updateData.cellphoneNumber = cellphoneNumber;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        toast: { show: true, message: 'User not found', type: 'error' }
+      });
+    }
 
     if (email || username) {
       const existingUser = await User.findOne({
@@ -222,8 +228,16 @@ router.put('/educator/profile', verifyToken, async (req, res) => {
       }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true, select: '-password' });
-    const userData = updatedUser.toObject();
+    if (fullName !== undefined) user.fullName = fullName.trim();
+    if (email !== undefined) user.email = email.toLowerCase().trim();
+    if (username !== undefined) user.username = username.trim();
+    if (homeAddress !== undefined) user.homeAddress = homeAddress;
+    if (cellphoneNumber !== undefined) user.cellphoneNumber = cellphoneNumber;
+
+    await user.save();
+
+    const userData = user.toObject();
+    delete userData.password;
     await attachEducatorSchool(userData);
 
     return res.json({

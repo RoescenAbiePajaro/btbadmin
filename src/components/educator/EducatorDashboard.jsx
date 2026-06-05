@@ -475,7 +475,7 @@ export default function EducatorDashboard() {
             user={user} 
             onProfileUpdate={(updatedUser) => {
               setUser(updatedUser);
-              refreshUserData();
+              localStorage.setItem('user', JSON.stringify(updatedUser));
             }}
           />
         )}
