@@ -532,10 +532,19 @@ router.get('/overview', requireAdmin, async (req, res) => {
       platformEngagement = [];
     }
     
-    // Calculate total logins for the platform metrics
-    const totalLoginsInRange = await Click.countDocuments({
+    // Calculate login totals for the platform metrics card and breakdown.
+    const loginDateFilter = {
       type: 'login',
       createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+    };
+    const totalLoginsInRange = await Click.countDocuments(loginDateFilter);
+    const loginSuccessInRange = await Click.countDocuments({
+      ...loginDateFilter,
+      location: 'login_success'
+    });
+    const homepageLoginButtonInRange = await Click.countDocuments({
+      ...loginDateFilter,
+      location: 'homepage_login_button'
     });
     
     // Format data for different types of charts
@@ -841,6 +850,10 @@ router.get('/overview', requireAdmin, async (req, res) => {
           totalUsers: userStats.reduce((sum, stat) => sum + stat.count, 0),
           activeUsers: userStats.reduce((sum, stat) => sum + stat.activeLast7d, 0),
           totalLogins: totalLoginsInRange,
+          loginBreakdown: {
+            loginSuccess: loginSuccessInRange,
+            homepageLoginButton: homepageLoginButtonInRange
+          },
           uniqueLogins: loginStats.reduce((sum, stat) => sum + stat.uniqueCount, 0),
           fileActivities: fileActivityStats.reduce((sum, stat) => sum + stat.count, 0),
           avgSessionDuration: platformEngagement[0]?.avgSessionDuration 
@@ -1646,6 +1659,29 @@ router.get('/test', (req, res) => {
       'GET /api/analytics/feedback'
     ]
   });
+});
+
+router.get('/debug-login-clicks', requireAdmin, async (req, res) => {
+  try {
+    const total = await Click.countDocuments({ type: 'login' });
+    const loginSuccess = await Click.countDocuments({ type: 'login', location: 'login_success' });
+    const homepageLoginButton = await Click.countDocuments({ type: 'login', location: 'homepage_login_button' });
+
+    res.json({
+      success: true,
+      counts: {
+        total,
+        login_success: loginSuccess,
+        homepage_login_button: homepageLoginButton
+      }
+    });
+  } catch (error) {
+    console.error('Debug login clicks error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch login click counts'
+    });
+  }
 });
 
 module.exports = router;

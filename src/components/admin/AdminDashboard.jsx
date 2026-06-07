@@ -112,6 +112,48 @@ export default function AdminDashboard() {
     return userSchool ? getSchoolName(userSchool) : 'Not specified';
   };
 
+  const enrichAnalyticsWithLoginBreakdown = async (charts, headers) => {
+    const platformMetrics = charts?.rawData?.platformMetrics || {};
+    const hasBreakdown =
+      platformMetrics.loginBreakdown &&
+      typeof platformMetrics.loginBreakdown.loginSuccess === 'number' &&
+      typeof platformMetrics.loginBreakdown.homepageLoginButton === 'number';
+
+    if (hasBreakdown) {
+      return charts;
+    }
+
+    try {
+      const response = await axios.get(
+        'https://btbtestservice.onrender.com/api/analytics/debug-login-clicks',
+        { headers }
+      );
+
+      const counts = response?.data?.counts;
+      if (!counts) {
+        return charts;
+      }
+
+      return {
+        ...charts,
+        rawData: {
+          ...charts?.rawData,
+          platformMetrics: {
+            ...platformMetrics,
+            totalLogins: typeof counts.total === 'number' ? counts.total : platformMetrics.totalLogins || 0,
+            loginBreakdown: {
+              loginSuccess: counts.login_success || 0,
+              homepageLoginButton: counts.homepage_login_button || 0
+            }
+          }
+        }
+      };
+    } catch (fallbackError) {
+      console.error('Error fetching login breakdown fallback:', fallbackError);
+      return charts;
+    }
+  };
+
   // Fetch dashboard statistics
   const fetchDashboardData = async () => {
     try {
@@ -129,7 +171,8 @@ export default function AdminDashboard() {
       }
       
       if (analyticsRes.data.success) {
-        setAnalyticsData(analyticsRes.data.charts);
+        const enrichedCharts = await enrichAnalyticsWithLoginBreakdown(analyticsRes.data.charts, headers);
+        setAnalyticsData(enrichedCharts);
       }
 
     } catch (error) {
@@ -151,7 +194,11 @@ export default function AdminDashboard() {
       setAnalyticsData({
         rawData: {
           platformMetrics: {
-            pageVisits: 0,
+            totalLogins: 0,
+            loginBreakdown: {
+              loginSuccess: 0,
+              homepageLoginButton: 0
+            },
             totalDownloads: 0
           }
         },
@@ -180,7 +227,12 @@ export default function AdminDashboard() {
       );
       
       if (response.data.success) {
-        setAnalyticsData(response.data.charts);
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
+        };
+        const enrichedCharts = await enrichAnalyticsWithLoginBreakdown(response.data.charts, headers);
+        setAnalyticsData(enrichedCharts);
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -873,10 +925,18 @@ export default function AdminDashboard() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-gray-400 text-xs sm:text-sm">Total Page Visits</p>
+                    <p className="text-gray-400 text-xs sm:text-sm">Total Login Clicks</p>
                     <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
                       {analyticsData?.rawData?.platformMetrics?.totalLogins || 0}
                     </p>
+                    <div className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2 space-y-1">
+                      <div className="text-xs">
+                        Login Success: {analyticsData?.rawData?.platformMetrics?.loginBreakdown?.loginSuccess || 0}
+                      </div>
+                      <div className="text-xs">
+                        Homepage Button: {analyticsData?.rawData?.platformMetrics?.loginBreakdown?.homepageLoginButton || 0}
+                      </div>
+                    </div>
                   </div>
                   <FiActivity className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500 flex-shrink-0" />
                 </div>
