@@ -934,7 +934,7 @@ export default function AdminDashboard() {
                         Login Success: {analyticsData?.rawData?.platformMetrics?.loginBreakdown?.loginSuccess || 0}
                       </div>
                       <div className="text-xs">
-                        Homepage Button: {analyticsData?.rawData?.platformMetrics?.loginBreakdown?.homepageLoginButton || 0}
+                        Visit Page: {analyticsData?.rawData?.platformMetrics?.loginBreakdown?.homepageLoginButton || 0}
                       </div>
                     </div>
                   </div>
