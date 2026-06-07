@@ -257,7 +257,7 @@ export default function HomePage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              Click Now
+              Get Started
             </button>
 
             {/* Auth Buttons Section */}
@@ -402,28 +402,6 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Video */}
-            <div className="flex flex-col items-center text-center">
-              <div className="relative group">
-                <video
-                  src="/Beyond The Brush 2025-09-14 15-04-56.mp4"
-                  controls
-                  preload="metadata"
-                  className="w-64 h-40 rounded-2xl shadow-lg object-cover group-hover:scale-105 transition duration-300"
-                  poster="/video-thumbnail.jpg"
-                ></video>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <p className="text-gray-300 mt-3 text-sm max-w-xs">
-                A PC app that uses hand gesture controls also a AI-driven digital painting using webcams allowing users to draw or present key ideas.
-              </p>
-            </div>
           </div>
 
           {/* Features Grid */}
@@ -517,16 +495,10 @@ export default function HomePage() {
                 <ul className="space-y-2">
                   <li><a href="#" className="text-gray-400 hover:text-white transition duration-200">Students</a></li>
                   <li><a href="#" className="text-gray-400 hover:text-white transition duration-200">Educators</a></li>
-                  <li><a href="#" className="text-gray-400 hover:text-white transition duration-200">Admins</a></li>
                 </ul>
               </div>
               <div>
-                <h4 className="font-bold text-white mb-3">Support</h4>
-                <ul className="space-y-2">
-                  <li><a href="#" className="text-gray-400 hover:text-white transition duration-200">Help Center</a></li>
-                  <li><a href="#" className="text-gray-400 hover:text-white transition duration-200">Contact Us</a></li>
-                  <li><a href="#" className="text-gray-400 hover:text-white transition duration-200">Documentation</a></li>
-                </ul>
+          
               </div>
             </div>
           </div>
