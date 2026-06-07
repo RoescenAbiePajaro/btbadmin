@@ -137,7 +137,7 @@ export default function HomePage() {
       <AnimatedBackground />
       
       {/* Header Navigation - Fixed and Non-scrollable */}
-      <header className="w-full bg-black/90 backdrop-blur-sm border-b border-gray-800 fixed top-0 left-0 z-50">
+      <header className="w-full bg-black/90 backdrop-blur-sm fixed top-0 left-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={scrollToTop}>
@@ -369,12 +369,12 @@ export default function HomePage() {
               <div className="relative group">
                 <img
                   loading="lazy"
-                  src="/Screenshot 2026-04-28 090316.png"
+                  src="/Screenshot 2026-06-07 103717.png"
                   alt="Art Showcase"
                   className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
                   onClick={() => setSelectedImage("/Screenshot 2026-04-28 090316.png")}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4 pointer-events-none">
                   <span className="text-white text-sm">Click to enlarge</span>
                 </div>
               </div>
@@ -388,17 +388,36 @@ export default function HomePage() {
               <div className="relative group">
                 <img
                   loading="lazy"
-                  src="/Screenshot 2026-04-28 091158.png"
+                  src="/Screenshot 2026-06-07 102532.png"
                   alt="Art Collaboration"
                   className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
                   onClick={() => setSelectedImage("/Screenshot 2026-04-28 091158.png")}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4 pointer-events-none">
                   <span className="text-white text-sm">Click to enlarge</span>
                 </div>
               </div>
               <p className="text-gray-300 mt-3 text-sm max-w-xs">
                 Log In to your account and enjoy!
+              </p>
+            </div>
+
+            {/* Image 3 */}
+            <div className="flex flex-col items-center text-center">
+              <div className="relative group">
+                <img
+                  loading="lazy"
+                  src="/Screenshot 2026-06-07 103746.png"
+                  alt="Art Showcase"
+                  className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
+                  onClick={() => setSelectedImage("/Screenshot 2026-04-28 090316.png")}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4 pointer-events-none">
+                  <span className="text-white text-sm">Click to enlarge</span>
+                </div>
+              </div>
+              <p className="text-gray-300 mt-3 text-sm max-w-xs">
+                A simple drawing web-app that allows users to draw, present ideas or key terms.
               </p>
             </div>
 
@@ -451,7 +470,10 @@ export default function HomePage() {
           className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={closeModal}
         >
-          <div className="relative max-w-4xl max-h-[90vh]">
+          <div
+            className="relative max-w-4xl max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <img
               src={selectedImage}
               alt="Preview"
