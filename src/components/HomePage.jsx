@@ -372,7 +372,7 @@ export default function HomePage() {
                   src="/Screenshot 2026-06-07 103717.png"
                   alt="Art Showcase"
                   className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
-                  onClick={() => setSelectedImage("/Screenshot 2026-04-28 090316.png")}
+                  onClick={() => setSelectedImage("/Screenshot 2026-06-07 103717.png")}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4 pointer-events-none">
                   <span className="text-white text-sm">Click to enlarge</span>
@@ -391,7 +391,7 @@ export default function HomePage() {
                   src="/Screenshot 2026-06-07 102532.png"
                   alt="Art Collaboration"
                   className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
-                  onClick={() => setSelectedImage("/Screenshot 2026-04-28 091158.png")}
+                  onClick={() => setSelectedImage("/Screenshot 2026-06-07 102532.png")}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4 pointer-events-none">
                   <span className="text-white text-sm">Click to enlarge</span>
@@ -410,7 +410,7 @@ export default function HomePage() {
                   src="/Screenshot 2026-06-07 103746.png"
                   alt="Art Showcase"
                   className="w-64 h-40 rounded-2xl shadow-lg object-cover cursor-pointer hover:opacity-80 transition duration-300 group-hover:scale-105"
-                  onClick={() => setSelectedImage("/Screenshot 2026-04-28 090316.png")}
+                  onClick={() => setSelectedImage("/Screenshot 2026-06-07 103746.png")}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300 flex items-end justify-center p-4 pointer-events-none">
                   <span className="text-white text-sm">Click to enlarge</span>
