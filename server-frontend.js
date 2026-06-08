@@ -29,9 +29,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// SPA fallback: Use '/*' instead of '*' for Express 5.x compatibility
-// This returns index.html for all routes, letting React Router handle client-side routing
-app.get('/*', (req, res) => {
+// SPA fallback: For Express 5.x, we use a middleware instead of a route
+// This catches all unmatched routes and returns index.html
+app.use((req, res, next) => {
+  // If we reach here, the route wasn't matched by static files or other routes
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   res.sendFile(indexPath, (err) => {
     if (err) {
@@ -39,12 +40,6 @@ app.get('/*', (req, res) => {
       res.status(500).send('Internal Server Error');
     }
   });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).send('Something went wrong!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
