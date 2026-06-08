@@ -305,6 +305,23 @@ router.get('/profile', verifyToken, async (req, res) => {
     const userData = user.toObject();
     await attachEducatorSchool(userData);
 
+    // If educator, fetch additional stats
+    if (userData.role === 'educator') {
+      const Class = require('../models/Class');
+      const File = require('../models/File');
+
+      // Fetch all classes created by this educator
+      const createdClasses = await Class.find({ educator: req.user.id, isActive: true })
+        .populate('students', 'fullName email username')
+        .lean();
+
+      // Fetch all files shared by this educator
+      const sharedFiles = await File.find({ uploadedBy: req.user.id }).lean();
+
+      userData.createdClasses = createdClasses;
+      userData.sharedFiles = sharedFiles;
+    }
+
     return res.json({
       success: true,
       data: { user: userData }

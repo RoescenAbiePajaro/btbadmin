@@ -395,15 +395,23 @@ export default function EducatorDashboard() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center pb-2 border-b border-gray-700">
                     <span className="text-gray-400">Classes Created</span>
-                    <span className="text-white font-bold text-xl">-</span>
+                    <span className="text-white font-bold text-xl">
+                      {user?.createdClasses?.length || 0}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-gray-700">
                     <span className="text-gray-400">Total Students</span>
-                    <span className="text-white font-bold text-xl">-</span>
+                    <span className="text-white font-bold text-xl">
+                      {user?.createdClasses?.reduce((total, classObj) => {
+                        return total + (classObj.students?.length || 0);
+                      }, 0) || 0}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400">Files Shared</span>
-                    <span className="text-white font-bold text-xl">-</span>
+                    <span className="text-white font-bold text-xl">
+                      {user?.sharedFiles?.length || 0}
+                    </span>
                   </div>
                 </div>
               </div>
