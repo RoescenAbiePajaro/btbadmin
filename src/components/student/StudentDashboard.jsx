@@ -394,7 +394,7 @@ export default function StudentDashboard() {
       )}
 
       {/* Tabs Navigation */}
-      <div className="border-b border-gray-700 bg-gray-800/50 sticky top-[73px] z-10">
+      <div className="border-b border-gray-700 bg-gray-800 sticky top-[73px] z-10">
         <div className="container mx-auto px-4">
           <nav className="flex space-x-4 md:space-x-8 overflow-x-auto whitespace-nowrap py-2">
             <button
@@ -402,18 +402,29 @@ export default function StudentDashboard() {
               className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
                 activeTab === 'overview'
                   ? 'bg-blue-500/20 text-blue-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
               }`}
             >
               <FiHome className="w-4 h-4" />
               Overview
             </button>
             <button
+              onClick={() => setActiveTab('profile')}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
+                activeTab === 'profile'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <FiUser className="w-4 h-4" />
+              Profile
+            </button>
+            <button
               onClick={() => setActiveTab('files')}
               className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
                 activeTab === 'files'
                   ? 'bg-blue-500/20 text-blue-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
               }`}
             >
               <FiFolder className="w-4 h-4" />
@@ -424,22 +435,11 @@ export default function StudentDashboard() {
               className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
                 activeTab === 'feedback'
                   ? 'bg-blue-500/20 text-blue-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
               }`}
             >
               <FiMessageSquare className="w-4 h-4" />
               Feedback
-            </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'profile'
-                  ? 'bg-blue-500/20 text-blue-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
-              }`}
-            >
-              <FiUser className="w-4 h-4" />
-              Profile
             </button>
           </nav>
         </div>
