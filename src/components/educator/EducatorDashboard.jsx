@@ -39,6 +39,8 @@ export default function EducatorDashboard() {
       if (response.data.data?.user) {
         const userData = response.data.data.user;
         console.log('Fetched fresh user data:', userData);
+        console.log('Classes Created:', userData.createdClasses);
+        console.log('Shared Files:', userData.sharedFiles);
         localStorage.setItem('user', JSON.stringify(userData));
         setLastUpdated(new Date());
         return userData;

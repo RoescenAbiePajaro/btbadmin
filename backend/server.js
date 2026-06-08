@@ -2181,6 +2181,17 @@ app.get('/api/auth/profile', verifyToken, async (req, res) => {
       }).sort({ createdAt: 1 });
       userData.educatorSchool = schoolSetting?.name || '';
       userData.school = userData.educatorSchool;
+
+      // Fetch all classes created by this educator
+      const createdClasses = await Class.find({ educator: user._id, isActive: true })
+        .populate('students', 'fullName email username')
+        .lean();
+
+      // Fetch all files shared by this educator
+      const sharedFiles = await File.find({ uploadedBy: user._id }).lean();
+
+      userData.createdClasses = createdClasses;
+      userData.sharedFiles = sharedFiles;
     }
     
     // Current enrolled class details (if any)
