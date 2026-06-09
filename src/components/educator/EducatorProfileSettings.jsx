@@ -145,83 +145,98 @@ const EducatorProfileSettings = ({ user, onProfileUpdate }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Full Name *
-            </label>
-            <input
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-            {errors.fullName && <p className="text-red-400 text-xs mt-1">{errors.fullName}</p>}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                placeholder="Enter your full name"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+              {errors.fullName && <p className="text-red-400 text-xs mt-1">{errors.fullName}</p>}
+            </div>
+
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Email Address *
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+              {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+            </div>
+
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Username *
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="Choose a username"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+              {errors.username && <p className="text-red-400 text-xs mt-1">{errors.username}</p>}
+            </div>
+
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                School
+              </label>
+              <p className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-gray-400">
+                {educatorSchool || 'No school created yet'}
+              </p>
+              <p className="text-gray-500 text-xs mt-1">Manage your school in Academic Settings</p>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-            {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
-          </div>
+          {/* Contact Information Section */}
+          <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-6">
+            <h4 className="text-white text-lg font-semibold mb-4">Contact Information</h4>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Home Address
+                </label>
+                <textarea
+                  name="homeAddress"
+                  value={formData.homeAddress}
+                  onChange={handleChange}
+                  rows="3"
+                  placeholder="Enter your home address"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
 
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Username *
-            </label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-            {errors.username && <p className="text-red-400 text-xs mt-1">{errors.username}</p>}
-          </div>
-
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              School
-            </label>
-            <p className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-300">
-              {educatorSchool || 'No school created yet'}
-            </p>
-            <p className="text-gray-500 text-xs mt-1">Manage your school in Academic Settings</p>
-          </div>
-
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Home Address
-            </label>
-            <textarea
-              name="homeAddress"
-              value={formData.homeAddress}
-              onChange={handleChange}
-              rows="3"
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Cellphone Number
-            </label>
-            <input
-              type="tel"
-              name="cellphoneNumber"
-              value={formData.cellphoneNumber}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Cellphone Number
+                </label>
+                <input
+                  type="tel"
+                  name="cellphoneNumber"
+                  value={formData.cellphoneNumber}
+                  onChange={handleChange}
+                  placeholder="Enter your cellphone number"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4">

@@ -98,9 +98,10 @@ const StudentProfileSettings = ({ user, onProfileUpdate }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
+            <label className="block text-gray-300 text-sm font-medium mb-2">
               Username *
             </label>
             <input
@@ -108,61 +109,73 @@ const StudentProfileSettings = ({ user, onProfileUpdate }) => {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Choose a username"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {errors.username && <p className="text-red-400 text-xs mt-1">{errors.username}</p>}
           </div>
 
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              School
-            </label>
-            <input
-              type="text"
-              name="school"
-              value={formData.school}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {/* Academic Information Section */}
+          <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-6">
+            <h4 className="text-white text-lg font-semibold mb-4">Academic Information</h4>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  School *
+                </label>
+                <input
+                  type="text"
+                  name="school"
+                  value={formData.school}
+                  onChange={handleChange}
+                  placeholder="Enter your school"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Course
-            </label>
-            <input
-              type="text"
-              name="course"
-              value={formData.course}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Course *
+                </label>
+                <input
+                  type="text"
+                  name="course"
+                  value={formData.course}
+                  onChange={handleChange}
+                  placeholder="Enter your course"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Year
-            </label>
-            <input
-              type="text"
-              name="year"
-              value={formData.year}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Year *
+                </label>
+                <input
+                  type="text"
+                  name="year"
+                  value={formData.year}
+                  onChange={handleChange}
+                  placeholder="Enter your year"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-1">
-              Block
-            </label>
-            <input
-              type="text"
-              name="block"
-              value={formData.block}
-              onChange={handleChange}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Block *
+                </label>
+                <input
+                  type="text"
+                  name="block"
+                  value={formData.block}
+                  onChange={handleChange}
+                  placeholder="Enter your block"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4">
