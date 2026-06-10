@@ -47,7 +47,6 @@ function TermsModal({ onClose }) {
                 <li>You are responsible for the content you upload and share with students.</li>
                 <li>You will not share your account credentials with others.</li>
                 <li>You will not upload content that is harmful, offensive, or violates copyright.</li>
-                <li>We reserve the right to suspend accounts that violate these terms.</li>
                 <li>The platform may be updated or modified at any time without prior notice.</li>
               </ul>
             </section>

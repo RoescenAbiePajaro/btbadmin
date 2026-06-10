@@ -46,7 +46,6 @@ function TermsModal({ onClose }) {
                 <li>You will not share your account credentials with others.</li>
                 <li>You will not engage in any form of academic dishonesty using the platform.</li>
                 <li>You will treat fellow students and educators with respect.</li>
-                <li>We reserve the right to suspend accounts that violate these terms.</li>
                 <li>The platform may be updated or modified at any time without prior notice.</li>
               </ul>
             </section>
