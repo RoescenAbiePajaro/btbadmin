@@ -13,7 +13,7 @@ export default function EducatorReportGeneration() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [reportType, setReportType] = useState('class-centric'); // 'class-centric' or 'file-centric'
+  const [reportType, setReportType] = useState('class-centric');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -35,13 +35,11 @@ export default function EducatorReportGeneration() {
 
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Fetch educator classes
       const classesRes = await axios.get(
         'https://btbtestservice.onrender.com/api/classes/my-classes',
         { headers }
       );
 
-      // Fetch educator files
       const filesRes = await axios.get(
         'https://btbtestservice.onrender.com/api/files/list',
         { headers }
@@ -68,7 +66,6 @@ export default function EducatorReportGeneration() {
     fetchData();
   }, []);
 
-  // Format file size helper
   const formatFileSize = (bytes) => {
     if (!bytes || bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -82,7 +79,8 @@ export default function EducatorReportGeneration() {
     return classes.map(cls => {
       const classFiles = files.filter(f => f.classCode === cls.classCode);
       const filesCount = classFiles.length;
-      const filesList = classFiles.map(f => f.name || f.originalName).join(', ') || '';
+      const filesArray = classFiles.map(f => f.name || f.originalName);
+      const filesList = filesArray.join(', ') || '';
 
       return {
         id: cls._id || Math.random().toString(),
@@ -96,7 +94,7 @@ export default function EducatorReportGeneration() {
         studentsCount: cls.students?.length || 0,
         filesCount,
         filesList,
-        filesArray: classFiles.map(f => f.name || f.originalName), // Store as array for easier processing
+        filesArray,
         isActive: cls.isActive ?? true,
         createdAt: cls.createdAt
       };
@@ -170,7 +168,7 @@ export default function EducatorReportGeneration() {
     }
   }, [reportType, classCentricData, fileCentricData, searchQuery, selectedClassFilter, startDate, endDate]);
 
-  // Calculate statistics for dynamic cards
+  // Calculate statistics
   const stats = useMemo(() => {
     if (reportType === 'class-centric') {
       const totalClasses = filteredData.length;
@@ -189,7 +187,7 @@ export default function EducatorReportGeneration() {
     }
   }, [filteredData, reportType, classes]);
 
-  // Pagination calculations
+  // Pagination
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredData.slice(startIndex, startIndex + itemsPerPage);
@@ -205,7 +203,7 @@ export default function EducatorReportGeneration() {
     setCurrentPage(1);
   };
 
-  // UPDATED: Handle export with file names as separate rows
+  // CORRECTED: Handle export - ONE row per class with vertical file names in a single cell
   const handleExportClick = (format) => {
     if (filteredData.length === 0) {
       alert('No data to export');
@@ -221,8 +219,8 @@ export default function EducatorReportGeneration() {
       { key: 'block', label: 'Block' },
       { key: 'description', label: 'Batch/Description' },
       { key: 'studentsCount', label: 'Students Enrolled' },
-      { key: 'totalFiles', label: 'Total Files in Class' },
-      { key: 'fileName', label: 'File Name' },
+      { key: 'filesCount', label: 'Shared Files' },
+      { key: 'filesList', label: 'File Names' },
       { key: 'status', label: 'Status' }
     ] : [
       { key: 'fileName', label: 'File Name' },
@@ -238,50 +236,33 @@ export default function EducatorReportGeneration() {
     let data;
 
     if (reportType === 'class-centric') {
-      // Transform data: create one row per file (vertical file names)
-      const expandedData = [];
-
-      filteredData.forEach(item => {
-        const filesArray = item.filesArray || [];
-
-        if (filesArray.length === 0) {
-          // If no files, create a single row with "No files" message
-          expandedData.push({
-            classCode: item.classCode,
-            className: item.className,
-            school: item.school,
-            course: item.course,
-            year: item.year,
-            block: item.block,
-            description: item.description || 'N/A',
-            studentsCount: item.studentsCount,
-            totalFiles: item.filesCount,
-            fileName: 'No files uploaded',
-            status: item.isActive ? 'Active' : 'Inactive'
-          });
+      // ONE row per class - file names with line breaks in a single cell
+      data = filteredData.map(item => {
+        // Create vertical file names with line breaks
+        let verticalFileNames = '';
+        if (item.filesArray && item.filesArray.length > 0) {
+          // Use \n for line breaks (Excel will display them properly)
+          verticalFileNames = item.filesArray.join('\n');
         } else {
-          // Create a separate row for each file
-          filesArray.forEach(fileName => {
-            expandedData.push({
-              classCode: item.classCode,
-              className: item.className,
-              school: item.school,
-              course: item.course,
-              year: item.year,
-              block: item.block,
-              description: item.description || 'N/A',
-              studentsCount: item.studentsCount,
-              totalFiles: item.filesCount,
-              fileName: fileName,
-              status: item.isActive ? 'Active' : 'Inactive'
-            });
-          });
+          verticalFileNames = 'No files uploaded';
         }
-      });
 
-      data = expandedData;
+        return {
+          classCode: item.classCode,
+          className: item.className,
+          school: item.school,
+          course: item.course,
+          year: item.year,
+          block: item.block,
+          description: item.description || 'N/A',
+          studentsCount: item.studentsCount,
+          filesCount: item.filesCount,
+          filesList: verticalFileNames,
+          status: item.isActive ? 'Active' : 'Inactive'
+        };
+      });
     } else {
-      // For file-centric reports, keep as is (already one row per file)
+      // File-centric: one row per file
       data = filteredData.map(item => ({
         fileName: item.fileName,
         fileSizeFormatted: formatFileSize(item.fileSize),
@@ -403,7 +384,6 @@ export default function EducatorReportGeneration() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Search Box */}
           <div>
             <label className="text-xs text-gray-400 block mb-1">Search Keywords</label>
             <div className="relative">
@@ -421,7 +401,6 @@ export default function EducatorReportGeneration() {
             </div>
           </div>
 
-          {/* Class Select Dropdown */}
           <div>
             <label className="text-xs text-gray-400 block mb-1">Filter by Class Code</label>
             <select
@@ -441,7 +420,6 @@ export default function EducatorReportGeneration() {
             </select>
           </div>
 
-          {/* Date range helpers */}
           <div>
             <label className="text-xs text-gray-400 block mb-1">Date Target Info</label>
             <div className="text-xs text-gray-500 py-2">
@@ -450,7 +428,6 @@ export default function EducatorReportGeneration() {
           </div>
         </div>
 
-        {/* Date Filters Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-700">
           <div>
             <label className="text-xs text-gray-400 block mb-1">
@@ -556,8 +533,8 @@ export default function EducatorReportGeneration() {
                           {item.filesCount} files
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-xs text-gray-400 max-w-xs">
-                        {/* Display files as vertical list in preview */}
+                      <td className="px-4 py-4 text-xs text-gray-400">
+                        {/* Display files vertically in preview */}
                         <div className="space-y-1">
                           {item.filesArray && item.filesArray.length > 0 ? (
                             item.filesArray.map((fileName, idx) => (
@@ -571,8 +548,7 @@ export default function EducatorReportGeneration() {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`px-2 py-0.5 rounded text-xs ${item.isActive ? 'bg-green-500/25 text-green-400' : 'bg-red-500/25 text-red-400'
-                          }`}>
+                        <span className={`px-2 py-0.5 rounded text-xs ${item.isActive ? 'bg-green-500/25 text-green-400' : 'bg-red-500/25 text-red-400'}`}>
                           {item.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -657,7 +633,7 @@ export default function EducatorReportGeneration() {
         )}
       </div>
 
-      {/* Export Modal component */}
+      {/* Export Modal */}
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
