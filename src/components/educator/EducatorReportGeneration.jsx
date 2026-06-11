@@ -96,6 +96,7 @@ export default function EducatorReportGeneration() {
         studentsCount: cls.students?.length || 0,
         filesCount,
         filesList,
+        filesArray: classFiles.map(f => f.name || f.originalName), // Store as array for easier processing
         isActive: cls.isActive ?? true,
         createdAt: cls.createdAt
       };
@@ -204,6 +205,7 @@ export default function EducatorReportGeneration() {
     setCurrentPage(1);
   };
 
+  // UPDATED: Handle export with file names as separate rows
   const handleExportClick = (format) => {
     if (filteredData.length === 0) {
       alert('No data to export');
@@ -219,8 +221,8 @@ export default function EducatorReportGeneration() {
       { key: 'block', label: 'Block' },
       { key: 'description', label: 'Batch/Description' },
       { key: 'studentsCount', label: 'Students Enrolled' },
-      { key: 'filesCount', label: 'Files Uploaded' },
-      { key: 'filesList', label: 'File Names' },
+      { key: 'totalFiles', label: 'Total Files in Class' },
+      { key: 'fileName', label: 'File Name' },
       { key: 'status', label: 'Status' }
     ] : [
       { key: 'fileName', label: 'File Name' },
@@ -233,21 +235,54 @@ export default function EducatorReportGeneration() {
       { key: 'studentsCount', label: 'Enrolled Students' }
     ];
 
-    const data = reportType === 'class-centric'
-      ? filteredData.map(item => ({
-        classCode: item.classCode,
-        className: item.className,
-        school: item.school,
-        course: item.course,
-        year: item.year,
-        block: item.block,
-        description: item.description || 'N/A',
-        studentsCount: item.studentsCount,
-        filesCount: item.filesCount,
-        filesList: item.filesList || 'N/A',
-        status: item.isActive ? 'Active' : 'Inactive'
-      }))
-      : filteredData.map(item => ({
+    let data;
+
+    if (reportType === 'class-centric') {
+      // Transform data: create one row per file (vertical file names)
+      const expandedData = [];
+
+      filteredData.forEach(item => {
+        const filesArray = item.filesArray || [];
+
+        if (filesArray.length === 0) {
+          // If no files, create a single row with "No files" message
+          expandedData.push({
+            classCode: item.classCode,
+            className: item.className,
+            school: item.school,
+            course: item.course,
+            year: item.year,
+            block: item.block,
+            description: item.description || 'N/A',
+            studentsCount: item.studentsCount,
+            totalFiles: item.filesCount,
+            fileName: 'No files uploaded',
+            status: item.isActive ? 'Active' : 'Inactive'
+          });
+        } else {
+          // Create a separate row for each file
+          filesArray.forEach(fileName => {
+            expandedData.push({
+              classCode: item.classCode,
+              className: item.className,
+              school: item.school,
+              course: item.course,
+              year: item.year,
+              block: item.block,
+              description: item.description || 'N/A',
+              studentsCount: item.studentsCount,
+              totalFiles: item.filesCount,
+              fileName: fileName,
+              status: item.isActive ? 'Active' : 'Inactive'
+            });
+          });
+        }
+      });
+
+      data = expandedData;
+    } else {
+      // For file-centric reports, keep as is (already one row per file)
+      data = filteredData.map(item => ({
         fileName: item.fileName,
         fileSizeFormatted: formatFileSize(item.fileSize),
         fileType: item.fileType,
@@ -257,6 +292,7 @@ export default function EducatorReportGeneration() {
         school: item.school,
         studentsCount: item.studentsCount
       }));
+    }
 
     const filename = reportType === 'class-centric' ? 'my_classes_report' : 'my_uploads_report';
     handleExport(format, data, headers, filename);
@@ -303,8 +339,8 @@ export default function EducatorReportGeneration() {
               setCurrentPage(1);
             }}
             className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${reportType === 'class-centric'
-                ? 'bg-pink-600 text-white shadow-md shadow-pink-600/10'
-                : 'text-gray-400 hover:text-white'
+              ? 'bg-pink-600 text-white shadow-md shadow-pink-600/10'
+              : 'text-gray-400 hover:text-white'
               }`}
           >
             Class-Centric Summary
@@ -315,8 +351,8 @@ export default function EducatorReportGeneration() {
               setCurrentPage(1);
             }}
             className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${reportType === 'file-centric'
-                ? 'bg-pink-600 text-white shadow-md shadow-pink-600/10'
-                : 'text-gray-400 hover:text-white'
+              ? 'bg-pink-600 text-white shadow-md shadow-pink-600/10'
+              : 'text-gray-400 hover:text-white'
               }`}
           >
             File-Centric Uploads
@@ -464,7 +500,7 @@ export default function EducatorReportGeneration() {
 
           <button
             onClick={() => setShowExportModal(true)}
-            className="bg-pink-600 hover:bg-pink-750 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition duration-200 text-sm font-semibold shadow-md shadow-pink-600/10 self-end sm:self-auto"
+            className="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition duration-200 text-sm font-semibold shadow-md shadow-pink-600/10 self-end sm:self-auto"
             disabled={filteredData.length === 0}
           >
             <FiDownload className="w-4 h-4" /> Export Report
@@ -520,8 +556,19 @@ export default function EducatorReportGeneration() {
                           {item.filesCount} files
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-xs text-gray-400 max-w-xs truncate" title={item.filesList}>
-                        {item.filesList || <span className="text-gray-600 italic">No files shared</span>}
+                      <td className="px-4 py-4 text-xs text-gray-400 max-w-xs">
+                        {/* Display files as vertical list in preview */}
+                        <div className="space-y-1">
+                          {item.filesArray && item.filesArray.length > 0 ? (
+                            item.filesArray.map((fileName, idx) => (
+                              <div key={idx} className="truncate" title={fileName}>
+                                • {fileName}
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-gray-600 italic">No files shared</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4">
                         <span className={`px-2 py-0.5 rounded text-xs ${item.isActive ? 'bg-green-500/25 text-green-400' : 'bg-red-500/25 text-red-400'
@@ -584,8 +631,8 @@ export default function EducatorReportGeneration() {
                   key={page}
                   onClick={() => setCurrentPage(page)}
                   className={`px-3 py-1.5 rounded-lg transition duration-200 text-sm font-semibold ${currentPage === page
-                      ? 'bg-pink-600 text-white shadow-md shadow-pink-600/10'
-                      : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
+                    ? 'bg-pink-600 text-white shadow-md shadow-pink-600/10'
+                    : 'border border-gray-700 bg-gray-900 text-white hover:bg-gray-800'
                     }`}
                 >
                   {page}
