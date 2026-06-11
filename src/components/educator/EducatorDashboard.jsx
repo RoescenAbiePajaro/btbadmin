@@ -8,7 +8,8 @@ import StudentList from './StudentList';
 import FileSharing from './FileSharing';
 import EducFeedback from './EducFeedback';
 import EducatorProfileSettings from './EducatorProfileSettings';
-import { FiMessageSquare, FiHome, FiUsers, FiFolder, FiSettings, FiUser, FiBookOpen, FiMail, FiUserCheck, FiRefreshCw } from 'react-icons/fi';
+import EducatorReportGeneration from './EducatorReportGeneration';
+import { FiMessageSquare, FiHome, FiUsers, FiFolder, FiSettings, FiUser, FiBookOpen, FiMail, FiUserCheck, FiRefreshCw, FiFileText } from 'react-icons/fi';
 
 const API_URL = 'https://btbtestservice.onrender.com';
 
@@ -35,7 +36,7 @@ export default function EducatorDashboard() {
       const response = await axios.get(`${API_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.data?.user) {
         const userData = response.data.data.user;
         console.log('Fetched fresh user data:', userData);
@@ -78,7 +79,7 @@ export default function EducatorDashboard() {
       const response = await axios.get(`${API_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.data?.user) {
         const updatedUser = response.data.data.user;
         setUser(updatedUser);
@@ -134,15 +135,15 @@ export default function EducatorDashboard() {
       localStorage.removeItem('user');
     };
 
-    window.onpageshow = function(event) {
+    window.onpageshow = function (event) {
       if (event.persisted) {
         window.location.reload();
       }
     };
-    
+
     window.history.pushState(null, document.title, window.location.href);
-    
-    window.onpopstate = function() {
+
+    window.onpopstate = function () {
       window.history.pushState(null, document.title, window.location.href);
       if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
         navigate('/login');
@@ -150,7 +151,7 @@ export default function EducatorDashboard() {
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     return () => {
       window.onpopstate = null;
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -218,11 +219,10 @@ export default function EducatorDashboard() {
                 </button>
                 <button
                   onClick={toggleAutoRefresh}
-                  className={`py-2 px-3 rounded-lg transition duration-200 flex items-center gap-2 ${
-                    autoRefreshEnabled 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'bg-gray-700 hover:bg-gray-600 text-white'
-                  }`}
+                  className={`py-2 px-3 rounded-lg transition duration-200 flex items-center gap-2 ${autoRefreshEnabled
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-gray-700 hover:bg-gray-600 text-white'
+                    }`}
                 >
                   {autoRefreshEnabled ? (
                     <>
@@ -260,33 +260,30 @@ export default function EducatorDashboard() {
           <nav className="flex space-x-4 md:space-x-8 overflow-x-auto whitespace-nowrap py-2">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'overview'
-                  ? 'bg-pink-500/20 text-pink-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'overview'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <FiHome className="w-4 h-4" />
               Overview
             </button>
             <button
               onClick={() => setActiveTab('profile')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'profile'
-                  ? 'bg-pink-500/20 text-pink-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'profile'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <FiUser className="w-4 h-4" />
               Profile
             </button>
             <button
               onClick={() => setActiveTab('classes')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'classes'
-                  ? 'bg-pink-500/20 text-pink-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'classes'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -295,47 +292,53 @@ export default function EducatorDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('academic')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'academic'
-                  ? 'bg-pink-500/20 text-pink-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'academic'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <FiSettings className="w-4 h-4" />
               Academic Settings
             </button>
             <button
               onClick={() => setActiveTab('students')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'students'
-                  ? 'bg-pink-500/20 text-pink-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'students'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <FiUsers className="w-4 h-4" />
               Students
             </button>
             <button
               onClick={() => setActiveTab('files')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'files'
-                  ? 'bg-pink-500/20 text-pink-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'files'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <FiFolder className="w-4 h-4" />
               File Sharing
             </button>
             <button
               onClick={() => setActiveTab('feedback')}
-              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${
-                activeTab === 'feedback'
-                  ? 'bg-pink-500/20 text-pink-400'
-                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'feedback'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <FiMessageSquare className="w-4 h-4" />
               Feedback
+            </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'reports'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
+            >
+              <FiFileText className="w-4 h-4" />
+              Report Generation
             </button>
           </nav>
         </div>
@@ -373,7 +376,7 @@ export default function EducatorDashboard() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="mt-4 pt-4 border-t border-pink-500/20 space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <FiMail className="w-4 h-4 text-gray-400" />
@@ -474,15 +477,16 @@ export default function EducatorDashboard() {
             </div>
           </>
         )}
-        
+
         {activeTab === 'classes' && <ClassManagement />}
         {activeTab === 'academic' && <AcademicSettings />}
         {activeTab === 'students' && <StudentList />}
         {activeTab === 'files' && <FileSharing educatorId={user?._id} />}
         {activeTab === 'feedback' && <EducFeedback educator={user} />}
+        {activeTab === 'reports' && <EducatorReportGeneration />}
         {activeTab === 'profile' && (
-          <EducatorProfileSettings 
-            user={user} 
+          <EducatorProfileSettings
+            user={user}
             onProfileUpdate={(updatedUser) => {
               setUser(updatedUser);
               localStorage.setItem('user', JSON.stringify(updatedUser));
