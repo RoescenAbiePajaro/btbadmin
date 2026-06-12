@@ -718,6 +718,63 @@ router.post('/score-submission/:submissionId', verifyToken, async (req, res) => 
   }
 });
 
+// Student deletes their own submission (only if not graded)
+router.delete('/submission/:submissionId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only students can delete their own submissions'
+      });
+    }
+
+    const { submissionId } = req.params;
+
+    const submission = await File.findOne({
+      _id: submissionId,
+      type: 'submission',
+      uploadedBy: req.user.id
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        error: 'Submission not found or does not belong to you'
+      });
+    }
+
+    // Block deletion if already graded
+    if (submission.score !== null && submission.score !== undefined) {
+      return res.status(403).json({
+        success: false,
+        error: 'You cannot delete a submission that has already been graded'
+      });
+    }
+
+    // Delete from Supabase storage
+    try {
+      await supabase.deleteFile(submission.path);
+    } catch (storageErr) {
+      console.error('Supabase deletion error (continuing):', storageErr);
+    }
+
+    // Delete from database
+    await File.findByIdAndDelete(submissionId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Submission deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting submission:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error deleting submission',
+      details: error.message
+    });
+  }
+});
+
 // Update file title and instruction
 router.put('/:fileId', verifyToken, async (req, res) => {
   try {
