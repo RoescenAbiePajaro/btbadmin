@@ -1,4 +1,4 @@
-//backend/models/File.js
+// backend/models/File.js
 const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
@@ -34,6 +34,16 @@ const fileSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Folder',
     default: null
+  },
+  title: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  description: {
+    type: String,
+    trim: true,
+    default: ''
   },
   type: {
     type: String,

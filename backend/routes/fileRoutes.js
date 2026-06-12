@@ -1,4 +1,3 @@
-// backend/routes/fileRoutes.js
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -36,6 +35,8 @@ const upload = multer({
     const allowedTypes = [
       'image/jpeg',
       'image/png',
+      'image/gif',
+      'image/webp',
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -44,8 +45,10 @@ const upload = multer({
       'application/vnd.ms-powerpoint',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'text/plain',
+      'text/csv',
       'application/zip',
-      'application/x-rar-compressed'
+      'application/x-rar-compressed',
+      'application/x-7z-compressed'
     ];
     
     if (allowedTypes.includes(file.mimetype)) {
@@ -59,7 +62,6 @@ const upload = multer({
 // Health check for file routes
 router.get('/health', async (req, res) => {
   try {
-    // Check if Supabase is reachable
     const { data: buckets, error } = await supabase.listFiles();
     
     if (error) {
@@ -126,19 +128,15 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
     const filePath = req.file.path;
     
     try {
-      // Upload to Supabase
       const uploadResult = await supabase.uploadFile(filePath, req.file.originalname);
       
-      // Clean up the temporary file
       fs.unlinkSync(filePath);
       
-      // Get user info
       const user = await User.findById(req.user.id);
       if (!user) {
         throw new Error('User not found');
       }
       
-      // Save file metadata to database
       const fileRecord = new File({
         name: uploadResult.fileName,
         originalName: req.file.originalname,
@@ -148,8 +146,8 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
         mimeType: req.file.mimetype,
         classCode: classCode.toUpperCase(),
         folderId: folderId,
-        title: title,
-        description: description,
+        title: title || '',
+        description: description || '',
         type: 'material',
         uploadedBy: req.user.id,
         uploaderName: user.fullName || user.username,
@@ -164,7 +162,6 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
         file: fileRecord
       });
     } catch (uploadError) {
-      // Clean up the temporary file in case of error
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -179,7 +176,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   }
 });
 
-// List files endpoint with role-based access control
+// List files endpoint
 router.get('/list', verifyToken, async (req, res) => {
   try {
     const { classCode } = req.query;
@@ -190,16 +187,11 @@ router.get('/list', verifyToken, async (req, res) => {
     
     console.log('Files list request from:', { userId, userRole, classCode });
     
-    // If user is admin, show all files
     if (userRole === 'admin') {
-      // Admin can see all files
       if (classCode) {
         query.classCode = classCode.toUpperCase();
       }
-      // No other filters for admin
-    }
-    // If user is student, they should only see files from their CURRENT enrolled class
-    else if (userRole === 'student') {
+    } else if (userRole === 'student') {
       const user = await User.findById(userId);
       
       if (!user.enrolledClass) {
@@ -210,7 +202,6 @@ router.get('/list', verifyToken, async (req, res) => {
         });
       }
       
-      // Get the current class
       const currentClass = await Class.findById(user.enrolledClass);
       if (!currentClass) {
         return res.json({
@@ -220,25 +211,19 @@ router.get('/list', verifyToken, async (req, res) => {
         });
       }
       
-      // Always filter by student's CURRENT enrolled class
       query.classCode = currentClass.classCode;
-      console.log('Student query:', query);
-    }
-    // If user is educator, show only their uploaded files
-    else if (userRole === 'educator') {
+    } else if (userRole === 'educator') {
       query.uploadedBy = userId;
       
-      // If classCode is provided, also filter by it
       if (classCode) {
         query.classCode = classCode.toUpperCase();
       }
     }
     
     const files = await File.find(query)
+      .select('name originalName path url size mimeType classCode folderId title description type uploadedBy uploaderName createdAt updatedAt')
       .sort({ createdAt: -1 })
       .populate('uploadedBy', 'username fullName email school');
-    
-    console.log(`Found ${files.length} files for query:`, query);
     
     res.status(200).json({
       success: true,
@@ -255,59 +240,69 @@ router.get('/list', verifyToken, async (req, res) => {
   }
 });
 
-// Get files by class with access control
-router.get('/class/:classCode', verifyToken, async (req, res) => {
+// Get single file by ID
+router.get('/:fileId', verifyToken, async (req, res) => {
   try {
-    const { classCode } = req.params;
+    const { fileId } = req.params;
     const userId = req.user.id;
+    const userRole = req.user.role;
     
-    // Verify user has access to this class
-    if (req.user.role === 'educator') {
-      const educatorClasses = await Class.find({ educator: userId });
-      const hasAccess = educatorClasses.some(c => c.classCode === classCode);
-      
-      if (!hasAccess) {
+    const file = await File.findById(fileId)
+      .populate('uploadedBy', 'username fullName email school')
+      .populate('folderId', 'name path');
+    
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
+    }
+    
+    if (userRole === 'educator' && file.uploadedBy._id.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied to this file'
+      });
+    } else if (userRole === 'student') {
+      const user = await User.findById(userId);
+      if (!user.enrolledClass) {
         return res.status(403).json({
           success: false,
-          error: 'Access denied to this class'
+          error: 'You are not enrolled in any class'
         });
       }
-    } else if (req.user.role === 'student') {
-      const user = await User.findById(userId);
-      if (!user.enrolledClass || user.enrolledClass.classCode !== classCode) {
+      
+      const currentClass = await Class.findById(user.enrolledClass);
+      if (!currentClass || currentClass.classCode !== file.classCode) {
         return res.status(403).json({
           success: false,
-          error: 'Access denied to this class'
+          error: 'Access denied to this file'
         });
       }
     }
     
-    const files = await File.find({ 
-      classCode: classCode.toUpperCase()
-    })
-    .sort({ uploadedAt: -1 })
-    .populate('uploadedBy', 'username fullName');
-    
-    res.json({ 
-      success: true, 
-      count: files.length,
-      files: files 
+    res.status(200).json({
+      success: true,
+      file: file
     });
   } catch (error) {
-    console.error('Error fetching files:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Error fetching files' 
+    console.error('Error fetching file:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching file',
+      details: error.message
     });
   }
 });
 
-// Delete file endpoint with permission check
-router.delete('/:fileId', verifyToken, async (req, res) => {
+// Update file metadata
+router.put('/:fileId', verifyToken, async (req, res) => {
   try {
     const { fileId } = req.params;
+    const { title, description } = req.body;
+    const userId = req.user.id;
+    const userRole = req.user.role;
     
-    // Find the file
     const file = await File.findById(fileId);
     if (!file) {
       return res.status(404).json({
@@ -316,7 +311,46 @@ router.delete('/:fileId', verifyToken, async (req, res) => {
       });
     }
     
-    // Verify ownership (educator can only delete their own files)
+    if (userRole === 'educator' && file.uploadedBy.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only update files you uploaded'
+      });
+    }
+    
+    if (title !== undefined) file.title = title;
+    if (description !== undefined) file.description = description;
+    
+    await file.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'File updated successfully',
+      file: file
+    });
+  } catch (error) {
+    console.error('Error updating file:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error updating file',
+      details: error.message
+    });
+  }
+});
+
+// Delete file
+router.delete('/:fileId', verifyToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
+    }
+    
     if (req.user.role === 'educator' && file.uploadedBy.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
@@ -324,10 +358,7 @@ router.delete('/:fileId', verifyToken, async (req, res) => {
       });
     }
     
-    // Delete from Supabase storage
     await supabase.deleteFile(file.path);
-    
-    // Delete from database
     await File.findByIdAndDelete(fileId);
     
     res.status(200).json({
@@ -344,17 +375,45 @@ router.delete('/:fileId', verifyToken, async (req, res) => {
   }
 });
 
-// Download file endpoint
-router.get('/download/:filePath', async (req, res) => {
+// Download file
+router.get('/download/:fileId', verifyToken, async (req, res) => {
   try {
-    const { filePath } = req.params;
+    const { fileId } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
     
-    // In a real app, you would check permissions here
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
+    }
     
-    // Get the file URL from Supabase
-    const { data: { publicUrl } } = await supabase.getFileUrl(filePath);
+    if (userRole === 'educator' && file.uploadedBy.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied to this file'
+      });
+    } else if (userRole === 'student') {
+      const user = await User.findById(userId);
+      if (!user.enrolledClass) {
+        return res.status(403).json({
+          success: false,
+          error: 'You are not enrolled in any class'
+        });
+      }
+      
+      const currentClass = await Class.findById(user.enrolledClass);
+      if (!currentClass || currentClass.classCode !== file.classCode) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this file'
+        });
+      }
+    }
     
-    // Redirect to the public URL (let the browser handle the download)
+    const { data: { publicUrl } } = await supabase.getFileUrl(file.path);
     res.redirect(publicUrl);
   } catch (error) {
     console.error('Error downloading file:', error);
@@ -366,47 +425,87 @@ router.get('/download/:filePath', async (req, res) => {
   }
 });
 
-// Get recent activities
-router.get('/recent', async (req, res) => {
+// Get files by folder
+router.get('/folder/:folderId', verifyToken, async (req, res) => {
   try {
-    res.json({
+    const { folderId } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    const folder = await Folder.findById(folderId);
+    if (!folder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Folder not found'
+      });
+    }
+    
+    if (userRole === 'educator' && folder.educatorId.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied to this folder'
+      });
+    } else if (userRole === 'student') {
+      const user = await User.findById(userId);
+      if (!user.enrolledClass) {
+        return res.status(403).json({
+          success: false,
+          error: 'You are not enrolled in any class'
+        });
+      }
+      
+      const currentClass = await Class.findById(user.enrolledClass);
+      if (!currentClass || currentClass.classCode !== folder.classCode) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this folder'
+        });
+      }
+    }
+    
+    const files = await File.find({
+      folderId: folderId,
+      classCode: folder.classCode
+    })
+    .sort({ createdAt: -1 })
+    .populate('uploadedBy', 'username fullName email');
+    
+    res.status(200).json({
       success: true,
-      activities: []
+      count: files.length,
+      files: files,
+      folder: folder
     });
   } catch (error) {
-    console.error('Error fetching recent activities:', error);
+    console.error('Error fetching files by folder:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch recent activities',
+      error: 'Error fetching files',
       details: error.message
     });
   }
 });
 
-// Get files grouped by folders with folder structure
+// Get folder structure with files
 router.get('/folder-structure', verifyToken, async (req, res) => {
   try {
     const { classCode } = req.query;
     const userId = req.user.id;
     const userRole = req.user.role;
     
-    let query = {};
+    let folderQuery = { isDeleted: false };
     
-    // If user is admin, show all files
     if (userRole === 'admin') {
       if (classCode) {
-        query.classCode = classCode.toUpperCase();
+        folderQuery.classCode = classCode.toUpperCase();
       }
-    }
-    // If user is student, they should only see files from their CURRENT enrolled class
-    else if (userRole === 'student') {
+    } else if (userRole === 'student') {
       const user = await User.findById(userId);
-      
       if (!user.enrolledClass) {
         return res.json({
           success: true,
           folderStructure: [],
-          files: []
+          unassignedFiles: []
         });
       }
       
@@ -415,42 +514,37 @@ router.get('/folder-structure', verifyToken, async (req, res) => {
         return res.json({
           success: true,
           folderStructure: [],
-          files: []
+          unassignedFiles: []
         });
       }
       
-      query.classCode = currentClass.classCode;
-    }
-    // If user is educator, show only their uploaded files
-    else if (userRole === 'educator') {
-      query.uploadedBy = userId;
+      folderQuery.classCode = currentClass.classCode;
+    } else if (userRole === 'educator') {
+      folderQuery.educatorId = userId;
       if (classCode) {
-        query.classCode = classCode.toUpperCase();
+        folderQuery.classCode = classCode.toUpperCase();
       }
     }
     
-    // Get all folders for the class
-    let folderQuery = { isDeleted: false };
-    if (classCode) {
-      folderQuery.classCode = classCode.toUpperCase();
-    }
-    if (userRole === 'educator') {
-      folderQuery.educatorId = userId;
+    const folders = await Folder.find(folderQuery).sort({ path: 1 });
+    
+    let fileQuery = {};
+    if (userRole === 'admin') {
+      if (classCode) fileQuery.classCode = classCode.toUpperCase();
+    } else if (userRole === 'student') {
+      if (folderQuery.classCode) fileQuery.classCode = folderQuery.classCode;
+    } else if (userRole === 'educator') {
+      fileQuery.uploadedBy = userId;
+      if (classCode) fileQuery.classCode = classCode.toUpperCase();
     }
     
-    const folders = await Folder.find(folderQuery)
-      .sort({ path: 1 });
-    
-    // Get all files
-    const files = await File.find(query)
+    const files = await File.find(fileQuery)
       .sort({ createdAt: -1 })
       .populate('uploadedBy', 'username fullName email school');
     
-    // Build folder structure
     const folderMap = new Map();
     const rootFolders = [];
     
-    // Create folder map
     folders.forEach(folder => {
       folderMap.set(folder._id.toString(), {
         ...folder.toObject(),
@@ -459,45 +553,104 @@ router.get('/folder-structure', verifyToken, async (req, res) => {
       });
     });
     
-    // Build hierarchy and assign files
     folders.forEach(folder => {
       const folderId = folder._id.toString();
       const folderData = folderMap.get(folderId);
       
-      if (folder.parentId) {
-        const parent = folderMap.get(folder.parentId.toString());
-        if (parent) {
-          parent.subfolders.push(folderData);
-        }
+      if (folder.parentId && folderMap.get(folder.parentId.toString())) {
+        folderMap.get(folder.parentId.toString()).subfolders.push(folderData);
       } else {
         rootFolders.push(folderData);
       }
     });
     
-    // Assign files to folders
     files.forEach(file => {
-      if (file.folderId) {
-        const folder = folderMap.get(file.folderId.toString());
-        if (folder) {
-          folder.files.push(file);
-        }
+      if (file.folderId && folderMap.has(file.folderId.toString())) {
+        folderMap.get(file.folderId.toString()).files.push(file);
       }
     });
     
-    // Separate files that are not in any folder
     const unassignedFiles = files.filter(file => !file.folderId);
     
     res.status(200).json({
       success: true,
       folderStructure: rootFolders,
       unassignedFiles: unassignedFiles,
-      totalFiles: files.length
+      totalFiles: files.length,
+      totalFolders: folders.length
     });
   } catch (error) {
     console.error('Error fetching folder structure:', error);
     res.status(500).json({
       success: false,
       error: 'Error fetching folder structure',
+      details: error.message
+    });
+  }
+});
+
+// Search files
+router.get('/search/:query', verifyToken, async (req, res) => {
+  try {
+    const { query } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search query must be at least 2 characters'
+      });
+    }
+    
+    let searchQuery = {};
+    
+    if (userRole === 'educator') {
+      searchQuery.uploadedBy = userId;
+      searchQuery.$or = [
+        { name: { $regex: query, $options: 'i' } },
+        { title: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } },
+        { originalName: { $regex: query, $options: 'i' } }
+      ];
+    } else if (userRole === 'student') {
+      const user = await User.findById(userId);
+      if (user.enrolledClass) {
+        const currentClass = await Class.findById(user.enrolledClass);
+        if (currentClass) {
+          searchQuery.classCode = currentClass.classCode;
+          searchQuery.$or = [
+            { name: { $regex: query, $options: 'i' } },
+            { title: { $regex: query, $options: 'i' } },
+            { description: { $regex: query, $options: 'i' } },
+            { originalName: { $regex: query, $options: 'i' } }
+          ];
+        }
+      }
+    } else if (userRole === 'admin') {
+      searchQuery.$or = [
+        { name: { $regex: query, $options: 'i' } },
+        { title: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } },
+        { originalName: { $regex: query, $options: 'i' } }
+      ];
+    }
+    
+    const files = await File.find(searchQuery)
+      .sort({ createdAt: -1 })
+      .populate('uploadedBy', 'username fullName email');
+    
+    res.status(200).json({
+      success: true,
+      count: files.length,
+      files: files,
+      searchTerm: query
+    });
+  } catch (error) {
+    console.error('Error searching files:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error searching files',
       details: error.message
     });
   }
