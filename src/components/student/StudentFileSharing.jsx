@@ -29,13 +29,13 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
 
   const updateStudentData = useCallback(() => {
     console.log('StudentFileSharing - Student prop:', student);
-    
+
     if (student) {
       const allClasses = student.allClasses || [];
       setStudentClasses(allClasses);
       const activeCodes = allClasses.map(c => c.classCode);
       const currentClass = student.enrolledClassDetails || (allClasses.length > 0 ? allClasses[0] : null);
-      
+
       if (currentClass) {
         const code = currentClass.classCode;
         const inactive = code && !activeCodes.includes(code);
@@ -95,9 +95,9 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       setLoading(true);
       setError('');
       const token = localStorage.getItem('token');
-      
+
       console.log('Fetching files (folder-structure) for class code:', classCode);
-      
+
       if (!classCode) {
         setError('No class selected');
         setFiles([]);
@@ -106,24 +106,24 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
         setLoading(false);
         return;
       }
-      
+
       try {
         const response = await axios.get(
           'https://btbtestservice.onrender.com/api/files/folder-structure',
-          { 
-            headers: { 
-              Authorization: `Bearer ${token}` 
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
             },
             params: {
               classCode: classCode
             }
           }
         );
-        
+
         if (response.data.success) {
           setFolderStructure(response.data.folderStructure || []);
           setUnassignedFiles(response.data.unassignedFiles || []);
-          
+
           // Flatten files for list-based counts/searches if needed
           const flatFiles = [];
           const extractFiles = (folders) => {
@@ -135,9 +135,9 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
           extractFiles(response.data.folderStructure || []);
           flatFiles.push(...(response.data.unassignedFiles || []));
           setFiles(flatFiles);
-          
+
           setLastFilesUpdate(new Date());
-          
+
           // Fetch class info
           fetchClassInfo(classCode);
         } else {
@@ -170,17 +170,17 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const fetchClassInfo = useCallback(async (classCode) => {
     try {
       if (!classCode) return;
-      
+
       const token = localStorage.getItem('token');
       const response = await axios.get(
         `https://btbtestservice.onrender.com/api/classes/by-code/${classCode}`,
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}` 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
         }
       );
-      
+
       if (response.data.success) {
         setClassInfo(response.data.class);
       }
@@ -213,24 +213,24 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const handleClassChange = async (classCode) => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Call backend to switch class
       const response = await axios.post(
         'https://btbtestservice.onrender.com/api/student/switch-class',
         { classCode },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       if (response.data.toast?.type === 'success') {
         setCurrentClassCode(classCode);
         setShowClassSelector(false);
         setActiveSubTab('materials');
-        
+
         // Update localStorage with new user data
         if (response.data.data?.user) {
           localStorage.setItem('user', JSON.stringify(response.data.data.user));
         }
-        
+
         // Refresh parent component
         if (onRefresh) {
           onRefresh();
@@ -245,7 +245,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const handleDownloadFile = async (fileUrl, fileId, fileName, educatorId) => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Track download activity
       try {
         await axios.post('https://btbtestservice.onrender.com/api/analytics/file-activity', {
@@ -256,13 +256,13 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
           educatorId
         }, {
           headers: {
-            Authorization: `Bearer ${token}` 
+            Authorization: `Bearer ${token}`
           }
         });
       } catch (trackError) {
         console.error('Error tracking download:', trackError);
       }
-      
+
       // Try multiple download methods
       try {
         // Method 1: Fetch file as blob and download
@@ -272,7 +272,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
@@ -288,10 +288,10 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
       } catch (fetchError) {
         console.log('Fetch method failed, trying fallback...');
       }
-      
+
       // Method 2: Fallback to opening in new tab
       window.open(fileUrl, '_blank');
-      
+
     } catch (error) {
       console.error('Error downloading file:', error);
       alert('Error downloading file. Please try again.');
@@ -301,7 +301,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const handleViewFile = async (file) => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Track view activity
       try {
         await axios.post('https://btbtestservice.onrender.com/api/analytics/file-activity', {
@@ -312,13 +312,13 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
           educatorId: file.uploadedBy?._id || file.uploadedBy
         }, {
           headers: {
-            Authorization: `Bearer ${token}` 
+            Authorization: `Bearer ${token}`
           }
         });
       } catch (trackError) {
         console.error('Error tracking view:', trackError);
       }
-      
+
       // Set viewing file details to show modal
       setViewingFile(file);
       setSubmissionFile(null);
@@ -368,7 +368,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
 
         // Refresh submissions
         await fetchSubmissions(currentClassCode);
-        
+
         // Auto switch tab to submissions list and close modal
         setTimeout(() => {
           setViewingFile(null);
@@ -383,6 +383,14 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const getSubmissionForFile = (fileId) => {
+    if (!fileId || !submissions || submissions.length === 0) return null;
+    return submissions.find(sub => {
+      const parentIdStr = sub.parentFileId?._id || sub.parentFileId;
+      return parentIdStr && parentIdStr.toString() === fileId.toString();
+    });
   };
 
   const formatDate = (dateString) => {
@@ -473,16 +481,16 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
 
   const renderFolderIcon = (folder, isExpanded = false, level = 0) => {
     return (
-      <div 
+      <div
         className="flex items-center gap-2 p-3 hover:bg-gray-700/50 rounded-lg cursor-pointer transition-colors"
         style={{ paddingLeft: `${level * 20 + 12}px` }}
         onClick={() => toggleFolderExpansion(folder._id)}
       >
         <div className="flex items-center gap-1">
-          <svg 
-            className="w-4 h-4 text-yellow-400 transition-transform duration-200" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className="w-4 h-4 text-yellow-400 transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
             style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
           >
@@ -525,7 +533,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
     return (
       <div key={folder._id} className="mb-1 border border-gray-700/30 rounded-lg overflow-hidden bg-gray-900/10">
         {renderFolderIcon(folder, isExpanded || !!searchTerm, level)}
-        
+
         {(isExpanded || !!searchTerm) && (
           <div className="ml-4 border-l border-gray-700/50 pl-2 pr-2 pb-2">
             {/* Render files in this folder */}
@@ -550,8 +558,43 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                         </p>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2 flex-shrink-0">
+
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {activeSubTab === 'submissions' && (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          {(() => {
+                            const sub = getSubmissionForFile(file._id);
+                            if (sub) {
+                              const isGraded = sub.score !== null && sub.score !== undefined;
+                              if (isGraded) {
+                                return (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+                                    <span className="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span>
+                                    Graded: {sub.score}/100
+                                  </span>
+                                );
+                              } else {
+                                return (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                    <span className="w-1.5 h-1.5 mr-1.5 bg-yellow-400 rounded-full animate-pulse"></span>
+                                    Submitted (Pending)
+                                  </span>
+                                );
+                              }
+                            } else {
+                              return (
+                                <button
+                                  onClick={() => handleViewFile(file)}
+                                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition duration-200 flex items-center gap-1.5"
+                                >
+                                  <i className="fas fa-upload"></i>
+                                  Submit Response
+                                </button>
+                              );
+                            }
+                          })()}
+                        </div>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -567,14 +610,14 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                 ))}
               </div>
             )}
-            
+
             {/* Render subfolders */}
             {hasSubfolders && (
               <div className="space-y-1">
                 {folder.subfolders.map((subfolder) => renderFolderWithFiles(subfolder, level + 1))}
               </div>
             )}
-            
+
             {!hasFiles && !hasSubfolders && (
               <div className="text-gray-500 text-xs py-2 pl-4 italic">
                 Empty folder
@@ -593,6 +636,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
     const fileExtension = viewingFile.name?.split('.').pop()?.toLowerCase() || '';
     const isImage = fileType === 'image';
     const fileName = viewingFile.title || viewingFile.originalName || viewingFile.name;
+    const submission = getSubmissionForFile(viewingFile._id);
 
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={() => setViewingFile(null)}>
@@ -602,7 +646,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
             <h3 className="text-lg font-medium text-white truncate max-w-[80%]" title={fileName}>
               {fileName}
             </h3>
-            <button 
+            <button
               onClick={() => setViewingFile(null)}
               className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-750 rounded-lg transition-colors"
               aria-label="Close"
@@ -612,14 +656,14 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
               </svg>
             </button>
           </div>
-          
+
           {/* Modal Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {/* File Details / Preview */}
             <div className="bg-gray-900/40 rounded-xl p-4 border border-gray-700/50 flex flex-col items-center justify-center min-h-[200px]">
               {isImage ? (
-                <img 
-                  src={viewingFile.url} 
+                <img
+                  src={viewingFile.url}
                   alt={fileName}
                   className="max-w-full max-h-[250px] object-contain rounded-lg shadow-lg"
                 />
@@ -632,7 +676,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                   <p className="text-gray-500 text-xs mt-1">{formatFileSize(viewingFile.size)}</p>
                 </div>
               )}
-              
+
               <div className="flex gap-4 mt-6">
                 <button
                   onClick={() => handleDownloadFile(viewingFile.url, viewingFile._id, viewingFile.originalName || viewingFile.name, viewingFile.uploadedBy?._id || viewingFile.uploadedBy)}
@@ -671,65 +715,127 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
               </p>
             </div>
 
+            {/* Existing Submission Details Section */}
+            {submission && (
+              <div className="bg-gray-900/50 rounded-xl p-5 border border-blue-500/20 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-gray-700/60 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1 rounded bg-blue-500/10 text-blue-400">
+                      <i className="fas fa-check-circle"></i>
+                    </span>
+                    <h4 className="text-sm font-semibold text-white">Your Submission</h4>
+                  </div>
+                  <div>
+                    {submission.score !== null && submission.score !== undefined ? (
+                      <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                        Score: {submission.score} / 100
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                        Pending Grade
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 bg-gray-950/40 p-3 rounded-lg border border-gray-800/40">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate" title={submission.originalName}>
+                      {submission.originalName}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      Submitted on {formatDate(submission.createdAt)} • {formatFileSize(submission.size)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => window.open(submission.url, '_blank')}
+                      className="p-1.5 bg-gray-850 hover:bg-gray-700 text-blue-400 hover:text-blue-300 rounded-lg transition-colors"
+                      title="View Submitted File"
+                    >
+                      <i className="fas fa-eye"></i>
+                    </button>
+                    <button
+                      onClick={() => handleDownloadFile(submission.url, submission._id, submission.originalName, submission.uploadedBy)}
+                      className="p-1.5 bg-gray-850 hover:bg-gray-700 text-green-400 hover:text-green-300 rounded-lg transition-colors"
+                      title="Download Submitted File"
+                    >
+                      <i className="fas fa-download"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {submission.feedback && (
+                  <div className="bg-gray-950/20 p-3 rounded-lg border border-gray-800/30 text-sm">
+                    <span className="text-gray-400 text-xs font-semibold">Educator Feedback</span>
+                    <p className="text-gray-300 mt-1 italic">"{submission.feedback}"</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Submission Upload Section */}
-            <div className="border-t border-gray-700/80 pt-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded bg-blue-500/10">
-                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
+            {!(activeSubTab === 'submissions' && submission) && (
+              <div className="border-t border-gray-700/80 pt-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded bg-blue-500/10">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </div>
+                  <h4 className="text-md font-semibold text-white">
+                    {submission ? 'Resubmit / Update Your Submission' : 'Upload Your Submission'}
+                  </h4>
                 </div>
-                <h4 className="text-md font-semibold text-white">Upload Your Submission</h4>
+
+                <form onSubmit={handleUploadSubmission} className="space-y-4">
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-lg p-4 hover:border-blue-500 transition-colors bg-gray-900/30">
+                    <input
+                      id="submission-upload"
+                      type="file"
+                      onChange={(e) => {
+                        setSubmissionFile(e.target.files[0]);
+                        setUploadError('');
+                        setUploadSuccess('');
+                      }}
+                      className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                    />
+                    {submissionFile && (
+                      <p className="text-xs text-green-400 mt-2 font-medium">
+                        Selected: {submissionFile.name} ({formatFileSize(submissionFile.size)})
+                      </p>
+                    )}
+                  </div>
+
+                  {uploadError && (
+                    <p className="text-red-400 text-sm text-center">{uploadError}</p>
+                  )}
+                  {uploadSuccess && (
+                    <p className="text-green-400 text-sm text-center font-medium">{uploadSuccess}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submitting || !submissionFile}
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        {submission ? 'Update Submission' : 'Submit Response'}
+                      </>
+                    )}
+                  </button>
+                </form>
               </div>
-              
-              <form onSubmit={handleUploadSubmission} className="space-y-4">
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-lg p-4 hover:border-blue-500 transition-colors bg-gray-900/30">
-                  <input
-                    id="submission-upload"
-                    type="file"
-                    onChange={(e) => {
-                      setSubmissionFile(e.target.files[0]);
-                      setUploadError('');
-                      setUploadSuccess('');
-                    }}
-                    className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                  />
-                  {submissionFile && (
-                    <p className="text-xs text-green-400 mt-2 font-medium">
-                      Selected: {submissionFile.name} ({formatFileSize(submissionFile.size)})
-                    </p>
-                  )}
-                </div>
-
-                {uploadError && (
-                  <p className="text-red-400 text-sm text-center">{uploadError}</p>
-                )}
-                {uploadSuccess && (
-                  <p className="text-green-400 text-sm text-center font-medium">{uploadSuccess}</p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting || !submissionFile}
-                  className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      Submit Response
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -753,7 +859,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
         {submissions.map((sub) => {
           const assignmentName = sub.parentFileId?.title || sub.parentFileId?.originalName || sub.parentFileId?.name || 'Assignment';
           const isGraded = sub.score !== null && sub.score !== undefined;
-          
+
           return (
             <div key={sub._id} className="bg-gray-900 border border-gray-700/80 rounded-xl p-5 hover:border-gray-600 transition duration-200">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -765,7 +871,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                     <span className="text-gray-500 text-xs">•</span>
                     <span className="text-gray-400 text-xs">Submitted: {formatDate(sub.createdAt)}</span>
                   </div>
-                  
+
                   <h4 className="text-white font-medium text-lg truncate" title={sub.originalName}>
                     {sub.originalName}
                   </h4>
@@ -952,11 +1058,10 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                     <button
                       key={cls.classCode}
                       onClick={() => handleClassChange(cls.classCode)}
-                      className={`w-full text-left p-3 rounded-lg transition duration-200 ${
-                        currentClassCode === cls.classCode
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                      }`}
+                      className={`w-full text-left p-3 rounded-lg transition duration-200 ${currentClassCode === cls.classCode
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        }`}
                     >
                       <div className="font-medium">{cls.className}</div>
                       <div className="text-sm opacity-75">
@@ -1008,13 +1113,13 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {isCurrentClassInactive && (
                     <div className="bg-red-900/30 border border-red-700 text-red-300 text-sm rounded px-3 py-2">
                       Current class is inactive. Switch to an active class to view materials.
                     </div>
                   )}
-                  
+
                   <div className="flex items-center gap-2 text-gray-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1027,31 +1132,36 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
               </div>
             </div>
 
-            {/* Sub Tabs Control: shown once they have submitted something */}
-            {submissions.length > 0 && (
-              <div className="flex border-b border-gray-700 mb-6">
-                <button
-                  onClick={() => setActiveSubTab('materials')}
-                  className={`py-3 px-6 font-semibold text-sm border-b-2 transition duration-200 ${
-                    activeSubTab === 'materials' 
-                      ? 'border-blue-500 text-blue-400' 
-                      : 'border-transparent text-gray-400 hover:text-gray-300'
+            {/* Sub Tabs Control */}
+            <div className="flex border-b border-gray-700 mb-6">
+              <button
+                onClick={() => setActiveSubTab('materials')}
+                className={`py-3 px-6 font-semibold text-sm border-b-2 transition duration-200 ${activeSubTab === 'materials'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
                   }`}
-                >
-                  Learning Materials
-                </button>
-                <button
-                  onClick={() => setActiveSubTab('submissions')}
-                  className={`py-3 px-6 font-semibold text-sm border-b-2 transition duration-200 ${
-                    activeSubTab === 'submissions' 
-                      ? 'border-blue-500 text-blue-400' 
-                      : 'border-transparent text-gray-400 hover:text-gray-300'
+              >
+                Learning Materials
+              </button>
+              <button
+                onClick={() => setActiveSubTab('submissions')}
+                className={`py-3 px-6 font-semibold text-sm border-b-2 transition duration-200 ${activeSubTab === 'submissions'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
                   }`}
-                >
-                  Student submission
-                </button>
-              </div>
-            )}
+              >
+                Student submission
+              </button>
+              <button
+                onClick={() => setActiveSubTab('history')}
+                className={`py-3 px-6 font-semibold text-sm border-b-2 transition duration-200 ${activeSubTab === 'history'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+                  }`}
+              >
+                My Submission History
+              </button>
+            </div>
 
             {/* Tab Contents */}
             {activeSubTab === 'materials' ? (
@@ -1087,7 +1197,42 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                {activeSubTab === 'submissions' && (
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    {(() => {
+                                      const sub = getSubmissionForFile(file._id);
+                                      if (sub) {
+                                        const isGraded = sub.score !== null && sub.score !== undefined;
+                                        if (isGraded) {
+                                          return (
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+                                              <span className="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span>
+                                              Graded: {sub.score}/100
+                                            </span>
+                                          );
+                                        } else {
+                                          return (
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                              <span className="w-1.5 h-1.5 mr-1.5 bg-yellow-400 rounded-full animate-pulse"></span>
+                                              Submitted (Pending)
+                                            </span>
+                                          );
+                                        }
+                                      } else {
+                                        return (
+                                          <button
+                                            onClick={() => handleViewFile(file)}
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition duration-200 flex items-center gap-1.5"
+                                          >
+                                            <i className="fas fa-upload"></i>
+                                            Submit Response
+                                          </button>
+                                        );
+                                      }
+                                    })()}
+                                  </div>
+                                )}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1112,8 +1257,106 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                   </div>
                 )}
               </div>
+            ) : activeSubTab === 'submissions' ? (
+              <div className="space-y-8 animate-fadeIn">
+                {/* Folders and Files for making submissions */}
+                {folderStructure.length > 0 || filteredUnassignedFiles.length > 0 ? (
+                  <div className="space-y-3">
+                    {/* Folders list */}
+                    {folderStructure.map((folder) => renderFolderWithFiles(folder, 0))}
+
+                    {/* Unassigned files list */}
+                    {filteredUnassignedFiles.length > 0 && (
+                      <div className="mt-6 pt-6 border-t border-gray-700/60">
+                        <div className="px-4 py-2 bg-gray-700/30 rounded-lg mb-3">
+                          <h4 className="text-sm font-medium text-gray-300">Files Not in Folders</h4>
+                        </div>
+                        <div className="space-y-1">
+                          {filteredUnassignedFiles.map((file) => (
+                            <div
+                              key={file._id}
+                              onClick={() => handleViewFile(file)}
+                              className="p-3 hover:bg-gray-750 transition-colors duration-200 rounded-lg border border-transparent hover:border-gray-700 cursor-pointer flex items-center justify-between gap-4"
+                            >
+                              <div className="flex-1 flex items-center gap-3 min-w-0">
+                                <div className="flex-shrink-0">
+                                  {getFileIcon(file.name?.split('.').pop()?.toLowerCase())}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="text-white font-medium truncate text-sm" title={file.title || file.originalName || file.name}>
+                                    {file.title || file.originalName || file.name}
+                                  </h4>
+                                  <p className="text-gray-400 text-xs mt-0.5">
+                                    {formatFileSize(file.size)} • {formatDate(file.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  {(() => {
+                                    const sub = getSubmissionForFile(file._id);
+                                    if (sub) {
+                                      const isGraded = sub.score !== null && sub.score !== undefined;
+                                      if (isGraded) {
+                                        return (
+                                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+                                            <span className="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span>
+                                            Graded: {sub.score}/100
+                                          </span>
+                                        );
+                                      } else {
+                                        return (
+                                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                            <span className="w-1.5 h-1.5 mr-1.5 bg-yellow-400 rounded-full animate-pulse"></span>
+                                            Submitted (Pending)
+                                          </span>
+                                        );
+                                      }
+                                    } else {
+                                      return (
+                                        <button
+                                          onClick={() => handleViewFile(file)}
+                                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition duration-200 flex items-center gap-1.5"
+                                        >
+                                          <i className="fas fa-upload"></i>
+                                          Submit Response
+                                        </button>
+                                      );
+                                    }
+                                  })()}
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadFile(file.url, file._id, file.originalName || file.name, file.uploadedBy?._id || file.uploadedBy);
+                                  }}
+                                  className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                  title="Download"
+                                >
+                                  <i className="fas fa-download"></i>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-blue-900/10 border border-blue-800/40 rounded-xl p-6 text-center">
+                    <p className="text-white font-medium">No files available for submission</p>
+                    <p className="text-blue-400/80 text-sm mt-1">Your educator has not shared any files for this class yet.</p>
+                  </div>
+                )}
+              </div>
             ) : (
-              renderSubmissionsTab()
+              <div className="space-y-4 animate-fadeIn">
+                <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-5">
+                  <h3 className="text-lg font-bold text-white mb-1">My Submission History</h3>
+                  <p className="text-gray-400 text-sm mb-4">A complete log of files you have submitted for grading.</p>
+                  {renderSubmissionsTab()}
+                </div>
+              </div>
             )}
           </div>
         </div>
