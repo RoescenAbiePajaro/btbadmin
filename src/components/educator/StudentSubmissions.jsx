@@ -475,7 +475,7 @@ const StudentSubmissions = ({ educatorId }) => {
                               </div>
                             ) : (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-300 border border-red-800/40">
-                                Missing
+                                No Submission
                               </span>
                             )}
                           </td>

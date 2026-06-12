@@ -26,6 +26,8 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
   const [submitting, setSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
+  const [deletingSubmissionId, setDeletingSubmissionId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const updateStudentData = useCallback(() => {
     console.log('StudentFileSharing - Student prop:', student);
@@ -385,6 +387,35 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
     }
   };
 
+  const handleDeleteSubmission = async (submissionId) => {
+    if (deletingSubmissionId) return;
+    try {
+      setDeletingSubmissionId(submissionId);
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(
+        `https://btbtestservice.onrender.com/api/files/submission/${submissionId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        // Refresh submissions list
+        await fetchSubmissions(currentClassCode);
+        setDeleteConfirmId(null);
+        // If we're in the modal and the deleted submission is the current one, close the modal
+        if (viewingFile) {
+          setUploadSuccess('');
+          setUploadError('');
+        }
+      } else {
+        alert(response.data.error || 'Failed to delete submission');
+      }
+    } catch (err) {
+      console.error('Error deleting submission:', err);
+      alert(err.response?.data?.error || 'Failed to delete submission. Please try again.');
+    } finally {
+      setDeletingSubmissionId(null);
+    }
+  };
+
   const getSubmissionForFile = (fileId) => {
     if (!fileId || !submissions || submissions.length === 0) return null;
     return submissions.find(sub => {
@@ -738,7 +769,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 bg-gray-950/40 p-3 rounded-lg border border-gray-800/40">
+                  <div className="flex items-center justify-between gap-4 bg-gray-950/40 p-3 rounded-lg border border-gray-800/40">
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate" title={submission.originalName}>
                       {submission.originalName}
@@ -762,6 +793,35 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                     >
                       <i className="fas fa-download"></i>
                     </button>
+                    {/* Delete button — only if NOT graded */}
+                    {!(submission.score !== null && submission.score !== undefined) && (
+                      deleteConfirmId === submission._id ? (
+                        <div className="flex gap-1 items-center">
+                          <button
+                            onClick={() => handleDeleteSubmission(submission._id)}
+                            disabled={!!deletingSubmissionId}
+                            className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition-colors disabled:opacity-50"
+                            title="Confirm Delete"
+                          >
+                            {deletingSubmissionId === submission._id ? '...' : 'Yes'}
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(null)}
+                            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-semibold transition-colors"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteConfirmId(submission._id)}
+                          className="p-1.5 bg-gray-850 hover:bg-red-900/40 text-red-400 hover:text-red-300 rounded-lg transition-colors"
+                          title="Delete Submission"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
 
@@ -887,7 +947,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                 </div>
 
                 {/* Score and action */}
-                <div className="flex items-center gap-6 justify-between md:justify-end">
+                <div className="flex items-center gap-4 justify-between md:justify-end flex-wrap">
                   <div className="text-left md:text-right">
                     <p className="text-gray-500 text-xs">Grade Score</p>
                     {isGraded ? (
@@ -901,7 +961,7 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                     )}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <button
                       onClick={() => window.open(sub.url, '_blank')}
                       className="p-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-blue-400 hover:text-blue-300 rounded-lg transition-colors"
@@ -916,6 +976,46 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
                     >
                       <i className="fas fa-download"></i>
                     </button>
+
+                    {/* Delete button — only visible if not graded */}
+                    {!isGraded && (
+                      deleteConfirmId === sub._id ? (
+                        <div className="flex gap-1 items-center">
+                          <button
+                            onClick={() => handleDeleteSubmission(sub._id)}
+                            disabled={!!deletingSubmissionId}
+                            className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1"
+                          >
+                            {deletingSubmissionId === sub._id ? (
+                              <><div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></div> Deleting...</>
+                            ) : (
+                              <><i className="fas fa-check"></i> Confirm</>  
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(null)}
+                            className="px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-semibold transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteConfirmId(sub._id)}
+                          className="p-2 bg-gray-800 hover:bg-red-900/40 border border-gray-700 hover:border-red-700/50 text-red-400 hover:text-red-300 rounded-lg transition-colors"
+                          title="Delete Submission"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )
+                    )}
+
+                    {/* Lock badge if graded */}
+                    {isGraded && (
+                      <span className="p-2 bg-gray-800 border border-gray-700 text-gray-500 rounded-lg cursor-not-allowed" title="Cannot delete a graded submission">
+                        <i className="fas fa-lock text-xs"></i>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
