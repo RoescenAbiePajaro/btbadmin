@@ -30,6 +30,10 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [newFolderName, setNewFolderName] = useState('');
   const [fileTitle, setFileTitle] = useState('');
   const [instruction, setInstruction] = useState('');
+  const [isEditingFile, setIsEditingFile] = useState(false);
+  const [editFileTitle, setEditFileTitle] = useState('');
+  const [editFileInstruction, setEditFileInstruction] = useState('');
+  const [updatingFileDetails, setUpdatingFileDetails] = useState(false);
   const [loading, setLoading] = useState({
     folders: false,
     files: false,
@@ -390,6 +394,50 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       showToast(error.response?.data?.error || error.message || 'Failed to upload file', 'error');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUpdateFileDetails = async (fileId) => {
+    if (!editFileTitle.trim()) {
+      showToast('Title is required', 'error');
+      return;
+    }
+    if (!editFileInstruction.trim()) {
+      showToast('Instruction is required', 'error');
+      return;
+    }
+
+    try {
+      setUpdatingFileDetails(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `https://btbtestservice.onrender.com/api/files/${fileId}`,
+        {
+          title: editFileTitle.trim(),
+          instruction: editFileInstruction.trim()
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.success) {
+        showToast('File details updated successfully', 'success');
+        setIsEditingFile(false);
+        
+        // Update viewingFile with new details
+        setViewingFile(response.data.file);
+        
+        // Refresh all data
+        await handleRefreshData(shareToClassCode);
+      } else {
+        throw new Error(response.data.error || 'Failed to update file details');
+      }
+    } catch (error) {
+      console.error('Error updating file details:', error);
+      showToast(error.response?.data?.error || error.message || 'Failed to update file details', 'error');
+    } finally {
+      setUpdatingFileDetails(false);
     }
   };
 
@@ -785,7 +833,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     const fileName = viewingFile.title || viewingFile.originalName || viewingFile.name;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setViewingFile(null)}>
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => { setViewingFile(null); setIsEditingFile(false); }}>
         <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between p-4 border-b border-gray-700">
             <h3 className="text-lg font-medium text-white truncate max-w-[80%]" title={fileName}>
@@ -802,7 +850,7 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                 </svg>
               </button>
               <button 
-                onClick={() => setViewingFile(null)}
+                onClick={() => { setViewingFile(null); setIsEditingFile(false); }}
                 className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition-colors"
                 aria-label="Close"
               >
@@ -860,24 +908,89 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
                     View File
                   </button>
                 )}
+                {!isEditingFile && (
+                  <button
+                    onClick={() => {
+                      setEditFileTitle(viewingFile.title || '');
+                      setEditFileInstruction(viewingFile.instruction || '');
+                      setIsEditingFile(true);
+                    }}
+                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition duration-200 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit Details
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Title Section */}
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-gray-300">Title</h4>
-              <p className="text-white text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30">
-                {viewingFile.title || 'No Title'}
-              </p>
-            </div>
+            {isEditingFile ? (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-sm font-semibold text-gray-300">Title</label>
+                  <input
+                    type="text"
+                    value={editFileTitle}
+                    onChange={(e) => setEditFileTitle(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-sm font-semibold text-gray-300">Instruction for Student</label>
+                  <textarea
+                    value={editFileInstruction}
+                    onChange={(e) => setEditFileInstruction(e.target.value)}
+                    rows={4}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingFile(false)}
+                    disabled={updatingFileDetails}
+                    className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium text-sm transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateFileDetails(viewingFile._id)}
+                    disabled={updatingFileDetails || !editFileTitle.trim() || !editFileInstruction.trim()}
+                    className="flex-1 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium text-sm transition flex items-center justify-center gap-2"
+                  >
+                    {updatingFileDetails ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Title Section */}
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-gray-300">Title</h4>
+                  <p className="text-white text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30">
+                    {viewingFile.title || 'No Title'}
+                  </p>
+                </div>
 
-            {/* Instruction Section */}
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-gray-300">Instruction for Student</h4>
-              <p className="text-gray-300 text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30 whitespace-pre-wrap">
-                {viewingFile.instruction || 'No Instruction'}
-              </p>
-            </div>
+                {/* Instruction Section */}
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-gray-300">Instruction for Student</h4>
+                  <p className="text-gray-300 text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30 whitespace-pre-wrap">
+                    {viewingFile.instruction || 'No Instruction'}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

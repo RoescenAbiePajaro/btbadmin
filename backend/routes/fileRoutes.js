@@ -718,4 +718,53 @@ router.post('/score-submission/:submissionId', verifyToken, async (req, res) => 
   }
 });
 
+// Update file title and instruction
+router.put('/:fileId', verifyToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { title, instruction } = req.body;
+    
+    if (req.user.role !== 'educator' && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only educators or admins can edit file details'
+      });
+    }
+
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
+    }
+
+    // Verify ownership (educator can only update their own files)
+    if (req.user.role === 'educator' && file.uploadedBy.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only edit files you uploaded'
+      });
+    }
+
+    if (title !== undefined) file.title = title;
+    if (instruction !== undefined) file.instruction = instruction;
+
+    await file.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'File updated successfully',
+      file
+    });
+  } catch (error) {
+    console.error('Error updating file:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error updating file',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
