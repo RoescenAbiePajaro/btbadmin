@@ -655,13 +655,22 @@ const StudentFileSharing = ({ student, onRefresh, lastUpdated }) => {
               </div>
             </div>
 
-            {/* Description */}
-            {viewingFile.description && (
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-gray-300">Description</h4>
-                <p className="text-gray-400 text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30">{viewingFile.description}</p>
-              </div>
-            )}
+            {/* Title Section */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-gray-300">Title</h4>
+              <p className="text-white text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30">
+                {viewingFile.title || 'No Title'}
+              </p>
+            </div>
+
+            {/* Instruction for Student Section */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-gray-300">Instruction for Student</h4>
+              <p className="text-gray-300 text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30 whitespace-pre-wrap">
+                {viewingFile.instruction || viewingFile.description || 'No Instruction'}
+              </p>
+            </div>
+
 
             {/* Submission Upload Section */}
             <div className="border-t border-gray-700/80 pt-6 space-y-4">

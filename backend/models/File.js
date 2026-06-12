@@ -35,6 +35,14 @@ const fileSchema = new mongoose.Schema({
     ref: 'Folder',
     default: null
   },
+  title: {
+    type: String,
+    default: ''
+  },
+  instruction: {
+    type: String,
+    default: ''
+  },
   type: {
     type: String,
     enum: ['material', 'converted', 'submission'],

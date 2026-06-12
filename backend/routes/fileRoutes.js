@@ -93,7 +93,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
       });
     }
 
-    const { classCode, folderId, title, description } = req.body;
+    const { classCode, folderId, title, instruction, description } = req.body;
     
     if (!classCode) {
       return res.status(400).json({
@@ -148,8 +148,8 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
         mimeType: req.file.mimetype,
         classCode: classCode.toUpperCase(),
         folderId: folderId,
-        title: title,
-        description: description,
+        title: title || '',
+        instruction: instruction || description || '',
         type: 'material',
         uploadedBy: req.user.id,
         uploaderName: user.fullName || user.username,

@@ -28,6 +28,8 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
   const [folderModalMode, setFolderModalMode] = useState('create'); // 'create' or 'edit'
   const [editingFolder, setEditingFolder] = useState(null);
   const [newFolderName, setNewFolderName] = useState('');
+  const [fileTitle, setFileTitle] = useState('');
+  const [instruction, setInstruction] = useState('');
   const [loading, setLoading] = useState({
     folders: false,
     files: false,
@@ -338,11 +340,21 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       showToast('Please select a folder for the upload', 'error');
       return;
     }
+    if (!fileTitle.trim()) {
+      showToast('Please enter a title', 'error');
+      return;
+    }
+    if (!instruction.trim()) {
+      showToast('Please enter instructions for the student', 'error');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('classCode', shareToClassCode);
     formData.append('folderId', selectedFolder._id);
+    formData.append('title', fileTitle.trim());
+    formData.append('instruction', instruction.trim());
 
     try {
       setUploading(true);
@@ -365,6 +377,8 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
         
         // Reset upload state
         setSelectedFile(null);
+        setFileTitle('');
+        setInstruction('');
         document.getElementById('file-upload').value = '';
         
         showToast('File shared successfully!', 'success');
@@ -732,6 +746,35 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
       </button>
     );
   };
+  const renderFilePreviewIcon = (fileExtension) => {
+    if (['pdf'].includes(fileExtension)) {
+      return (
+        <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 10h6v2H9z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14h6v2H9z" />
+        </svg>
+      );
+    } else if (['doc', 'docx'].includes(fileExtension)) {
+      return (
+        <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      );
+    } else if (['xls', 'xlsx'].includes(fileExtension)) {
+      return (
+        <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      );
+    }
+  };
 
   const renderFileModal = () => {
     if (!viewingFile) return null;
@@ -739,15 +782,14 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
     const fileType = viewingFile.mimeType?.split('/')[0] || '';
     const fileExtension = viewingFile.name?.split('.').pop()?.toLowerCase() || '';
     const isImage = fileType === 'image';
-    const isPdf = fileExtension === 'pdf';
-    const isDocument = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(fileExtension);
+    const fileName = viewingFile.title || viewingFile.originalName || viewingFile.name;
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setViewingFile(null)}>
-        <div className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between p-4 border-b border-gray-700">
-            <h3 className="text-lg font-medium text-white truncate max-w-xs" title={viewingFile.name}>
-              {viewingFile.name}
+            <h3 className="text-lg font-medium text-white truncate max-w-[80%]" title={fileName}>
+              {fileName}
             </h3>
             <div className="flex items-center space-x-2">
               <button 
@@ -771,76 +813,71 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             </div>
           </div>
           
-          <div className="flex-1 overflow-auto p-6 flex items-center justify-center">
-            {isImage ? (
-              <img 
-                src={viewingFile.url} 
-                alt={viewingFile.name}
-                className="max-w-full max-h-[70vh] object-contain"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUtaW1hZ2UiPjcmIzQ3O3BhdGggZD0iTTE0LjUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMhgxMmEyIDIgMCAwIDAgMi0yVjcuNUwxNC41IDJ6Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48Y2lyY2xlIGN4PSIxMCIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7bC0zLjEtMy4xYTIgMiAwIDAgMC0yLjggMEw4IDE4Ii8+PC9zdmc+';
-                }}
-              />
-            ) : isPdf ? (
-              <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                <div className="mb-4 p-4 bg-red-500/10 rounded-full">
-                  <svg className="w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* File Details / Preview */}
+            <div className="bg-gray-900/40 rounded-xl p-4 border border-gray-700/50 flex flex-col items-center justify-center min-h-[200px]">
+              {isImage ? (
+                <img 
+                  src={viewingFile.url} 
+                  alt={fileName}
+                  className="max-w-full max-h-[250px] object-contain rounded-lg shadow-lg"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUtaW1hZ2UiPjcmIzQ3O3BhdGggZD0iTTE0LjUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMhgxMmEyIDIgMCAwIDAgMi-yVjcuNUwxNC41IDJ6Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48Y2lyY2xlIGN4PSIxMCIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSIvPiYjeDIwM2M7JiN4MjAzYzsmI3gyMDM7bC0zLjEtMy4xYTIgMiAwIDAgMC0yLjggMEw4IDE4Ii8+PC9zdmc+';
+                  }}
+                />
+              ) : (
+                <div className="text-center p-4">
+                  <div className="mb-3 flex justify-center">
+                    {renderFilePreviewIcon(fileExtension)}
+                  </div>
+                  <p className="text-gray-300 text-sm font-medium">{viewingFile.originalName || viewingFile.name}</p>
+                  <p className="text-gray-500 text-xs mt-1">{formatFileSize(viewingFile.size || 0)}</p>
                 </div>
-                <p className="text-gray-300 mb-6">This PDF can be viewed in the browser or downloaded.</p>
+              )}
+              
+              <div className="flex gap-4 mt-6">
                 <button
                   onClick={() => handleDownload(viewingFile.url, viewingFile.name)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition duration-200 flex items-center gap-2"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download PDF
-                </button>
-              </div>
-            ) : isDocument ? (
-              <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                <div className="mb-4 p-4 bg-blue-500/10 rounded-full">
-                  <svg className="w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p className="text-gray-300 mb-6 text-center">
-                  This document can be downloaded and opened with an appropriate application.
-                </p>
-                <button
-                  onClick={() => handleDownload(viewingFile.url, viewingFile.name)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                   Download File
                 </button>
+                {['pdf', 'jpg', 'jpeg', 'png', 'gif', 'txt'].includes(fileExtension) && (
+                  <button
+                    onClick={() => {
+                      window.open(viewingFile.url, '_blank');
+                    }}
+                    className="px-4 py-2 bg-gray-750 hover:bg-gray-700 text-white border border-gray-650 rounded-lg text-sm font-medium transition duration-200 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    View File
+                  </button>
+                )}
               </div>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                <div className="mb-4 p-4 bg-gray-500/10 rounded-full">
-                  <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p className="text-gray-300 mb-6 text-center">
-                  This file can be downloaded and opened with an appropriate application.
-                </p>
-                <button
-                  onClick={() => handleDownload(viewingFile.url, viewingFile.name)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download File
-                </button>
-              </div>
-            )}
+            </div>
+
+            {/* Title Section */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-gray-300">Title</h4>
+              <p className="text-white text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30">
+                {viewingFile.title || 'No Title'}
+              </p>
+            </div>
+
+            {/* Instruction Section */}
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-gray-300">Instruction for Student</h4>
+              <p className="text-gray-300 text-sm bg-gray-900/20 p-3 rounded-lg border border-gray-700/30 whitespace-pre-wrap">
+                {viewingFile.instruction || 'No Instruction'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -1027,11 +1064,39 @@ const FileSharing = ({ educatorId, selectedClassCode = '' }) => {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Title
+              <span className="text-red-400 ml-1">*</span>
+            </label>
+            <input
+              type="text"
+              value={fileTitle}
+              onChange={(e) => setFileTitle(e.target.value)}
+              placeholder="Enter file/assignment title"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Instruction for Student
+              <span className="text-red-400 ml-1">*</span>
+            </label>
+            <textarea
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              placeholder="Enter instructions for the students..."
+              rows={4}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+          </div>
+
           <button
             onClick={handleUpload}
-            disabled={uploading || !selectedFile || !shareToClassCode || !selectedFolder || classCodes.length === 0}
+            disabled={uploading || !selectedFile || !shareToClassCode || !selectedFolder || !fileTitle.trim() || !instruction.trim() || classCodes.length === 0}
             className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-              uploading || !selectedFile || !shareToClassCode || !selectedFolder || classCodes.length === 0
+              uploading || !selectedFile || !shareToClassCode || !selectedFolder || !fileTitle.trim() || !instruction.trim() || classCodes.length === 0
                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-pink-600 to-pink-600 text-white hover:from-pink-700 hover:to-pink-700 shadow-lg hover:shadow-pink-500/20'
             }`}

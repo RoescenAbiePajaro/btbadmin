@@ -411,6 +411,26 @@ const StudentSubmissions = ({ educatorId }) => {
             </p>
           </div>
 
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 space-y-3">
+            <h3 className="text-md font-bold text-pink-400 uppercase tracking-wider">Assignment Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 font-semibold uppercase">Title</p>
+                <p className="text-white font-medium text-sm mt-0.5">{selectedFile.title || "No Title Provided"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-semibold uppercase">Original File</p>
+                <p className="text-white text-sm mt-0.5 truncate" title={selectedFile.originalName || selectedFile.name}>
+                  {selectedFile.originalName || selectedFile.name}
+                </p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase">Instruction for Student</p>
+              <p className="text-gray-300 text-sm mt-0.5 whitespace-pre-wrap">{selectedFile.instruction || "No Instructions Provided"}</p>
+            </div>
+          </div>
+
           {loading.students ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-500"></div>
