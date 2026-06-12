@@ -234,6 +234,8 @@ router.get('/list', verifyToken, async (req, res) => {
       }
     }
     
+    query.type = { $ne: 'submission' };
+    
     const files = await File.find(query)
       .sort({ createdAt: -1 })
       .populate('uploadedBy', 'username fullName email school');
@@ -442,6 +444,7 @@ router.get('/folder-structure', verifyToken, async (req, res) => {
       .sort({ path: 1 });
     
     // Get all files
+    query.type = { $ne: 'submission' };
     const files = await File.find(query)
       .sort({ createdAt: -1 })
       .populate('uploadedBy', 'username fullName email school');
@@ -498,6 +501,218 @@ router.get('/folder-structure', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching folder structure',
+      details: error.message
+    });
+  }
+});
+
+// Upload student submission
+router.post('/upload-submission', verifyToken, upload.single('file'), async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only students can upload submissions'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No file uploaded' 
+      });
+    }
+
+    const { classCode, folderId, parentFileId } = req.body;
+    
+    if (!classCode || !folderId || !parentFileId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Class code, folder, and assignment ID are required'
+      });
+    }
+
+    const filePath = req.file.path;
+    
+    try {
+      // Upload to Supabase
+      const uploadResult = await supabase.uploadFile(filePath, req.file.originalname);
+      
+      // Clean up the temporary file
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      // Get user info
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Save file metadata to database as submission
+      const fileRecord = new File({
+        name: uploadResult.fileName,
+        originalName: req.file.originalname,
+        path: uploadResult.path,
+        url: uploadResult.publicUrl,
+        size: req.file.size,
+        mimeType: req.file.mimetype,
+        classCode: classCode.toUpperCase(),
+        folderId: folderId,
+        type: 'submission',
+        uploadedBy: req.user.id,
+        uploaderName: user.fullName || user.username,
+        supabaseId: uploadResult.supabaseId,
+        parentFileId: parentFileId,
+        score: null,
+        feedback: ''
+      });
+
+      await fileRecord.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Submission uploaded successfully',
+        file: fileRecord
+      });
+    } catch (uploadError) {
+      // Clean up the temporary file in case of error
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      throw uploadError;
+    }
+  } catch (error) {
+    console.error('Submission upload error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Error uploading submission' 
+    });
+  }
+});
+
+// Get student's own submissions
+router.get('/my-submissions', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    const { classCode } = req.query;
+    const query = {
+      uploadedBy: req.user.id,
+      type: 'submission'
+    };
+
+    if (classCode) {
+      query.classCode = classCode.toUpperCase();
+    }
+
+    const submissions = await File.find(query)
+      .sort({ createdAt: -1 })
+      .populate('parentFileId', 'name title description originalName');
+
+    res.status(200).json({
+      success: true,
+      count: submissions.length,
+      submissions
+    });
+  } catch (error) {
+    console.error('Error fetching student submissions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching submissions',
+      details: error.message
+    });
+  }
+});
+
+// Educator gets submissions for a specific assignment file
+router.get('/submissions/:fileId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'educator') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    const { fileId } = req.params;
+
+    const submissions = await File.find({
+      parentFileId: fileId,
+      type: 'submission'
+    })
+    .sort({ createdAt: -1 })
+    .populate('uploadedBy', 'username fullName email school course year block');
+
+    res.status(200).json({
+      success: true,
+      count: submissions.length,
+      submissions
+    });
+  } catch (error) {
+    console.error('Error fetching submissions for file:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching submissions',
+      details: error.message
+    });
+  }
+});
+
+// Educator scores/grades a submission
+router.post('/score-submission/:submissionId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'educator') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    const { submissionId } = req.params;
+    const { score, feedback } = req.body;
+
+    if (score === undefined || score === null) {
+      return res.status(400).json({
+        success: false,
+        error: 'Score is required'
+      });
+    }
+
+    const submission = await File.findOne({
+      _id: submissionId,
+      type: 'submission'
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        error: 'Submission not found'
+      });
+    }
+
+    submission.score = Number(score);
+    if (feedback !== undefined) {
+      submission.feedback = feedback;
+    }
+
+    await submission.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Submission graded successfully',
+      submission
+    });
+  } catch (error) {
+    console.error('Error grading submission:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error grading submission',
       details: error.message
     });
   }

@@ -2339,6 +2339,8 @@ app.get('/api/files/list', verifyToken, async (req, res) => {
       }
     }
     
+    query.type = { $ne: 'submission' };
+    
     const files = await File.find(query)
       .sort({ createdAt: -1 })
       .populate('uploadedBy', 'username fullName');

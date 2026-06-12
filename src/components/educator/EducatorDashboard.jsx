@@ -9,6 +9,7 @@ import FileSharing from './FileSharing';
 import EducFeedback from './EducFeedback';
 import EducatorProfileSettings from './EducatorProfileSettings';
 import EducatorReportGeneration from './EducatorReportGeneration';
+import StudentSubmissions from './StudentSubmissions';
 import { FiMessageSquare, FiHome, FiUsers, FiFolder, FiSettings, FiUser, FiBookOpen, FiMail, FiUserCheck, FiRefreshCw, FiFileText } from 'react-icons/fi';
 
 const API_URL = 'https://btbtestservice.onrender.com';
@@ -321,6 +322,16 @@ export default function EducatorDashboard() {
               File Sharing
             </button>
             <button
+              onClick={() => setActiveTab('submissions')}
+              className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'submissions'
+                ? 'bg-pink-500/20 text-pink-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                }`}
+            >
+              <FiFileText className="w-4 h-4" />
+              Student submission
+            </button>
+            <button
               onClick={() => setActiveTab('feedback')}
               className={`py-2 px-3 font-medium text-sm rounded-lg transition duration-200 flex items-center gap-2 ${activeTab === 'feedback'
                 ? 'bg-pink-500/20 text-pink-400'
@@ -482,6 +493,7 @@ export default function EducatorDashboard() {
         {activeTab === 'academic' && <AcademicSettings />}
         {activeTab === 'students' && <StudentList />}
         {activeTab === 'files' && <FileSharing educatorId={user?._id} />}
+        {activeTab === 'submissions' && <StudentSubmissions educatorId={user?._id} />}
         {activeTab === 'feedback' && <EducFeedback educator={user} />}
         {activeTab === 'reports' && <EducatorReportGeneration />}
         {activeTab === 'profile' && (

@@ -37,8 +37,21 @@ const fileSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['material', 'converted'],
+    enum: ['material', 'converted', 'submission'],
     default: 'material'
+  },
+  parentFileId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'File',
+    default: null
+  },
+  score: {
+    type: Number,
+    default: null
+  },
+  feedback: {
+    type: String,
+    default: ''
   },
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,

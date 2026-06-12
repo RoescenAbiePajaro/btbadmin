@@ -345,7 +345,8 @@ router.get('/:folderId', verifyToken, async (req, res) => {
     // Get files in this folder
     const files = await File.find({
       folderId: folderId,
-      isDeleted: { $ne: true }
+      isDeleted: { $ne: true },
+      type: { $ne: 'submission' }
     }).populate('uploadedBy', 'username fullName email school');
 
     res.status(200).json({
